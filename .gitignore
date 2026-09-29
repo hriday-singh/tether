@@ -1,0 +1,35 @@
+# Node dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+dist/
+build/
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.production
+!.env.example
+
+# Database & logs
+*.db
+*.db-wal
+*.db-shm
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage & reports
+coverage/
+.nyc_output/
+bench-results.json
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -41,7 +41,7 @@ If a feature threatens any of these four, the feature loses.
 | — | [**UI/UX Specs Suite**](ui-ux/) | **Dedicated modular frontend & UI/UX architecture:** |
 | · | [01 — Design tokens & themes](ui-ux/01-design-tokens-and-themes.md) | Semantic OKLCH tokens, dark/light scales, presence colors, zero-emoji rule |
 | · | [02 — Component library specs](ui-ux/02-component-library-specs.md) | Radix, Hugeicons, theSVG, morphicons, torph (`<TextMorph />`), bklit-ui, thinking-orbs |
-| · | [03 — Views & screen layouts](ui-ux/03-views-and-screen-layouts.md) | Desktop resizable 3-pane workspace, mobile sheets, landing page, join gate, overlays |
+| · | [03 — Views & screen layouts](ui-ux/03-views-and-screen-layouts.md) | Desktop resizable 3-pane workspace, small screen barrier (`<ScreenTooSmallGate />`), landing page, join gate, overlays |
 | · | [04 — Settings & theme picker](ui-ux/04-settings-and-theme-picker.md) | VS Code-style `⌘K` Theme QuickPick with arrow preview, settings modal, preferences schema |
 | · | [05 — Sandbox preview & console](ui-ux/05-sandbox-preview-and-console.md) | Client-side sandboxed iframe preview, 5s watchdog Web Worker runner, DevTools console UI |
 

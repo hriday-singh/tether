@@ -11,7 +11,7 @@ The application comprises five primary screen states and four interactive overla
 1. **Landing Page (`/`)**: Product showcase, live animated mini-editor, quick room creator, and join-by-ID form with Lenis smooth scrolling.
 2. **Join Gate (`/r/[id]`)**: Passcode & display name entry with live avatar presence stack and `thinking-orbs` connecting state.
 3. **Desktop Workspace (`/r/[id]`)**: The "Quiet IDE" three-pane resizable workspace with collaborative CodeMirror editor, live sandboxed preview, sidebar, and diagnostics console.
-4. **Mobile Workspace**: Fullscreen editor layout with fluid swipeable bottom sheets for People, Activity, Console, and Sync panels.
+4. **Small Screen Viewport Barrier (`<ScreenTooSmallGate />`)**: Protective gate screen when accessed on viewports < 1024px, informing users: *"Please try on a bigger screen or refresh"* with dynamic resize auto-unblocking.
 5. **Terminal / Edge States**: Kicked view (with instant "Copy My Version" button), Room Locked, Offline Reconnecting banner, and 404 Not Found.
 6. **Modal Overlays**: `⌘K` Command Palette, VS Code-Style Settings Dialog, Host Controls Sheet, Keyboard Shortcuts Modal (`?`).
 
@@ -89,35 +89,41 @@ The desktop workspace uses an **Inset Floating Card Layout** with `react-resizab
 To prevent code view cramping on laptops and smaller desktop displays:
 * **Large Desktop Viewports (≥ 1280px / `xl`)**: Full 3-pane split (CodeMirror Editor + Live Sandboxed Preview + Sidebar) mounted simultaneously using `react-resizable-panels`.
 * **Medium Desktop & Laptops (1024px – 1279px / `lg`)**: 2-pane priority layout (CodeMirror Editor taking ≥ 65% width + Sidebar). The Live Preview pane transforms into a collapsible side-drawer or segmented toggle inside the editor pane, guaranteeing CodeMirror maintains a minimum width of at least `600px` without horizontal line crowding.
-* **Tablet Viewports (768px – 1023px / `md`)**: Fullscreen Editor with top capsule bar and persistent 44px bottom drawer tabs for People, Activity, and Console.
-* **Mobile Viewports (< 768px)**: Single-column fullscreen editor with touch-adapted action pills and swipeable bottom sheets.
+* **Small Screens & Mobile Viewports (< 1024px)**: Viewing or editing the collaborative workspace is **strictly prohibited**. The app mounts `<ScreenTooSmallGate />` displaying: *"Please try on a bigger screen or refresh"*.
 
 ---
 
-## 3. Mobile Workspace Layout
+## 3. Small Screen Viewport Barrier (`<ScreenTooSmallGate />`)
 
-On mobile viewports (`< 768px`), horizontal splitting is disabled:
+To prevent fragmented code layouts, cursor disorientation, accidental mobile keystrokes, and poor collaborative typing ergonomics, Tether locks out small screens (< 1024px) from entering the collaborative workspace:
 
 ```
-┌────────────────────────────────────────────────────────┐
-│ [Logo] room-982 ⧉ · [HTML ▾]    [Avatars 3] · ⌘K [⚙]   │ TOP BAR
-├────────────────────────────────────────────────────────┤
-│ CodeMirror 6 Editor (Fullscreen 100vh - 84px)          │
-│                                                        │
-│ 1 <!DOCTYPE html>                                      │
-│ 2 <html>                                               │
-│ 3   <body>                                             │
-│ 4     <h1>Tether</h1>                                  │
-│ 5   </body>                                            │
-│ 6 </html>                                              │
-├────────────────────────────────────────────────────────┤
-│ [People (3)]  [Preview]  [Console]  [Sync Lab]         │ BOTTOM TABS BAR (44px)
-└────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│                                                            │
+│                     [ Monitor01Icon ]                      │
+│                                                            │
+│               Please try on a bigger screen                │
+│                        or refresh                          │
+│                                                            │
+│   Tether is an engineering-grade collaborative workspace   │
+│   designed for desktop screens (≥ 1024px). Real-time       │
+│   split code editing, presence tracking, and diagnostics   │
+│   require a larger display to prevent UI collisions.       │
+│                                                            │
+│             ╭──────────────────╮  ╭────────────────╮       │
+│             │ ⟳ Refresh Screen │  │ Return to Home │       │
+│             ╰──────────────────╯  ╰────────────────╯       │
+│                                                            │
+│           (Auto-unlocks when window is expanded)           │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
 ```
 
-* Clicking any bottom tab opens a smooth swipeable drawer (**Vaul / Radix Sheet**).
-* Cursors and selections adapt to touch gestures with floating action pill for undo/redo.
-* Virtual keyboard resize handled using `viewport: interactive-widget=resizes-content`.
+### Technical Implementation & UX Safeguards
+* **Mounting Hook**: `useViewportGate({ minWidth: 1024 })` actively evaluates `window.innerWidth` via `window.matchMedia('(min-width: 1024px)')`.
+* **Socket Protection**: When `<ScreenTooSmallGate />` is mounted, the underlying `SyncClient` halts WebSocket connection attempts so small screen sessions do not consume room slots or generate presence noise.
+* **Dynamic Auto-Unlock**: If a user resizes their desktop browser window or connects an external monitor ($\ge 1024\text{px}$), the barrier unmounts and automatically restores the full 3-pane workspace with zero state loss.
+* **Manual Refresh Trigger**: The `"Refresh Screen"` button executes `window.location.reload()`, giving users on rotating tablets an instant re-check affordance.
 
 ---
 

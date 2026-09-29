@@ -19,7 +19,7 @@ because every keystroke re-renders the whole page.
 
 | # | Spec requirement | How we meet it | Where |
 |---|------------------|----------------|-------|
-| R1 | Split layout: synced editor, participant list, live activity audit feed | CodeMirror 6 + Yjs editor; roster panel; audit feed panel (live + paginated history). Desktop: split columns. Mobile: editor + tabbed bottom panel | [07](07-frontend.md) |
+| R1 | Split layout: synced editor, participant list, live activity audit feed | CodeMirror 6 + Yjs editor; roster panel; audit feed panel (live + paginated history). Desktop: split columns. Small screens (< 1024px): guarded by `<ScreenTooSmallGate />` informing users to try on a bigger screen or refresh | [07](07-frontend.md) |
 | R2 | Custom room IDs, optional passcodes, credentials validated before admission | REST join validates passcode (scrypt) and issues a signed room token. WebSocket upgrade verifies the token **before** the socket is accepted. Unauthorized = HTTP 401/403 at upgrade, no socket ever opens | [05](05-rooms-security-roles.md) |
 | R3 | Sync insertions, deletions, cursors, line highlights; typing/presence badges | Yjs CRDT for text. Awareness for cursors, selections, line highlights (anchored with relative positions) and typing/idle/away status. Server binds awareness entries to the authenticated member | [03](03-sync-engine.md), [04](04-protocol.md) |
 | R4 | Throttle connections sending >5 updates/s | Client batches to ≤5 frames/s. Server enforces a per-connection token bucket (5/s) on **outbound broadcast**, merging queued updates with `Y.mergeUpdates`, so throttling never drops text. Flood guard disconnects abusive sockets | [03](03-sync-engine.md#3-lossless-throttling) |

@@ -27,18 +27,21 @@ Desktop (≥ 1024px)
 │                                         │ Asha is now host   │
 └─────────────────────────────────────────┴────────────────────┘
 
-Mobile (< 1024px)
-┌──────────────────────┐
-│ room-id   ● Saved  ☰ │
-├──────────────────────┤
-│   editor (full)      │
-├──────────────────────┤
-│ [People 4][Activity] │  bottom tabs → sheet
-└──────────────────────┘
+Small Screens (< 1024px) — Screen Barrier Overlay (<ScreenTooSmallGate />)
+┌────────────────────────────────────────────────────────┐
+│                   [ Monitor01Icon ]                    │
+│             Please try on a bigger screen              │
+│                       or refresh                       │
+│                                                        │
+│  Tether's multi-user collaborative workspace requires  │
+│  a larger desktop screen (≥ 1024px) to view the editor, │
+│  participant roster, and live activity feed properly.  │
+│                                                        │
+│       [ ⟳ Refresh Screen ]     [ Return to Home ]      │
+└────────────────────────────────────────────────────────┘
 ```
 
-Tablet (768–1023) uses the mobile structure with a wider sheet. Right column on desktop is resizable
-(persisted in localStorage).
+Right column on desktop is resizable (persisted in localStorage). If a user opens the workspace on a phone, small tablet, or resizes their desktop browser below `1024px`, the workspace mounts `<ScreenTooSmallGate />`, halting connection load and instructing: *"Please try on a bigger screen or refresh"*. An active `matchMedia` listener automatically unblocks the workspace if the window is expanded without requiring a manual reload.
 
 ## Components
 
@@ -103,4 +106,4 @@ hardcodes a color, size, radius, or duration.
 
 ## Open questions
 
-- Visual design direction (fonts, primary color) to be set in the UI milestone with a design skill; tokens make it swappable.
+- ~~Visual design direction~~ Resolved: see [12 — UI / UX direction](12-ui-ux.md) and [ADR-016](11-decisions.md).

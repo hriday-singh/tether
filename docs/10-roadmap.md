@@ -85,7 +85,7 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 ### M9: Web UI
 - [ ] Token file (`globals.css`), Tailwind v4 theme, UI primitives
 - [ ] Home (create/join), join gate
-- [ ] Workspace layout: desktop split + mobile tabs/sheet
+- [ ] Workspace layout: desktop resizable split + small screen barrier (`<ScreenTooSmallGate />`)
 - [ ] Editor (lazy), remote cursors, highlights, language picker
 - [ ] Roster, ActivityFeed (virtualized, infinite), StatusPill, LatencyHud, HostMenu
 - [ ] Network Lab (demo mode)
@@ -93,7 +93,7 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [ ] SyncBadge (P1), KickedScreen with Copy my version, reauth flow keeping local edits
 - [ ] P2 bot storm: server spawner (demo mode) + StormPanel
 - [ ] RTL tests for non-trivial components
-- [ ] Verify mobile + desktop; performance profile (no long task > 50 ms)
+- [ ] Verify small screen lockout (< 1024px) & desktop workspace (≥ 1024px); performance profile (no long task > 50 ms)
 
 ### M10: Ship
 - [ ] Bench numbers + perf screenshot in README
