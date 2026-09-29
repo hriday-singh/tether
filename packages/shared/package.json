@@ -1,0 +1,60 @@
+{
+  "name": "@tether/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./constants": {
+      "import": "./src/constants.ts",
+      "types": "./dist/constants.d.ts",
+      "default": "./dist/constants.js"
+    },
+    "./protocol/codec": {
+      "import": "./src/protocol/codec.ts",
+      "types": "./dist/protocol/codec.d.ts",
+      "default": "./dist/protocol/codec.js"
+    },
+    "./protocol/schemas": {
+      "import": "./src/protocol/schemas.ts",
+      "types": "./dist/protocol/schemas.d.ts",
+      "default": "./dist/protocol/schemas.js"
+    },
+    "./tokenBucket": {
+      "import": "./src/tokenBucket.ts",
+      "types": "./dist/tokenBucket.d.ts",
+      "default": "./dist/tokenBucket.js"
+    },
+    "./backoff": {
+      "import": "./src/backoff.ts",
+      "types": "./dist/backoff.d.ts",
+      "default": "./dist/backoff.js"
+    },
+    "./checksum": {
+      "import": "./src/checksum.ts",
+      "types": "./dist/checksum.d.ts",
+      "default": "./dist/checksum.js"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build:pkg": "tsc"
+  },
+  "dependencies": {
+    "lib0": "^0.2.98",
+    "yjs": "^13.6.23",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.2.0",
+    "fast-check": "^3.23.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

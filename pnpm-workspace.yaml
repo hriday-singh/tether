@@ -1,0 +1,10 @@
+packages:
+  - 'packages/*'
+  - 'apps/*'
+  - 'tests/*'
+
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver
+
+minimumReleaseAge: 0
