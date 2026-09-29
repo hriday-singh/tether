@@ -8,6 +8,7 @@ import { ROOM_UNLOAD_IDLE_MS } from '@tether/shared/constants';
 export class RoomRegistry {
   private activeRooms = new Map<string, Room>();
   private sweepTimer: NodeJS.Timeout | null = null;
+  public onBroadcast?: (sourceMemberId: string, timestamp: number) => void;
 
   constructor(
     private roomRepo: RoomRepo,
@@ -44,7 +45,8 @@ export class RoomRegistry {
       roomRow.snapshot,
       tailUpdates,
       this.persistenceService,
-      this.auditService
+      this.auditService,
+      this.onBroadcast
     );
 
     this.activeRooms.set(roomId, room);

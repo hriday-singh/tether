@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const SessionSchema = z.object({ token: z.string(), memberId: z.string(), name: z.string() });
+const SessionSchema = z.object({ token: z.string(), memberId: z.string(), name: z.string(), epoch: z.string() });
 export type RoomSession = z.infer<typeof SessionSchema>;
 
 const key = (roomId: string) => `collab:session:${roomId}`;

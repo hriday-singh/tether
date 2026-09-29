@@ -1,14 +1,16 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
 
-// ponytail: @tether/shared exports point at dist/; alias to source so the web app never needs a prebuild.
-const sharedSrc = path.join(import.meta.dirname, '../../packages/shared/src/index.ts');
+// @tether/shared ships NodeNext source (`./x.js` specifiers), which Turbopack can't map to .ts under a bundler
+// tsconfig. So the web app pins it to the compiled dist/, which the dev/build scripts build first.
+// Turbopack aliases are project-relative; absolute Windows paths are ignored.
+const sharedDist = '../../packages/shared/dist/index.js';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   turbopack: {
     root: path.join(import.meta.dirname, '../..'),
-    resolveAlias: { '@tether/shared': sharedSrc },
+    resolveAlias: { '@tether/shared': sharedDist },
   },
   async headers() {
     return [

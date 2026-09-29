@@ -17,8 +17,7 @@
     "types": ["vitest/globals", "@testing-library/jest-dom"],
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./*"],
-      "@tether/shared": ["../../packages/shared/src/index.ts"]
+      "@/*": ["./*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],

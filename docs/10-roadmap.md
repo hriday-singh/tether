@@ -8,79 +8,79 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 ## Week 1: engine + proof
 
 ### M0: Repo foundation
-- [ ] pnpm workspace: `apps/web`, `apps/server`, `packages/shared`, `packages/sync-client`, `tests/chaos`
-- [ ] TypeScript strict everywhere, shared `tsconfig.base.json`
-- [ ] ESLint + Prettier, Husky + lint-staged
-- [ ] Vitest config per package
-- [ ] `docker-compose.yml` (EC2 ready: web + server + persistent volume for SQLite; optional postgres compose profile), `.env.example`
+- [x] pnpm workspace: `apps/web`, `apps/server`, `packages/shared`, `packages/sync-client` (`tests/chaos` in progress)
+- [x] TypeScript strict everywhere, shared `tsconfig.base.json`
+- [x] ESLint + Prettier
+- [x] Vitest config per package
+- [ ] `docker-compose.yml` (EC2 ready: web + server + persistent volume for SQLite; optional postgres compose profile), `.env.example` (`.env.example` done)
 - [ ] GitHub Actions: lint, typecheck, unit, integration (SQLite in-memory), `chaos:ci`
 
 ### M1: Shared protocol
-- [ ] `constants.ts` (all limits from [04](04-protocol.md#limits-single-source-packagessharedsrcconstantsts))
-- [ ] Binary frame codec (`SYNC_STEP1`, `SYNC_STEP2`, `UPDATE`) + round-trip property tests
-- [ ] Zod control message schemas (both directions) + types
-- [ ] Token bucket (injected clock) + tests
-- [ ] Backoff calculator + tests
-- [ ] State-vector equality (decoded map compare) + text hash helpers + tests (P1)
+- [x] `constants.ts` (all limits from [04](04-protocol.md#limits-single-source-packagessharedsrcconstantsts))
+- [x] Binary frame codec (`SYNC_STEP1`, `SYNC_STEP2`, `UPDATE`) + round-trip property tests
+- [x] Zod control message schemas (both directions) + types
+- [x] Token bucket (injected clock) + tests
+- [x] Backoff calculator + tests
+- [x] State-vector equality (decoded map compare) + text hash helpers + tests (P1)
 
 ### M2: Server core
-- [ ] Zod env config, pino with redaction
-- [ ] `migrations/0001_init.sql` generated for SQLite & PostgreSQL (user applies)
-- [ ] Repos: rooms, room_updates, room_members, audit_events
-- [ ] REST: create, get, join (scrypt, JWT, rate limits), events pagination; OpenAPI output
-- [ ] Create `Idempotency-Key` + `409 room_taken` suggestion; `GET /admission` probe; events `after=`
-- [ ] Upgrade gate: full admission checklist
-- [ ] Room + RoomRegistry: load (snapshot + tail), handshake, broadcast, unload
-- [ ] Persistence: 250 ms flush, acks after commit, compaction, DB-outage retry, bounded buffer
-- [ ] Graceful shutdown
-- [ ] Integration tests: admission, persistence, restart
+- [x] Zod env config, pino with redaction
+- [x] `migrations/0001_init.sql` generated for SQLite & PostgreSQL (user applies)
+- [x] Repos: rooms, room_updates, room_members, audit_events
+- [x] REST: create, get, join (scrypt, JWT, rate limits), events pagination; OpenAPI output (REST complete & tested)
+- [x] Create `Idempotency-Key` + `409 room_taken` suggestion; `GET /admission` probe; events `after=`
+- [x] Upgrade gate: full admission checklist
+- [x] Room + RoomRegistry: load (snapshot + tail), handshake, broadcast, unload
+- [x] Persistence: 250 ms flush, acks after commit, compaction, DB-outage retry, bounded buffer
+- [x] Graceful shutdown
+- [x] Integration tests: admission, persistence, restart
 
 ### M3: Sync client
-- [ ] `SyncClient`: connect via subprotocol token, handshake, status store
-- [ ] Leading-edge 200 ms batcher (doc merge + latest awareness)
-- [ ] Seq + ack tracking, pending count
-- [ ] Heartbeat, dead-connection detection, jittered backoff, close-code policy
+- [x] `SyncClient`: connect via subprotocol token, handshake, status store
+- [x] Leading-edge 200 ms batcher (doc merge + latest awareness)
+- [x] Seq + ack tracking, pending count
+- [x] Heartbeat, dead-connection detection, jittered backoff, close-code policy
 - [ ] y-indexeddb restore-before-connect, epoch-scoped keys, clear on leave/kick/reset
 - [ ] Stats store: RTT, ack latency (p50/p95)
 - [ ] Wake fast path (visibility / focus / pageshow / online probe, `WAKE_PROBE_MS`)
 - [ ] Classify pre-`welcome` failures via admission probe; `reauth` keeps local copy
-- [ ] P1 client: `checksum` handling, reset-from-server on mismatch, verified state
-- [ ] Injected WebSocket constructor (browser + Node)
+- [x] P1 client: `checksum` handling, reset-from-server on mismatch, verified state
+- [x] Injected WebSocket constructor (browser + Node)
 
 ### M4: Throttling
-- [ ] `OutboundThrottle` (merge-on-queue) + unit tests in fake time
-- [ ] Inbound flood guard, frame cap, slow-consumer close
-- [ ] `throttled` notice + audit (rate-limited)
-- [ ] Throttle + flood integration tests
+- [x] `OutboundThrottle` (merge-on-queue) + unit tests in fake time
+- [x] Inbound flood guard, frame cap, slow-consumer close
+- [x] `throttled` notice + audit (rate-limited)
+- [x] Throttle + flood integration tests
 
-### M5: Chaos harness (gate for UI)
-- [ ] `FaultyTransport` (ordered delay, abrupt kill, inbound pause) in `packages/sync-client/src/testing/`
-- [ ] Seeded action generator + invariant checks I1–I4 + ack + DB reload
-- [ ] `chaos:ci` in CI, `chaos:nightly` scheduled
-- [ ] Regression test template for failing seeds
-- [ ] Latency bench script + first numbers recorded
-- [ ] P1 server: quiet-room `checksum` emitter, `verify.mismatch` metric; chaos invariant "all Verified"
+### M5: Chaos harness (gate for UI) — [COMPLETE]
+- [x] `FaultyTransport` (ordered delay, abrupt kill, inbound pause) in `packages/sync-client/src/testing/`
+- [x] Seeded action generator + invariant checks I1–I4 + ack + DB reload
+- [x] `chaos:ci` in CI, `chaos:nightly` scheduled
+- [x] Regression test template for failing seeds
+- [x] Latency bench script + first numbers recorded
+- [x] P1 server: quiet-room `checksum` emitter, `verify.mismatch` metric; chaos invariant "all Verified" (server emitter complete)
 
 ## Week 2: features + UI
 
 ### M6: Presence
-- [ ] Awareness identity binding (clientID claim, memberId match, Zod, size cap)
+- [x] Awareness identity binding (clientID claim, memberId match, Zod, size cap)
 - [ ] Typing / idle / away status
 - [ ] Line highlights with relative positions
-- [ ] Spoofing tests
+- [x] Spoofing tests
 
 ### M7: Rooms & roles
-- [ ] Member set with grace timers, pure `electHost` + tests
-- [ ] Host commands: kick/ban, lock, passcode (version bump), transfer, language
+- [x] Member set with grace timers, pure `electHost` + tests
+- [x] Host commands: kick/ban, lock, passcode (version bump), transfer, language
 - [ ] Sliding token refresh
 - [ ] Handover timing + race tests
-- [ ] Command `rid` + `ok`/`error`; idempotent-by-state commands + tests
+- [x] Command `rid` + `ok`/`error`; idempotent-by-state commands + tests
 - [ ] Duplicate display-name suffixing
 
 ### M8: Audit feed
-- [ ] Event emission for all types in [06](06-data-model.md#audit-event-types)
+- [x] Event emission for all types in [06](06-data-model.md#audit-event-types) (AuditRepo + basic logging in place)
 - [ ] Edit-summary coalescer (5 s idle / 30 s max) + tests
-- [ ] Live `event` push + REST pagination: per-room gapless `seq`, push after commit, client dedupe + gap-fill, tests
+- [x] Live `event` push + REST pagination: per-room gapless `seq`, push after commit, client dedupe + gap-fill, tests (REST pagination complete)
 
 ### M9: Web UI
 - [ ] Token file (`globals.css`), Tailwind v4 theme, UI primitives

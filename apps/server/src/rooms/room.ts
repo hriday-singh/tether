@@ -41,7 +41,8 @@ export class Room {
     initialSnapshot: Uint8Array | null,
     tailUpdates: Uint8Array[],
     private persistenceService: PersistenceService,
-    private auditService: AuditService
+    private auditService: AuditService,
+    private onBroadcast?: (sourceMemberId: string, timestamp: number) => void
   ) {
     this.id = id;
     this.epoch = epoch;
@@ -112,6 +113,7 @@ export class Room {
 
     const throttle = new OutboundThrottle({
       broadcastFn: (docUpdate, awUpdate) => {
+        this.onBroadcast?.(member.id, Date.now());
         const frame: BinaryFrame = {
           kind: FRAME_KINDS.UPDATE,
           seq: 0,
@@ -161,6 +163,18 @@ export class Room {
     ctx.awarenessBinding.cleanup();
 
     this.hostElector.disconnectConnection(ctx.memberId, isCleanLeave);
+  }
+
+  public handleInboundSyncStep2(ws: WebSocket, update: Uint8Array): void {
+    if (update.byteLength === 0) return;
+    this.lastActiveAt = Date.now();
+    Y.applyUpdate(this.doc, update, this);
+    this.persistenceService.enqueueUpdate(this.id, update);
+
+    const ctx = this.connContexts.get(ws);
+    if (ctx) {
+      ctx.throttle.enqueue(update, new Uint8Array(0));
+    }
   }
 
   public handleInboundUpdate(ws: WebSocket, seq: number, docUpdate: Uint8Array, awarenessUpdate: Uint8Array): void {

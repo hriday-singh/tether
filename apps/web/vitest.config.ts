@@ -1,9 +1,8 @@
 import path from 'node:path';
-import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+// JSX compiles through Vite's esbuild using tsconfig `jsx: react-jsx`, so no React plugin is needed.
 export default defineConfig({
-  plugins: [react() as any],
   resolve: {
     alias: {
       '@tether/shared': path.join(import.meta.dirname, '../../packages/shared/src/index.ts'),

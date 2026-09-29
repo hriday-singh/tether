@@ -259,6 +259,7 @@ export const collabTheme = EditorView.baseTheme({
   },
 });
 
-export function collab(opts: CollabOptions, peers: ReadonlyMap<string, PeerInfo>): Extension {
-  return [optionsFacet.of(opts), peersFacet.of(peers), collabPlugin, collabTheme];
+/** Pair with `peersFacet.of(roster)` in a Compartment so roster changes reconfigure it. */
+export function collab(opts: CollabOptions): Extension {
+  return [optionsFacet.of(opts), collabPlugin, collabTheme];
 }

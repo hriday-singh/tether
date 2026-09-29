@@ -197,6 +197,8 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-overlay: var(--overlay);
+  /* User preview pages default to a white canvas, like a real browser tab. */
+  --color-preview-canvas: oklch(1 0 0);
   --color-editor: var(--editor-bg);
   --color-presence-ink: var(--presence-ink);
   --color-presence-1: var(--presence-1);

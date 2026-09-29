@@ -16,7 +16,9 @@
     "build:pkg": "npm run build:pkg --workspaces --if-present",
     "build": "npm run typecheck && npm run test && npm run build:pkg",
     "dev:server": "npm --workspace=@tether/server run dev",
-    "start:server": "npm --workspace=@tether/server start"
+    "start:server": "npm --workspace=@tether/server start",
+    "chaos:ci": "vitest run --project @tether/chaos",
+    "bench": "pnpm --filter @tether/chaos run bench"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",

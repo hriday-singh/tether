@@ -24,15 +24,20 @@ self.onmessage = async (e) => {
   }
 };`;
 
+const WORKER_URL = `data:text/javascript;charset=utf-8,${encodeURIComponent(WORKER_SOURCE)}`;
+
 type WorkerCtor = new (url: string) => Worker;
 
 /**
  * Runs user JS in an ephemeral Web Worker (docs/ui-ux/05 §3). Nothing ever runs on the server.
  * A 5 s watchdog terminates runaway code: `while(true){}` cannot freeze the tab because it lives on another thread.
+ *
+ * Security: the worker is created from a data: URL, which gives it an opaque origin. A blob: worker would inherit
+ * this app's origin, and a collaborator's code could then read IndexedDB (other rooms' docs) or make same-origin requests.
+ * Running arbitrary code (new Function / eval) is the feature itself. The isolation is what makes it safe.
  */
 export class SandboxedWorkerRunner {
   private worker: Worker | null = null;
-  private url: string | null = null;
   private watchdog: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
@@ -46,8 +51,7 @@ export class SandboxedWorkerRunner {
 
   execute(code: string, onLog: (log: RunnerLog) => void, onComplete: (reason: 'done' | 'timeout' | 'stopped') => void): void {
     this.terminate();
-    this.url = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));
-    const worker = new this.WorkerImpl(this.url);
+    const worker = new this.WorkerImpl(WORKER_URL);
     this.worker = worker;
     const finish = (reason: 'done' | 'timeout' | 'stopped') => {
       if (this.worker !== worker) return;
@@ -83,8 +87,6 @@ export class SandboxedWorkerRunner {
     this.worker?.terminate();
     this.worker = null;
     this.stopHandler = null;
-    if (this.url) URL.revokeObjectURL(this.url);
-    this.url = null;
   }
 }
 

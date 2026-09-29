@@ -2,10 +2,12 @@ import { SandboxedWorkerRunner, transpileForRun, type RunnerLog } from './worker
 
 class HangingWorker {
   static last: HangingWorker | null = null;
+  static url = '';
   onmessage: ((e: MessageEvent) => void) | null = null;
   onerror: ((e: ErrorEvent) => void) | null = null;
   terminated = false;
-  constructor() {
+  constructor(url: string) {
+    HangingWorker.url = url;
     HangingWorker.last = this;
   }
   postMessage() {}
@@ -15,11 +17,6 @@ class HangingWorker {
 }
 
 describe('SandboxedWorkerRunner', () => {
-  beforeAll(() => {
-    URL.createObjectURL = vi.fn(() => 'blob:x');
-    URL.revokeObjectURL = vi.fn();
-  });
-
   it('kills a runaway worker after the watchdog and reports a timeout', () => {
     vi.useFakeTimers();
     const logs: RunnerLog[] = [];
@@ -46,6 +43,11 @@ describe('SandboxedWorkerRunner', () => {
     expect(logs).toEqual([{ type: 'log', args: ['hi'] }]);
     expect(done).toHaveBeenCalledWith('done');
     expect(runner.running).toBe(false);
+  });
+
+  it('uses an opaque-origin data: worker, never a same-origin blob:', () => {
+    new SandboxedWorkerRunner(HangingWorker as unknown as new (u: string) => Worker).execute('1', () => {}, () => {});
+    expect(HangingWorker.url.startsWith('data:text/javascript')).toBe(true);
   });
 
   it('strips TypeScript types before running', async () => {

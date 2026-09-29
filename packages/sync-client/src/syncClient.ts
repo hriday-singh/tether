@@ -124,6 +124,11 @@ export class SyncClient {
       return;
     }
 
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     this.setStatus(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
     const protocols = [PROTOCOL_VERSION, this.token];
 
@@ -210,7 +215,8 @@ export class SyncClient {
           this.hostId = parsed.hostId;
           this.room = parsed.room;
           this.setStatus('connected');
-          this.setSyncState(this.pendingAcks.size > 0 ? 'saving' : 'synced');
+          this.pendingAcks.clear();
+          this.setSyncState('synced');
           this.onWelcome?.({ self: parsed.self, room: parsed.room });
           this.onRosterChange?.(parsed.members);
           this.onHostChange?.(parsed.hostId);
@@ -320,7 +326,7 @@ export class SyncClient {
       awarenessUpdate: awareness,
     };
 
-    if (mergedDoc.byteLength > 0) {
+    if (mergedDoc.byteLength > 0 && this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.pendingAcks.set(currentSeq, {
         docUpdate: mergedDoc,
         sentAt: this.clock(),
@@ -389,6 +395,8 @@ export class SyncClient {
       this.setStatus('kicked');
       return;
     }
+
+    this.pendingAcks.clear();
 
     if (this.isDestroyed || event.code === WS_CLOSE_CODES.NORMAL) {
       this.setStatus('disconnected');

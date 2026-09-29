@@ -79,6 +79,7 @@ export interface FakeSyncOptions {
   epoch: string;
   /** Creator's first open: seed the starter template once. */
   seed?: boolean;
+  onSeeded?: () => void;
   latencyMs?: number;
 }
 
@@ -295,6 +296,7 @@ export class FakeSyncClient implements SyncClient {
     if (this.opts.seed && this.text.length === 0 && isLanguageId(room.language)) {
       this.opts.seed = false;
       this.text.insert(0, STARTER_CODE[room.language]);
+      this.opts.onSeeded?.();
     }
     if (!sessionStorage.getItem(`tether:announced:${this.opts.memberId}`)) {
       sessionStorage.setItem(`tether:announced:${this.opts.memberId}`, '1');

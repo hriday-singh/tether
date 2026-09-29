@@ -103,9 +103,7 @@ export function attachConnectionHandler(
             break;
           }
           case FRAME_KINDS.SYNC_STEP2: {
-            if (frame.update.byteLength > 0) {
-              Y.applyUpdate(room.doc, frame.update, ws);
-            }
+            room.handleInboundSyncStep2(ws, frame.update);
             break;
           }
           case FRAME_KINDS.UPDATE: {
