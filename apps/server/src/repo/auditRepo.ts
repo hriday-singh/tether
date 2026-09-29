@@ -11,6 +11,36 @@ export interface AuditEventRow {
   created_at: string;
 }
 
+export interface FormattedAuditEvent {
+  id: number;
+  roomId: string;
+  seq: number;
+  type: string;
+  actorMemberId: string | null;
+  actorName: string | null;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
+export function formatAuditEventRow(row: AuditEventRow): FormattedAuditEvent {
+  let parsedPayload: Record<string, unknown> = {};
+  try {
+    parsedPayload = JSON.parse(row.payload);
+  } catch {
+    parsedPayload = {};
+  }
+  return {
+    id: row.id,
+    roomId: row.room_id,
+    seq: row.seq,
+    type: row.type,
+    actorMemberId: row.actor_member_id,
+    actorName: row.actor_name,
+    payload: parsedPayload,
+    createdAt: row.created_at,
+  };
+}
+
 export class AuditRepo {
   constructor(private db: DatabaseSession) {}
 
@@ -42,6 +72,46 @@ export class AuditRepo {
         JSON.stringify(ev.payload ?? {})
       );
     }
+  }
+
+  public insertEvent(event: {
+    roomId: string;
+    seq: number;
+    type: string;
+    actorMemberId?: string | null;
+    actorName?: string | null;
+    payload?: Record<string, unknown>;
+  }): FormattedAuditEvent {
+    const stmt = this.db.prepare(
+      `INSERT INTO audit_events (
+        room_id, seq, type, actor_member_id, actor_name, payload
+      ) VALUES (?, ?, ?, ?, ?, ?)`
+    );
+
+    const res = stmt.run(
+      event.roomId,
+      event.seq,
+      event.type,
+      event.actorMemberId ?? null,
+      event.actorName ?? null,
+      JSON.stringify(event.payload ?? {})
+    );
+
+    const id = typeof res.lastInsertRowid === 'bigint' ? Number(res.lastInsertRowid) : (res.lastInsertRowid as number);
+    const row = this.db.prepare<AuditEventRow>(`SELECT * FROM audit_events WHERE id = ?`).get(id);
+    if (row) {
+      return formatAuditEventRow(row);
+    }
+    return {
+      id,
+      roomId: event.roomId,
+      seq: event.seq,
+      type: event.type,
+      actorMemberId: event.actorMemberId ?? null,
+      actorName: event.actorName ?? null,
+      payload: event.payload ?? {},
+      createdAt: new Date().toISOString(),
+    };
   }
 
   public getLatestSeq(roomId: string): number {

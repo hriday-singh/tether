@@ -5,6 +5,8 @@ import { ServerConfig } from '../config.js';
 import { RoomRepo } from '../repo/roomRepo.js';
 import { MemberRepo } from '../repo/memberRepo.js';
 import { JoinService, RoomTokenClaims } from '../services/joinService.js';
+import { AuditRepo } from '../repo/auditRepo.js';
+import { AuditService } from '../services/auditService.js';
 import { RoomRegistry } from '../rooms/roomRegistry.js';
 import { PROTOCOL_VERSION, MAX_MEMBERS_PER_ROOM, MAX_CONN_PER_IP } from '@tether/shared/constants';
 import { attachConnectionHandler } from './connectionHandler.js';
@@ -15,6 +17,8 @@ export interface UpgradeGateDependencies {
   memberRepo: MemberRepo;
   joinService: JoinService;
   roomRegistry: RoomRegistry;
+  auditRepo: AuditRepo;
+  auditService: AuditService;
 }
 
 const ipConnectionCounts = new Map<string, number>();

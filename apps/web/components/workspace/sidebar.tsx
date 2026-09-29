@@ -2,7 +2,10 @@
 
 import {
   BotIcon,
+  Cancel01Icon,
   CrownIcon,
+  MaximizeScreenIcon,
+  MinimizeScreenIcon,
   MoreHorizontalIcon,
   UserRemove01Icon,
   UserSwitchIcon,
@@ -27,30 +30,58 @@ import { CommandError, type PresenceEntry } from '@/lib/sync';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from './context';
 import { describeEvent } from './events';
+import { Scratchpad } from './scratchpad';
 
 export function Sidebar() {
   const ws = useWorkspace();
-  const tab = useStore(ws.ui).sidebarTab;
+  const ui = useStore(ws.ui);
+  const tab = ui.sidebarTab;
   const count = useStore(ws.client.roster).length;
   return (
     <Tabs
       value={tab}
-      onValueChange={(v) => ws.ui.update((s) => ({ ...s, sidebarTab: v as 'people' | 'activity' }))}
+      onValueChange={(v) => ws.ui.update((s) => ({ ...s, sidebarTab: v as 'people' | 'activity' | 'scratchpad' }))}
       className="flex h-full min-h-0 flex-col"
     >
-      <div className="flex items-center border-b border-border/60 p-2">
+      <div className="flex items-center justify-between border-b border-border/60 p-2">
         <TabsList aria-label="Sidebar">
           <TabsTrigger value="people">
             People <span className="tabular text-muted-foreground">{count}</span>
           </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="scratchpad">Scratchpad</TabsTrigger>
         </TabsList>
+        <div className="flex items-center gap-1">
+          <Tip label={ui.maximizedPanel === 'sidebar' ? 'Restore sidebar' : 'Maximize sidebar'}>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label={ui.maximizedPanel === 'sidebar' ? 'Restore sidebar' : 'Maximize sidebar'}
+              onClick={() => ws.maximizePanel('sidebar')}
+            >
+              <Icon icon={ui.maximizedPanel === 'sidebar' ? MinimizeScreenIcon : MaximizeScreenIcon} size={14} />
+            </Button>
+          </Tip>
+          <Tip label="Close sidebar">
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Close sidebar"
+              onClick={() => ws.ui.update((s) => ({ ...s, sidebarOpen: false }))}
+            >
+              <Icon icon={Cancel01Icon} size={14} />
+            </Button>
+          </Tip>
+        </div>
       </div>
       <TabsContent value="people" className="min-h-0 flex-1 overflow-y-auto p-1.5" forceMount hidden={tab !== 'people'}>
         <Roster />
       </TabsContent>
       <TabsContent value="activity" className="min-h-0 flex-1" forceMount hidden={tab !== 'activity'}>
         <ActivityFeed />
+      </TabsContent>
+      <TabsContent value="scratchpad" className="min-h-0 flex-1" forceMount hidden={tab !== 'scratchpad'}>
+        <Scratchpad />
       </TabsContent>
     </Tabs>
   );

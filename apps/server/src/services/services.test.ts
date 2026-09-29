@@ -136,13 +136,13 @@ describe('Services Layer', () => {
       roomRepo.create({ id: 'r1', epoch: 'e1', createdBy: 'u1' });
       roomRepo.create({ id: 'r2', epoch: 'e2', createdBy: 'u2' });
 
-      const seq1 = auditService.logEvent('r1', { type: 'edit.one' });
-      const seq2 = auditService.logEvent('r1', { type: 'edit.two' });
-      const seq3 = auditService.logEvent('r2', { type: 'other.room' });
+      const event1 = auditService.logEvent('r1', { type: 'edit.one' });
+      const event2 = auditService.logEvent('r1', { type: 'edit.two' });
+      const event3 = auditService.logEvent('r2', { type: 'other.room' });
 
-      expect(seq1).toBe(1);
-      expect(seq2).toBe(2);
-      expect(seq3).toBe(1); // separate sequence for room r2
+      expect(event1.seq).toBe(1);
+      expect(event2.seq).toBe(2);
+      expect(event3.seq).toBe(1); // separate sequence for room r2
     });
   });
 

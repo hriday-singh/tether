@@ -20,6 +20,16 @@ export class RoomRegistry {
     this.sweepTimer = setInterval(() => {
       this.unloadIdleRooms();
     }, 10000);
+
+    this.auditService.onEventLogged = (roomId, event) => {
+      const room = this.activeRooms.get(roomId);
+      if (room) {
+        room.broadcastControl({
+          t: 'event',
+          event,
+        });
+      }
+    };
   }
 
   public get(roomId: string): Room | undefined {

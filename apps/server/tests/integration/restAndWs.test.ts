@@ -16,6 +16,8 @@ import { buildApp } from '../../src/http/app.js';
 import { createUpgradeGate } from '../../src/ws/upgradeGate.js';
 import { SyncClient } from '@tether/sync-client';
 import { ServerConfig } from '../../src/config.js';
+import { encodeFrame } from '@tether/shared/protocol/codec';
+import { FRAME_KINDS } from '@tether/shared/constants';
 
 describe('Server HTTP REST & WebSocket Integration', () => {
   let db: DatabaseSession;
@@ -69,6 +71,7 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       roomRegistry,
       roomRepo,
       memberRepo,
+      auditRepo,
     };
 
     app = buildApp(deps);
@@ -155,6 +158,36 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       });
       expect(admRes.statusCode).toBe(200);
       expect(JSON.parse(admRes.payload)).toEqual({ status: 'ok' });
+
+      // 6. Test events endpoint: verify camelCase schema and cursors
+      const eventsRes = await app.inject({
+        method: 'GET',
+        url: '/api/rooms/demo-test/events',
+        headers: { authorization: `Bearer ${bobData.token}` },
+      });
+      expect(eventsRes.statusCode).toBe(200);
+      const eventsData = JSON.parse(eventsRes.payload);
+      expect(Array.isArray(eventsData.items)).toBe(true);
+      expect(eventsData).toHaveProperty('nextBefore');
+      expect(eventsData).toHaveProperty('nextAfter');
+      if (eventsData.items.length > 0) {
+        const firstEvent = eventsData.items[0];
+        expect(firstEvent).toHaveProperty('roomId');
+        expect(firstEvent).not.toHaveProperty('room_id');
+        expect(firstEvent).toHaveProperty('createdAt');
+        expect(firstEvent).not.toHaveProperty('created_at');
+        expect(firstEvent.roomId).toBe('demo-test');
+      }
+
+      // 7. Test admission probe with stale passcode version
+      roomRepo.updateSettings('demo-test', { passcodeVersion: 99 });
+      const staleAdmRes = await app.inject({
+        method: 'GET',
+        url: '/api/rooms/demo-test/admission',
+        headers: { authorization: `Bearer ${bobData.token}` },
+      });
+      expect(staleAdmRes.statusCode).toBe(200);
+      expect(JSON.parse(staleAdmRes.payload)).toEqual({ status: 'reauth' });
     });
   });
 
@@ -246,6 +279,78 @@ describe('Server HTTP REST & WebSocket Integration', () => {
 
       client1.destroy();
       client2.destroy();
+    });
+
+    it('broadcasts audit events in real-time and populates welcome token and eventSeq', async () => {
+      // 1. Create room
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/rooms',
+        payload: { name: 'HostAlice', roomId: 'event-room' },
+      });
+      const aliceData = JSON.parse(createRes.payload);
+
+      // Connect raw WebSocket for Alice
+      const wsUrl = `ws://127.0.0.1:${serverPort}/ws/rooms/event-room`;
+      const ws = new WebSocket(wsUrl, ['collab.v1', aliceData.token]);
+
+      let welcomeReceived: any = null;
+      const eventsReceived: any[] = [];
+
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Timed out waiting for event'));
+        }, 3000);
+
+        ws.on('open', () => {
+          // Send SYNC_STEP1 so server responds
+          const step1 = encodeFrame({
+            kind: FRAME_KINDS.SYNC_STEP1,
+            stateVector: Y.encodeStateVector(new Y.Doc()),
+          });
+          ws.send(step1);
+        });
+
+        ws.on('message', (data, isBinary) => {
+          if (!isBinary) {
+            const text = data.toString();
+            const msg = JSON.parse(text);
+            if (msg.t === 'welcome') {
+              welcomeReceived = msg;
+              // Now issue host.lock command
+              ws.send(
+                JSON.stringify({
+                  t: 'host.lock',
+                  rid: '11111111-1111-1111-1111-111111111111',
+                  locked: true,
+                })
+              );
+            } else if (msg.t === 'event') {
+              eventsReceived.push(msg.event);
+              if (msg.event.type === 'room.locked') {
+                clearTimeout(timeout);
+                resolve();
+              }
+            }
+          }
+        });
+
+        ws.on('error', (err) => {
+          reject(err);
+        });
+      });
+
+      expect(welcomeReceived).not.toBeNull();
+      expect(welcomeReceived.token).toBeTruthy();
+      expect(welcomeReceived.eventSeq).toBeGreaterThanOrEqual(1);
+
+      expect(eventsReceived.length).toBeGreaterThanOrEqual(1);
+      const lockedEvent = eventsReceived.find((e: any) => e.type === 'room.locked');
+      expect(lockedEvent).toBeDefined();
+      expect(lockedEvent.roomId).toBe('event-room');
+      expect(lockedEvent.actorMemberId).toBe(aliceData.memberId);
+
+      ws.close();
     });
   });
 });

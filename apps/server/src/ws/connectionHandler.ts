@@ -2,6 +2,7 @@ import * as Y from 'yjs';
 import WebSocket from 'ws';
 import { Room } from '../rooms/room.js';
 import { UpgradeGateDependencies } from './upgradeGate.js';
+import { ProtocolGuard } from '../sync/protocolGuard.js';
 import { decodeFrame, encodeFrame, BinaryFrame } from '@tether/shared/protocol/codec';
 import {
   ClientControlMessageSchema,
@@ -14,13 +15,14 @@ import {
   WS_CLOSE_CODES,
 } from '@tether/shared/constants';
 
-export function attachConnectionHandler(
+export async function attachConnectionHandler(
   ws: WebSocket,
   room: Room,
   member: { id: string; name: string; colorIndex: number },
   deps: UpgradeGateDependencies
-): void {
+): Promise<void> {
   room.addConnection(ws, member);
+  const protocolGuard = new ProtocolGuard();
 
   let isAlive = true;
   ws.on('pong', () => {
@@ -59,6 +61,15 @@ export function attachConnectionHandler(
     isBot: false,
   };
 
+  const token = await deps.joinService.issueRoomToken({
+    memberId: member.id,
+    roomId: room.id,
+    displayName: member.name,
+    passcodeVersion: roomRow.passcode_version,
+    roomEpoch: room.epoch,
+  });
+  const eventSeq = deps.auditRepo.getLatestSeq(room.id);
+
   const welcomePayload = {
     t: 'welcome' as const,
     self: selfMember,
@@ -71,17 +82,21 @@ export function attachConnectionHandler(
       hasPasscode: roomRow.passcode_hash !== null,
       epoch: room.epoch,
     },
-    token: '', // sliding token
-    eventSeq: 0,
+    token,
+    eventSeq,
   };
   ws.send(JSON.stringify(welcomePayload));
 
-  // Handle incoming data
   ws.on('message', async (data: WebSocket.RawData, isBinary: boolean) => {
     if (isBinary) {
       const buffer = data instanceof Buffer ? data : Buffer.from(data as ArrayBuffer);
       try {
         const frame = decodeFrame(buffer);
+        const violation = protocolGuard.checkFrame(frame);
+        if (violation !== null) {
+          ws.close(violation);
+          return;
+        }
 
         switch (frame.kind) {
           case FRAME_KINDS.SYNC_STEP1: {
@@ -127,6 +142,12 @@ export function attachConnectionHandler(
           }
           case 'leave': {
             room.removeConnection(ws, true);
+            deps.auditService.logEvent(room.id, {
+              type: 'member.left',
+              actorMemberId: member.id,
+              actorName: member.name,
+              payload: { reason: 'leave' },
+            });
             ws.close(WS_CLOSE_CODES.NORMAL);
             break;
           }
@@ -141,6 +162,13 @@ export function attachConnectionHandler(
               memberId: msg.memberId,
               reason: 'kicked',
             });
+            deps.auditService.logEvent(room.id, {
+              type: 'member.left',
+              actorMemberId: member.id,
+              actorName: member.name,
+              payload: { reason: 'kicked', targetMemberId: msg.memberId },
+            });
+            room.terminateMemberSockets(msg.memberId, WS_CLOSE_CODES.KICKED);
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;
           }
@@ -149,11 +177,21 @@ export function attachConnectionHandler(
               ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'forbidden', message: 'Not host' }));
               return;
             }
-            deps.roomRepo.updateSettings(room.id, { locked: msg.locked });
-            room.broadcastControl({
-              t: 'room.updated',
-              settings: { locked: msg.locked },
-            });
+            const currentRoom = deps.roomRepo.findById(room.id);
+            const isAlready = (currentRoom?.locked === 1) === msg.locked;
+            if (!isAlready) {
+              deps.roomRepo.updateSettings(room.id, { locked: msg.locked });
+              room.broadcastControl({
+                t: 'room.updated',
+                settings: { locked: msg.locked },
+              });
+              deps.auditService.logEvent(room.id, {
+                type: msg.locked ? 'room.locked' : 'room.unlocked',
+                actorMemberId: member.id,
+                actorName: member.name,
+                payload: {},
+              });
+            }
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;
           }
@@ -167,11 +205,18 @@ export function attachConnectionHandler(
               hash = await deps.joinService.hashPasscode(msg.passcode);
             }
             const current = deps.roomRepo.findById(room.id);
+            const action = !hash ? 'cleared' : !current?.passcode_hash ? 'set' : 'changed';
             const nextPv = (current?.passcode_version ?? 0) + 1;
             deps.roomRepo.updateSettings(room.id, { passcodeHash: hash, passcodeVersion: nextPv });
             room.broadcastControl({
               t: 'room.updated',
               settings: { hasPasscode: hash !== null },
+            });
+            deps.auditService.logEvent(room.id, {
+              type: 'room.passcode',
+              actorMemberId: member.id,
+              actorName: member.name,
+              payload: { action },
             });
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;
@@ -194,11 +239,21 @@ export function attachConnectionHandler(
               ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'forbidden', message: 'Not host' }));
               return;
             }
-            deps.roomRepo.updateSettings(room.id, { language: msg.language });
-            room.broadcastControl({
-              t: 'room.updated',
-              settings: { language: msg.language },
-            });
+            const current = deps.roomRepo.findById(room.id);
+            if (current?.language !== msg.language) {
+              const fromLang = current?.language ?? 'javascript';
+              deps.roomRepo.updateSettings(room.id, { language: msg.language });
+              room.broadcastControl({
+                t: 'room.updated',
+                settings: { language: msg.language },
+              });
+              deps.auditService.logEvent(room.id, {
+                type: 'room.language',
+                actorMemberId: member.id,
+                actorName: member.name,
+                payload: { from: fromLang, to: msg.language },
+              });
+            }
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;
           }

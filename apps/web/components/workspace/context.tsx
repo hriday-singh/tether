@@ -19,9 +19,13 @@ export interface UIState {
   hostSheet: boolean;
   drawerOpen: boolean;
   drawerTab: 'console' | 'sync' | 'chaos';
-  sidebarTab: 'people' | 'activity';
+  sidebarOpen: boolean;
+  sidebarTab: 'people' | 'activity' | 'scratchpad';
+  previewOpen: boolean;
   /** Laptop layout (lg): the editor card shows code or preview. */
   editorView: 'code' | 'preview';
+  maximizedPanel: 'editor' | 'preview' | 'sidebar' | 'drawer' | null;
+  zenMode: boolean;
 }
 
 export interface PreviewRun {
@@ -49,6 +53,9 @@ export interface Workspace {
   run(): Promise<void>;
   stop(): void;
   focusEditor(): void;
+  togglePanel(panel: 'sidebar' | 'preview' | 'drawer'): void;
+  maximizePanel(panel: 'editor' | 'preview' | 'sidebar' | 'drawer' | null): void;
+  openDrawerTab(tab: 'console' | 'sync' | 'chaos'): void;
 }
 
 const Ctx = createContext<Workspace | null>(null);
@@ -74,8 +81,12 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
       hostSheet: false,
       drawerOpen: false,
       drawerTab: 'console',
+      sidebarOpen: true,
       sidebarTab: 'people',
+      previewOpen: true,
       editorView: 'code',
+      maximizedPanel: null,
+      zenMode: false,
     },
     shallowEqual,
   );
@@ -151,6 +162,24 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
 
     focusEditor() {
       view.current?.focus();
+    },
+
+    togglePanel(panel) {
+      if (panel === 'sidebar') {
+        ui.update((s) => ({ ...s, sidebarOpen: !s.sidebarOpen }));
+      } else if (panel === 'preview') {
+        ui.update((s) => ({ ...s, previewOpen: !s.previewOpen }));
+      } else if (panel === 'drawer') {
+        ui.update((s) => ({ ...s, drawerOpen: !s.drawerOpen }));
+      }
+    },
+
+    maximizePanel(panel) {
+      ui.update((s) => ({ ...s, maximizedPanel: s.maximizedPanel === panel ? null : panel }));
+    },
+
+    openDrawerTab(tab) {
+      ui.update((s) => ({ ...s, drawerOpen: true, drawerTab: tab }));
     },
   };
   return ws;

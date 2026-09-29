@@ -99,6 +99,10 @@ export class AwarenessBinding {
     }
   }
 
+  public getClaimedClientID(): number | null {
+    return this.claimedClientID;
+  }
+
   public cleanup(): void {
     if (this.claimedClientID !== null) {
       this.existingClaimedClientIDs.delete(this.claimedClientID);

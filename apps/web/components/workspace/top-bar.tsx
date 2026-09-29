@@ -13,6 +13,7 @@ import {
   Share08Icon,
   StopIcon,
   CheckmarkCircle02Icon,
+  AiMagicIcon,
 } from '@hugeicons/core-free-icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -30,6 +31,7 @@ import {
 } from '@/components/ui/menus';
 import { MorphIcon, TextMorph } from '@/components/ui/motion';
 import { toast } from '@/components/ui/toaster';
+import { formatCode } from '@/lib/formatter';
 import { useFlag, useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
 import { cn, isMac } from '@/lib/utils';
@@ -37,6 +39,7 @@ import { Logo } from '../brand';
 import { useWorkspace } from './context';
 import { LanguagePicker } from './language-picker';
 import { LatencyHud, StatusPill } from './sync-status';
+import { ViewMenu } from './view-menu';
 
 export function TopBar() {
   const ws = useWorkspace();
@@ -91,6 +94,8 @@ export function TopBar() {
             <Kbd className="h-4 border-0 bg-transparent px-0">K</Kbd>
           </button>
         </Tip>
+        <FormatButton />
+        <ViewMenu />
         {isHost && (
           <Tip label="Host controls">
             <Button
@@ -111,6 +116,52 @@ export function TopBar() {
         </Tip>
       </div>
     </header>
+  );
+}
+
+function FormatButton() {
+  const ws = useWorkspace();
+  const room = useStore(ws.client.room);
+  const isHost = room.hostId === room.selfId;
+  const locked = room.room.locked;
+  const canFormat = isHost || !locked;
+
+  const handleFormat = async () => {
+    if (!canFormat) {
+      toast.info('Room is locked. Only the host can format.');
+      return;
+    }
+    const currentText = ws.client.text.toString();
+    if (!currentText.trim()) return;
+
+    try {
+      const formatted = await formatCode(currentText, room.room.language as any);
+      if (formatted === currentText) {
+        toast.info('Document is already formatted');
+        return;
+      }
+      ws.client.doc.transact(() => {
+        ws.client.text.delete(0, ws.client.text.length);
+        ws.client.text.insert(0, formatted);
+      });
+      toast.success('Document formatted');
+    } catch {
+      toast.error('Failed to format document');
+    }
+  };
+
+  return (
+    <Tip label="Format document" shortcut="Shift Alt F">
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        aria-label="Format document"
+        onClick={() => void handleFormat()}
+        disabled={!canFormat}
+      >
+        <Icon icon={AiMagicIcon} size={15} />
+      </Button>
+    </Tip>
   );
 }
 

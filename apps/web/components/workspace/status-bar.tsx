@@ -15,9 +15,12 @@ const DOT: Record<string, string> = {
   offline: 'bg-destructive',
 };
 
+import { Tip } from '@/components/ui/controls';
+
 /** Bottom status capsule (docs/ui-ux/03): health dot, cursor, encoding, language, peers, host, ping. */
 export function StatusBar() {
-  const { client, cursorPos } = useWorkspace();
+  const ws = useWorkspace();
+  const { client, cursorPos } = ws;
   const status = useStore(client.status);
   const pos = useStore(cursorPos);
   const room = useStore(client.room);
@@ -28,10 +31,17 @@ export function StatusBar() {
 
   return (
     <footer className="flex h-7 shrink-0 items-center gap-3 rounded-xl border border-border/60 bg-card/80 px-3 font-mono text-micro text-muted-foreground shadow-capsule backdrop-blur-md">
-      <span className="inline-flex items-center gap-1.5">
-        <span aria-hidden className={cn('size-1.5 rounded-full', DOT[status.connection] ?? 'bg-muted-foreground')} />
-        {label}
-      </span>
+      <Tip label="Click to view connection & sync diagnostics">
+        <button
+          type="button"
+          onClick={() => ws.openDrawerTab('sync')}
+          className="inline-flex items-center gap-1.5 transition-ui hover:text-foreground cursor-pointer"
+          aria-label="Open sync statistics"
+        >
+          <span aria-hidden className={cn('size-1.5 rounded-full', DOT[status.connection] ?? 'bg-muted-foreground')} />
+          {label}
+        </button>
+      </Tip>
       <Sep />
       <span className="tabular">
         Ln {pos.line}, Col {pos.col}
@@ -47,14 +57,32 @@ export function StatusBar() {
           <span className="text-warning">Batching (5/s)</span>
         </>
       )}
-      <span className="ml-auto tabular">{roster.length} {roster.length === 1 ? 'Peer' : 'Peers'}</span>
+      <Tip label="Click to view member roster">
+        <button
+          type="button"
+          onClick={() => ws.ui.update((s) => ({ ...s, sidebarOpen: true, sidebarTab: 'people' }))}
+          className="ml-auto tabular transition-ui hover:text-foreground cursor-pointer"
+          aria-label="Open member roster"
+        >
+          {roster.length} {roster.length === 1 ? 'Peer' : 'Peers'}
+        </button>
+      </Tip>
       <Sep />
       <span className="inline-flex items-center gap-1">
         <Icon icon={CrownIcon} size={11} className="text-warning" />
         Host: {host?.name ?? '—'}
       </span>
       <Sep />
-      <span className="tabular">Ping: {stats.rtt ?? '--'} ms</span>
+      <Tip label="Click to view live latency and throughput statistics">
+        <button
+          type="button"
+          onClick={() => ws.openDrawerTab('sync')}
+          className="tabular transition-ui hover:text-foreground cursor-pointer"
+          aria-label="Open latency statistics"
+        >
+          Ping: {stats.rtt ?? '--'} ms
+        </button>
+      </Tip>
     </footer>
   );
 }

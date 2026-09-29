@@ -31,6 +31,7 @@ import { useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
 import { applyTheme, THEMES, type ThemeId } from '@/lib/prefs';
 import { isMac } from '@/lib/utils';
+import { formatCode } from '@/lib/formatter';
 import { useWorkspace } from './context';
 import { toggleLineHighlight } from './editor/collab';
 
@@ -136,6 +137,34 @@ function Commands({ onClose }: { onClose: () => void }) {
         <CommandEmpty>No results found.</CommandEmpty>
 
         <CommandGroup heading="Editor">
+          <Item
+            icon={CodeIcon}
+            label="Format document"
+            shortcut="Shift Alt F"
+            keywords={['format', 'prettier', 'beautify', 'indent', 'clean']}
+            onSelect={act(() => {
+              const isHost = room.hostId === room.selfId;
+              if (!isHost && room.room.locked) {
+                toast.info('Room is locked. Only the host can format.');
+                return;
+              }
+              const currentText = client.text.toString();
+              if (!currentText.trim()) return;
+              void formatCode(currentText, room.room.language as any).then((formatted) => {
+                if (formatted === currentText) {
+                  toast.info('Document is already formatted');
+                  return;
+                }
+                client.doc.transact(() => {
+                  client.text.delete(0, client.text.length);
+                  client.text.insert(0, formatted);
+                });
+                toast.success('Document formatted');
+              }).catch(() => {
+                toast.error('Failed to format document');
+              });
+            })}
+          />
           {(lang.runnable || lang.preview === 'html') && (
             <Item icon={PlayIcon} label="Run code" shortcut={`${mod} Enter`} onSelect={act(() => void ws.run())} />
           )}
@@ -345,9 +374,13 @@ function Commands({ onClose }: { onClose: () => void }) {
 
         <CommandGroup heading="View">
           <Item icon={SidebarBottomIcon} label="Toggle diagnostics drawer" shortcut="Ctrl `" keywords={['drawer', 'diagnostics', 'telemetry', 'events', 'chaos']} onSelect={act(() => ws.ui.update((s) => ({ ...s, drawerOpen: !s.drawerOpen })))} />
-          <Item icon={UserGroupIcon} label="Show people" keywords={['sidebar', 'people', 'roster', 'users']} onSelect={act(() => ui({ sidebarTab: 'people' }))} />
-          <Item icon={Activity01Icon} label="Show activity" keywords={['sidebar', 'activity', 'events', 'log']} onSelect={act(() => ui({ sidebarTab: 'activity' }))} />
-          {lang.preview && <Item icon={BrowserIcon} label="Toggle preview (laptop layout)" keywords={['preview', 'browser', 'html', 'live']} onSelect={act(() => ws.ui.update((s) => ({ ...s, editorView: s.editorView === 'code' ? 'preview' : 'code' })))} />}
+          <Item icon={PlayIcon} label="Open Console" keywords={['console', 'logs', 'output', 'terminal']} onSelect={act(() => ws.openDrawerTab('console'))} />
+          <Item icon={Wifi01Icon} label="Open Sync & Latency Stats" keywords={['stats', 'sync', 'latency', 'ping', 'telemetry']} onSelect={act(() => ws.openDrawerTab('sync'))} />
+          <Item icon={CodeIcon} label="Toggle Zen Mode" shortcut={`${mod} Shift F`} keywords={['zen', 'distraction free', 'fullscreen']} onSelect={act(() => ws.ui.update((s) => ({ ...s, zenMode: !s.zenMode })))} />
+          <Item icon={UserGroupIcon} label="Show people" keywords={['sidebar', 'people', 'roster', 'users']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'people', sidebarOpen: true })))} />
+          <Item icon={Activity01Icon} label="Show activity" keywords={['sidebar', 'activity', 'events', 'log']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'activity', sidebarOpen: true })))} />
+          <Item icon={CodeIcon} label="Show scratchpad" keywords={['sidebar', 'scratchpad', 'notes', 'clipboard']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'scratchpad', sidebarOpen: true })))} />
+          {lang.preview && <Item icon={BrowserIcon} label="Toggle preview pane" keywords={['preview', 'browser', 'html', 'live']} onSelect={act(() => ws.togglePanel('preview'))} />}
         </CommandGroup>
 
         {roster.length > 1 && (

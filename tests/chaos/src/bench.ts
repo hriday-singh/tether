@@ -104,6 +104,7 @@ async function runBenchmark(): Promise<void> {
     roomRegistry,
     roomRepo,
     memberRepo,
+    auditRepo,
   };
 
   const app = buildApp(deps);

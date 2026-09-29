@@ -106,6 +106,7 @@ export interface NetworkLab {
 export interface SyncClient {
   readonly doc: Y.Doc;
   readonly text: Y.Text;
+  readonly scratchpadText: Y.Text;
   readonly awareness: Awareness;
   readonly status: ReadableStore<StatusSnapshot>;
   readonly stats: ReadableStore<StatsSnapshot>;

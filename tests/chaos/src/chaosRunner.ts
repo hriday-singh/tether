@@ -72,6 +72,7 @@ export async function runChaosSession(options: ChaosRunOptions = {}): Promise<Ch
     roomRegistry,
     roomRepo,
     memberRepo,
+    auditRepo,
   };
 
   const app = buildApp(deps);

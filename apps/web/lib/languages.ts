@@ -6,6 +6,10 @@ export const LANGUAGE_IDS = [
   'python',
   'go',
   'rust',
+  'c',
+  'cpp',
+  'csharp',
+  'java',
   'markdown',
   'sql',
 ] as const;
@@ -29,6 +33,10 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
   python: { id: 'python', label: 'Python', ext: 'py', preview: null, runnable: false },
   go: { id: 'go', label: 'Go', ext: 'go', preview: null, runnable: false },
   rust: { id: 'rust', label: 'Rust', ext: 'rs', preview: null, runnable: false },
+  c: { id: 'c', label: 'C', ext: 'c', preview: null, runnable: false },
+  cpp: { id: 'cpp', label: 'C++', ext: 'cpp', preview: null, runnable: false },
+  csharp: { id: 'csharp', label: 'C#', ext: 'cs', preview: null, runnable: false },
+  java: { id: 'java', label: 'Java', ext: 'java', preview: null, runnable: false },
   markdown: { id: 'markdown', label: 'Markdown', ext: 'md', preview: null, runnable: false },
   sql: { id: 'sql', label: 'SQL', ext: 'sql', preview: null, runnable: false },
 };
@@ -49,6 +57,10 @@ export const STARTER_CODE: Record<LanguageId, string> = {
   python: `# Tether — shared Python scratchpad (syntax only, no execution)\ndef greet(name: str) -> str:\n    return f"Hello, {name}!"\n\nprint(greet("Tether"))\n`,
   go: `package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Hello, Tether")\n}\n`,
   rust: `fn main() {\n    println!("Hello, Tether");\n}\n`,
+  c: `// Tether — shared C buffer\n#include <stdio.h>\n\nint main(void) {\n    printf("Hello, Tether!\\n");\n    return 0;\n}\n`,
+  cpp: `// Tether — shared C++ buffer\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, Tether!" << std::endl;\n    return 0;\n}\n`,
+  csharp: `// Tether — shared C# buffer\nusing System;\n\nnamespace Tether {\n    class Program {\n        static void Main(string[] args) {\n            Console.WriteLine("Hello, Tether!");\n        }\n    }\n}\n`,
+  java: `// Tether — shared Java buffer\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, Tether!");\n    }\n}\n`,
   markdown: `# Tether notes\n\n- Edit together\n- Nothing gets lost\n`,
   sql: `SELECT id, name\nFROM members\nWHERE room_id = 'demo'\nORDER BY joined_at;\n`,
 };

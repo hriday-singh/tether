@@ -86,6 +86,7 @@ export interface FakeSyncOptions {
 export class FakeSyncClient implements SyncClient {
   readonly doc = new Y.Doc();
   readonly text = this.doc.getText('content');
+  readonly scratchpadText = this.doc.getText('scratchpad');
   readonly awareness = new Awareness(this.doc);
 
   readonly status = createStore<StatusSnapshot>(

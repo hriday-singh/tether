@@ -1,7 +1,8 @@
-import { AuditRepo, AuditEventRow } from '../repo/auditRepo.js';
+import { AuditRepo, AuditEventRow, FormattedAuditEvent } from '../repo/auditRepo.js';
 
 export class AuditService {
   private seqCounters = new Map<string, number>();
+  public onEventLogged?: (roomId: string, event: FormattedAuditEvent) => void;
 
   constructor(private auditRepo: AuditRepo) {}
 
@@ -23,19 +24,18 @@ export class AuditService {
       actorName?: string | null;
       payload?: Record<string, unknown>;
     }
-  ): number {
+  ): FormattedAuditEvent {
     const seq = this.getNextSeq(roomId);
-    this.auditRepo.insertBatch([
-      {
-        roomId,
-        seq,
-        type: event.type,
-        actorMemberId: event.actorMemberId ?? null,
-        actorName: event.actorName ?? null,
-        payload: event.payload ?? {},
-      },
-    ]);
-    return seq;
+    const formatted = this.auditRepo.insertEvent({
+      roomId,
+      seq,
+      type: event.type,
+      actorMemberId: event.actorMemberId ?? null,
+      actorName: event.actorName ?? null,
+      payload: event.payload ?? {},
+    });
+    this.onEventLogged?.(roomId, formatted);
+    return formatted;
   }
 
   public getEventsBefore(roomId: string, beforeSeq?: number, limit = 50): AuditEventRow[] {

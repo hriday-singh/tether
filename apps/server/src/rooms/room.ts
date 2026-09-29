@@ -9,7 +9,13 @@ import { PersistenceService } from '../services/persistenceService.js';
 import { AuditService } from '../services/auditService.js';
 import { encodeFrame, BinaryFrame } from '@tether/shared/protocol/codec';
 import { ServerControlMessage } from '@tether/shared/protocol/schemas';
-import { FRAME_KINDS, CHECKSUM_QUIET_MS } from '@tether/shared/constants';
+import {
+  FRAME_KINDS,
+  CHECKSUM_QUIET_MS,
+  WS_CLOSE_CODES,
+  MAX_DOC_BYTES,
+  SLOW_CONSUMER_BYTES,
+} from '@tether/shared/constants';
 import { hashString } from '@tether/shared/checksum';
 
 export interface RoomConnectionContext {
@@ -124,6 +130,10 @@ export class Room {
         // Broadcast to all other connections in the room
         for (const conn of this.connections) {
           if (conn !== ws && conn.readyState === WebSocket.OPEN) {
+            if (conn.bufferedAmount > SLOW_CONSUMER_BYTES) {
+              conn.close(WS_CLOSE_CODES.SLOW_CONSUMER);
+              continue;
+            }
             conn.send(encoded);
           }
         }
@@ -151,6 +161,14 @@ export class Room {
     return ctx;
   }
 
+  public terminateMemberSockets(memberId: string, closeCode: number = WS_CLOSE_CODES.KICKED): void {
+    for (const [conn, ctx] of this.connContexts.entries()) {
+      if (ctx.memberId === memberId) {
+        conn.close(closeCode);
+      }
+    }
+  }
+
   public removeConnection(ws: WebSocket, isCleanLeave = false): void {
     this.lastActiveAt = Date.now();
     const ctx = this.connContexts.get(ws);
@@ -158,6 +176,28 @@ export class Room {
 
     this.connections.delete(ws);
     this.connContexts.delete(ws);
+
+    const claimedClientID = ctx.awarenessBinding.getClaimedClientID();
+    if (claimedClientID !== null) {
+      awarenessProtocol.removeAwarenessStates(this.awareness, [claimedClientID], this);
+      const awUpdate = awarenessProtocol.encodeAwarenessUpdate(this.awareness, [claimedClientID]);
+      const frame: BinaryFrame = {
+        kind: FRAME_KINDS.UPDATE,
+        seq: 0,
+        docUpdate: new Uint8Array(0),
+        awarenessUpdate: awUpdate,
+      };
+      const encoded = encodeFrame(frame);
+      for (const conn of this.connections) {
+        if (conn.readyState === WebSocket.OPEN) {
+          if (conn.bufferedAmount > SLOW_CONSUMER_BYTES) {
+            conn.close(WS_CLOSE_CODES.SLOW_CONSUMER);
+            continue;
+          }
+          conn.send(encoded);
+        }
+      }
+    }
 
     ctx.throttle.destroy();
     ctx.awarenessBinding.cleanup();
@@ -169,6 +209,13 @@ export class Room {
     if (update.byteLength === 0) return;
     this.lastActiveAt = Date.now();
     Y.applyUpdate(this.doc, update, this);
+
+    const docSize = Y.encodeStateAsUpdate(this.doc).byteLength;
+    if (docSize > MAX_DOC_BYTES) {
+      ws.close(WS_CLOSE_CODES.DOC_TOO_LARGE);
+      return;
+    }
+
     this.persistenceService.enqueueUpdate(this.id, update);
 
     const ctx = this.connContexts.get(ws);
@@ -192,6 +239,12 @@ export class Room {
     // Apply doc update to in-memory doc immediately (Invariant I5)
     if (docUpdate.byteLength > 0) {
       Y.applyUpdate(this.doc, docUpdate, this);
+
+      const docSize = Y.encodeStateAsUpdate(this.doc).byteLength;
+      if (docSize > MAX_DOC_BYTES) {
+        ws.close(WS_CLOSE_CODES.DOC_TOO_LARGE);
+        return;
+      }
 
       // Enqueue to persistence service with ack recipient (Invariant I6)
       this.persistenceService.enqueueUpdate(this.id, docUpdate, {
@@ -226,6 +279,10 @@ export class Room {
     const payload = JSON.stringify(msg);
     for (const conn of this.connections) {
       if (conn !== excludeWs && conn.readyState === WebSocket.OPEN) {
+        if (conn.bufferedAmount > SLOW_CONSUMER_BYTES) {
+          conn.close(WS_CLOSE_CODES.SLOW_CONSUMER);
+          continue;
+        }
         conn.send(payload);
       }
     }

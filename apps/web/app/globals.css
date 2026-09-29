@@ -34,9 +34,9 @@
 
   --editor-bg: oklch(0.99 0.001 240);
   --editor-line-number: oklch(0.6 0.01 240);
-  --editor-active-line: oklch(0.96 0.005 240);
+  --editor-active-line: oklch(0.94 0.01 240 / 0.45);
   --editor-gutter-border: oklch(0.9 0.005 240);
-  --editor-selection: oklch(0.88 0.04 230);
+  --editor-selection: oklch(0.82 0.1 230 / 0.85);
 
   /* Syntax (light) */
   --syntax-keyword: oklch(0.5 0.18 300);
@@ -98,9 +98,9 @@
 
   --editor-bg: oklch(0.12 0.01 260);
   --editor-line-number: oklch(0.45 0.01 260);
-  --editor-active-line: oklch(0.16 0.01 260);
+  --editor-active-line: oklch(0.24 0.01 260 / 0.5);
   --editor-gutter-border: oklch(0.2 0.01 260);
-  --editor-selection: oklch(0.25 0.04 230);
+  --editor-selection: oklch(0.36 0.1 230 / 0.9);
 
   --syntax-keyword: oklch(0.78 0.13 300);
   --syntax-string: oklch(0.8 0.13 150);

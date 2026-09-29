@@ -1,6 +1,14 @@
 'use client';
 
-import { ArrowExpand01Icon, ArrowReloadHorizontalIcon, BrowserIcon, ZoomInAreaIcon } from '@hugeicons/core-free-icons';
+import {
+  ArrowExpand01Icon,
+  ArrowReloadHorizontalIcon,
+  BrowserIcon,
+  Cancel01Icon,
+  MaximizeScreenIcon,
+  MinimizeScreenIcon,
+  ZoomInAreaIcon,
+} from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Tip } from '@/components/ui/controls';
 import { Button } from '@/components/ui/button';
@@ -23,6 +31,7 @@ const ZOOMS = [1, 0.75, 0.5] as const;
 export function PreviewPane({ header = true }: { header?: boolean }) {
   const ws = useWorkspace();
   const { client } = ws;
+  const ui = useStore(ws.ui);
   const mode = languageInfo(useStore(client.room).room.language).preview;
   const run = useStore(ws.preview);
   const [doc, setDoc] = useState('');
@@ -131,9 +140,29 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
                 <Icon icon={ZoomInAreaIcon} size={14} />
               </Button>
             </Tip>
-            <Tip label="Open in a window">
-              <Button size="icon-xs" variant="ghost" aria-label="Open preview in a new window" onClick={popout}>
+            <Tip label="Open in new window">
+              <Button size="icon-xs" variant="ghost" aria-label="Open preview in new window" onClick={popout}>
                 <Icon icon={ArrowExpand01Icon} size={14} />
+              </Button>
+            </Tip>
+            <Tip label={ui.maximizedPanel === 'preview' ? 'Restore' : 'Maximize'}>
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                aria-label={ui.maximizedPanel === 'preview' ? 'Restore preview' : 'Maximize preview'}
+                onClick={() => ws.maximizePanel('preview')}
+              >
+                <Icon icon={ui.maximizedPanel === 'preview' ? MinimizeScreenIcon : MaximizeScreenIcon} size={14} />
+              </Button>
+            </Tip>
+            <Tip label="Close preview">
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                aria-label="Close preview"
+                onClick={() => ws.ui.update((s) => ({ ...s, previewOpen: false }))}
+              >
+                <Icon icon={Cancel01Icon} size={14} />
               </Button>
             </Tip>
           </div>

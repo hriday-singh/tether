@@ -1,16 +1,25 @@
 'use client';
 
-import { AlertCircleIcon, Copy01Icon, Download04Icon, Home01Icon } from '@hugeicons/core-free-icons';
+import {
+  AlertCircleIcon,
+  Cancel01Icon,
+  Copy01Icon,
+  Download04Icon,
+  Home01Icon,
+  MaximizeScreenIcon,
+  MinimizeScreenIcon,
+} from '@hugeicons/core-free-icons';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useMemo } from 'react';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { Button } from '@/components/ui/button';
-import { Kbd, Segmented, Skeleton } from '@/components/ui/controls';
+import { Kbd, Segmented, Skeleton, Tip } from '@/components/ui/controls';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { ResizableGroup, ResizableHandle, ResizablePanel, useDefaultLayout, usePanelRef } from '@/components/ui/resizable';
 import { toast } from '@/components/ui/toaster';
+import { formatCode } from '@/lib/formatter';
 import { useMediaQuery, useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
 import type { RoomSession } from '@/lib/session';
@@ -19,6 +28,7 @@ import { cn, isMac } from '@/lib/utils';
 import { CommandPalette } from './command-palette';
 import { createWorkspace, useWorkspace, WorkspaceProvider } from './context';
 import { DiagnosticsDrawer } from './drawer';
+import { DropZoneOverlay } from './drop-zone';
 import { HostSheet } from './host-sheet';
 import { FollowController, OffscreenCursors } from './presence-overlays';
 import { PreviewPane } from './preview-pane';
@@ -54,10 +64,12 @@ function Shell() {
   const ws = useWorkspace();
   const status = useStore(ws.client.status);
   const ui = useStore(ws.ui);
-  const language = languageInfo(useStore(ws.client.room).room.language);
+  const room = useStore(ws.client.room);
+  const language = languageInfo(room.room.language);
   const wide = useMediaQuery('(min-width: 1280px)');
   const kicked = status.connection === 'kicked';
-  const showPreviewPane = wide && language.preview !== null;
+  const showPreviewPane = wide && language.preview !== null && ui.previewOpen;
+  const showSidebar = ui.sidebarOpen;
   const drawer = usePanelRef();
 
   useGlobalShortcuts();
@@ -70,83 +82,157 @@ function Shell() {
     if (!ui.drawerOpen && !p.isCollapsed()) p.collapse();
   }, [ui.drawerOpen, drawer]);
 
-  const horizontalIds = showPreviewPane ? ['editor', 'preview', 'sidebar'] : ['editor', 'sidebar'];
-  const hLayout = useDefaultLayout({ id: `tether:layout:h:${horizontalIds.length}`, panelIds: horizontalIds, storage });
+  const horizontalIds = ['editor'];
+  if (showPreviewPane) horizontalIds.push('preview');
+  if (showSidebar) horizontalIds.push('sidebar');
+
+  const hLayout = useDefaultLayout({ id: `tether:layout:h:${horizontalIds.join('-')}`, panelIds: horizontalIds, storage });
   const vLayout = useDefaultLayout({ id: 'tether:layout:v', panelIds: ['main', 'drawer'], storage });
 
   return (
-    <div className="flex h-dvh flex-col gap-2 bg-background p-2.5">
-      <TopBar />
+    <div className={cn('flex h-dvh flex-col gap-2 bg-background p-2.5', ui.zenMode && 'p-0')}>
+      <DropZoneOverlay />
+
+      {/* Zen Mode Exit Pill */}
+      {ui.zenMode && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-border/80 bg-card/90 px-3 py-1 text-caption text-foreground shadow-card backdrop-blur-md">
+          <span className="font-medium">Zen Mode</span>
+          <span className="text-muted-foreground text-micro">(Esc to exit)</span>
+          <Button size="icon-xs" variant="ghost" onClick={() => ws.ui.update((s) => ({ ...s, zenMode: false }))}>
+            <Icon icon={Cancel01Icon} size={13} />
+          </Button>
+        </div>
+      )}
+
+      {!ui.zenMode && <TopBar />}
       {kicked && <KickedBanner />}
-      <main className="min-h-0 flex-1">
-        <ResizableGroup orientation="vertical" defaultLayout={vLayout.defaultLayout} onLayoutChanged={vLayout.onLayoutChanged}>
-          <ResizablePanel id="main" minSize="30">
-            <ResizableGroup key={horizontalIds.join()} orientation="horizontal" defaultLayout={hLayout.defaultLayout} onLayoutChanged={hLayout.onLayoutChanged}>
-              <ResizablePanel id="editor" minSize={showPreviewPane ? '30' : 600} defaultSize={showPreviewPane ? '50' : '72'}>
-                <section aria-label="Editor" className={cn(card, 'relative')}>
-                  {!wide && language.preview && (
-                    <div className="flex h-10 shrink-0 items-center border-b border-border/60 px-2">
-                      <Segmented
-                        aria-label="Editor or preview"
-                        value={ui.editorView}
-                        onValueChange={(v) => ws.ui.update((s) => ({ ...s, editorView: v }))}
-                        options={[
-                          { value: 'code', label: 'Code' },
-                          { value: 'preview', label: 'Preview' },
-                        ]}
-                      />
-                    </div>
-                  )}
-                  <div className={cn('relative min-h-0 flex-1', !wide && ui.editorView === 'preview' && language.preview && 'hidden')}>
-                    <Editor readOnly={kicked} />
-                    <OffscreenCursors />
-                    <FollowController />
-                  </div>
-                  {!wide && ui.editorView === 'preview' && language.preview && (
-                    <div className="min-h-0 flex-1">
-                      <PreviewPane header={false} />
-                    </div>
-                  )}
-                </section>
-              </ResizablePanel>
-              {showPreviewPane && (
-                <>
-                  <ResizableHandle />
-                  <ResizablePanel id="preview" minSize="20" defaultSize="28" collapsible>
-                    <section aria-label="Live preview" className={card}>
-                      <PreviewPane />
-                    </section>
-                  </ResizablePanel>
-                </>
-              )}
-              <ResizableHandle />
-              <ResizablePanel id="sidebar" minSize={240} maxSize="40" defaultSize={showPreviewPane ? '22' : '28'}>
-                <aside aria-label="People and activity" className={card}>
-                  <Sidebar />
-                </aside>
-              </ResizablePanel>
-            </ResizableGroup>
-          </ResizablePanel>
-          <ResizableHandle className={cn(!ui.drawerOpen && 'pointer-events-none')} />
-          <ResizablePanel
-            id="drawer"
-            panelRef={drawer}
-            collapsible
-            collapsedSize={0}
-            minSize={220}
-            defaultSize={0}
-            onResize={(size) => {
-              const open = size.inPixels > 0;
-              if (open !== ws.ui.get().drawerOpen) ws.ui.update((s) => ({ ...s, drawerOpen: open }));
-            }}
-          >
-            <div className={card}>
-              <DiagnosticsDrawer onCollapse={() => ws.ui.update((s) => ({ ...s, drawerOpen: false }))} />
+
+      <main className="min-h-0 flex-1 relative">
+        {/* Maximized Panel: Editor */}
+        {ui.maximizedPanel === 'editor' && (
+          <section aria-label="Editor" className={cn(card, 'relative size-full')}>
+            <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 rounded-full border border-border/70 bg-card/90 px-2.5 py-1 text-caption text-foreground shadow-card backdrop-blur-md">
+              <span className="text-micro font-medium">Editor Maximized</span>
+              <Button size="icon-xs" variant="ghost" onClick={() => ws.maximizePanel('editor')} aria-label="Restore layout">
+                <Icon icon={MinimizeScreenIcon} size={14} />
+              </Button>
             </div>
-          </ResizablePanel>
-        </ResizableGroup>
+            <div className="relative min-h-0 flex-1">
+              <Editor readOnly={kicked} />
+              <OffscreenCursors />
+              <FollowController />
+            </div>
+          </section>
+        )}
+
+        {/* Maximized Panel: Preview */}
+        {ui.maximizedPanel === 'preview' && (
+          <section aria-label="Live preview" className={cn(card, 'relative size-full')}>
+            <PreviewPane />
+          </section>
+        )}
+
+        {/* Maximized Panel: Sidebar */}
+        {ui.maximizedPanel === 'sidebar' && (
+          <aside aria-label="People, activity, and scratchpad" className={cn(card, 'relative size-full')}>
+            <Sidebar />
+          </aside>
+        )}
+
+        {/* Maximized Panel: Drawer */}
+        {ui.maximizedPanel === 'drawer' && (
+          <div className={cn(card, 'relative size-full')}>
+            <DiagnosticsDrawer onCollapse={() => ws.maximizePanel(null)} />
+          </div>
+        )}
+
+        {/* Normal Multi-Panel Layout */}
+        {!ui.maximizedPanel && (
+          <ResizableGroup orientation="vertical" defaultLayout={vLayout.defaultLayout} onLayoutChanged={vLayout.onLayoutChanged}>
+            <ResizablePanel id="main" minSize="30">
+              <ResizableGroup key={horizontalIds.join('-')} orientation="horizontal" defaultLayout={hLayout.defaultLayout} onLayoutChanged={hLayout.onLayoutChanged}>
+                <ResizablePanel id="editor" minSize={showPreviewPane || showSidebar ? '30' : 600} defaultSize={showPreviewPane ? '50' : '72'}>
+                  <section aria-label="Editor" className={cn(card, 'relative')}>
+                    {!wide && language.preview && (
+                      <div className="flex h-10 shrink-0 items-center border-b border-border/60 px-2">
+                        <Segmented
+                          aria-label="Editor or preview"
+                          value={ui.editorView}
+                          onValueChange={(v) => ws.ui.update((s) => ({ ...s, editorView: v }))}
+                          options={[
+                            { value: 'code', label: 'Code' },
+                            { value: 'preview', label: 'Preview' },
+                          ]}
+                        />
+                      </div>
+                    )}
+                    <div className={cn('relative min-h-0 flex-1', !wide && ui.editorView === 'preview' && language.preview && 'hidden')}>
+                      <div className="absolute top-2 right-2 z-10 opacity-70 hover:opacity-100 transition-opacity">
+                        <Tip label="Maximize editor">
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            onClick={() => ws.maximizePanel('editor')}
+                            aria-label="Maximize editor"
+                          >
+                            <Icon icon={MaximizeScreenIcon} size={14} />
+                          </Button>
+                        </Tip>
+                      </div>
+                      <Editor readOnly={kicked} />
+                      <OffscreenCursors />
+                      <FollowController />
+                    </div>
+                    {!wide && ui.editorView === 'preview' && language.preview && (
+                      <div className="min-h-0 flex-1">
+                        <PreviewPane header={false} />
+                      </div>
+                    )}
+                  </section>
+                </ResizablePanel>
+                {showPreviewPane && (
+                  <>
+                    <ResizableHandle />
+                    <ResizablePanel id="preview" minSize="20" defaultSize="28" collapsible>
+                      <section aria-label="Live preview" className={card}>
+                        <PreviewPane />
+                      </section>
+                    </ResizablePanel>
+                  </>
+                )}
+                {showSidebar && (
+                  <>
+                    <ResizableHandle />
+                    <ResizablePanel id="sidebar" minSize={240} maxSize="40" defaultSize={showPreviewPane ? '22' : '28'}>
+                      <aside aria-label="People and activity" className={card}>
+                        <Sidebar />
+                      </aside>
+                    </ResizablePanel>
+                  </>
+                )}
+              </ResizableGroup>
+            </ResizablePanel>
+            <ResizableHandle className={cn(!ui.drawerOpen && 'pointer-events-none')} />
+            <ResizablePanel
+              id="drawer"
+              panelRef={drawer}
+              collapsible
+              collapsedSize={0}
+              minSize={220}
+              defaultSize={0}
+              onResize={(size) => {
+                const open = size.inPixels > 0;
+                if (open !== ws.ui.get().drawerOpen) ws.ui.update((s) => ({ ...s, drawerOpen: open }));
+              }}
+            >
+              <div className={card}>
+                <DiagnosticsDrawer onCollapse={() => ws.ui.update((s) => ({ ...s, drawerOpen: false }))} />
+              </div>
+            </ResizablePanel>
+          </ResizableGroup>
+        )}
       </main>
-      <StatusBar />
+      {!ui.zenMode && <StatusBar />}
 
       <CommandPalette />
       <HostSheet />
@@ -168,7 +254,42 @@ function useGlobalShortcuts() {
       const target = e.target as HTMLElement | null;
       const typing = !!target?.closest('input, textarea, [contenteditable="true"]');
       const key = e.key.toLowerCase();
-      if (mod && key === 'k') {
+
+      if (e.key === 'Escape') {
+        const ui = ws.ui.get();
+        if (ui.maximizedPanel) {
+          e.preventDefault();
+          ws.maximizePanel(null);
+          return;
+        }
+        if (ui.zenMode) {
+          e.preventDefault();
+          ws.ui.update((s) => ({ ...s, zenMode: false }));
+          return;
+        }
+        // Esc stops follow and returns focus to the editor (docs/07 a11y). Open dialogs handle their own Esc first.
+        if (ws.follow.get()) ws.follow.set(null);
+        if (!ui.palette && !ui.settings && !ui.shortcuts && !ui.hostSheet && !target?.closest('.cm-editor')) ws.focusEditor();
+      } else if (mod && e.shiftKey && key === 'f') {
+        e.preventDefault();
+        ws.ui.update((s) => ({ ...s, zenMode: !s.zenMode }));
+      } else if (e.shiftKey && e.altKey && key === 'f') {
+        e.preventDefault();
+        const room = ws.client.room.get();
+        const isHost = room.hostId === room.selfId;
+        if (isHost || !room.room.locked) {
+          const text = ws.client.text.toString();
+          void formatCode(text, room.room.language as any).then((formatted) => {
+            if (formatted !== text) {
+              ws.client.doc.transact(() => {
+                ws.client.text.delete(0, ws.client.text.length);
+                ws.client.text.insert(0, formatted);
+              });
+              toast.success('Document formatted');
+            }
+          });
+        }
+      } else if (mod && key === 'k') {
         e.preventDefault();
         ws.ui.update((s) => ({ ...s, palette: s.palette ? false : 'commands' }));
       } else if (mod && e.key === ',') {
@@ -184,11 +305,6 @@ function useGlobalShortcuts() {
       } else if (e.key === '?' && !typing) {
         e.preventDefault();
         ws.ui.update((s) => ({ ...s, shortcuts: true }));
-      } else if (e.key === 'Escape') {
-        // Esc stops follow and returns focus to the editor (docs/07 a11y). Open dialogs handle their own Esc first.
-        if (ws.follow.get()) ws.follow.set(null);
-        const ui = ws.ui.get();
-        if (!ui.palette && !ui.settings && !ui.shortcuts && !ui.hostSheet && !target?.closest('.cm-editor')) ws.focusEditor();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -205,9 +321,11 @@ function ShortcutsDialog() {
     [`${m} K  ${m} T`, 'Color theme quick pick'],
     [`${m} ,`, 'Settings'],
     [`${m} Enter`, 'Run / stop code'],
+    ['Shift Alt F', 'Format document'],
+    [`${m} Shift F`, 'Toggle Zen mode'],
     ['Alt H', 'Highlight current lines for everyone'],
     ['Ctrl `', 'Toggle diagnostics drawer'],
-    ['Esc', 'Stop following, back to editor'],
+    ['Esc', 'Exit Zen mode / Restore panel / Back to editor'],
     ['Esc then Tab', 'Move focus out of the editor'],
     [`${m} F`, 'Find in document'],
     [`${m} Z / ${m} Shift Z`, 'Undo / redo (your edits only)'],

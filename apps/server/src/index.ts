@@ -36,6 +36,7 @@ async function main() {
     roomRegistry,
     roomRepo,
     memberRepo,
+    auditRepo,
   };
 
   const app = buildApp(deps);

@@ -8,6 +8,8 @@ import { AuditService } from '../services/auditService.js';
 import { RoomRegistry } from '../rooms/roomRegistry.js';
 import { MemberRepo } from '../repo/memberRepo.js';
 import { RoomRepo } from '../repo/roomRepo.js';
+import { formatAuditEventRow } from '../repo/auditRepo.js';
+import { MAX_MEMBERS_PER_ROOM } from '@tether/shared/constants';
 
 export interface AppDependencies {
   config: ServerConfig;
@@ -236,26 +238,28 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
         });
       }
 
-      const limit = request.query.limit ? parseInt(request.query.limit, 10) : 50;
+      const limit = Math.min(100, Math.max(1, request.query.limit ? parseInt(request.query.limit, 10) : 50));
 
       if (request.query.after !== undefined) {
         const afterSeq = parseInt(request.query.after, 10);
         const rows = deps.auditService.getEventsAfter(roomId, afterSeq, limit);
+        const items = rows.map(formatAuditEventRow);
+        const nextAfter = items.length === limit && items.length > 0 ? items[items.length - 1]!.seq : null;
         return reply.send({
-          items: rows.map((r) => ({
-            ...r,
-            payload: JSON.parse(r.payload),
-          })),
+          items,
+          nextBefore: null,
+          nextAfter,
         });
       }
 
       const beforeSeq = request.query.before ? parseInt(request.query.before, 10) : undefined;
       const rows = deps.auditService.getEventsBefore(roomId, beforeSeq, limit);
+      const items = rows.map(formatAuditEventRow);
+      const nextBefore = items.length === limit && items.length > 0 ? items[items.length - 1]!.seq : null;
       return reply.send({
-        items: rows.map((r) => ({
-          ...r,
-          payload: JSON.parse(r.payload),
-        })),
+        items,
+        nextBefore,
+        nextAfter: null,
       });
     }
   );
@@ -265,7 +269,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     const roomId = request.params.id.toLowerCase();
     const auth = request.headers['authorization'];
     if (!auth || !auth.startsWith('Bearer ')) {
-      return reply.status(401).send({ status: 'reauth' });
+      return reply.send({ status: 'reauth' });
     }
 
     const token = auth.slice('Bearer '.length);
@@ -273,7 +277,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     try {
       claims = await deps.joinService.verifyRoomToken(token, roomId);
     } catch {
-      return reply.status(401).send({ status: 'reauth' });
+      return reply.send({ status: 'reauth' });
     }
 
     const room = deps.roomRepo.findById(roomId);
@@ -281,12 +285,27 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
       return reply.status(404).send({ status: 'not_found' });
     }
 
+    // Check epoch
+    if (claims.ep !== room.epoch) {
+      return reply.send({ status: 'reauth' });
+    }
+
+    // Check passcode version if room has passcode
+    if (room.passcode_hash !== null && claims.pv !== room.passcode_version) {
+      return reply.send({ status: 'reauth' });
+    }
+
     if (deps.memberRepo.isBanned(roomId, claims.sub)) {
-      return reply.status(403).send({ status: 'banned' });
+      return reply.send({ status: 'banned' });
     }
 
     if (room.locked === 1 && !deps.memberRepo.getMember(roomId, claims.sub)) {
-      return reply.status(403).send({ status: 'locked' });
+      return reply.send({ status: 'locked' });
+    }
+
+    const members = deps.memberRepo.getMembers(roomId);
+    if (members.length >= MAX_MEMBERS_PER_ROOM && !members.some((m) => m.member_id === claims.sub)) {
+      return reply.send({ status: 'full' });
     }
 
     return reply.send({ status: 'ok' });

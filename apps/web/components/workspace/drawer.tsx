@@ -2,9 +2,12 @@
 
 import {
   AlertCircleIcon,
+  Cancel01Icon,
   CancelCircleIcon,
   CpuIcon,
   Delete02Icon,
+  MaximizeScreenIcon,
+  MinimizeScreenIcon,
   MinusSignIcon,
   BotIcon,
   ArrowRight01Icon,
@@ -31,7 +34,8 @@ import { Metric } from './sync-status';
 
 export function DiagnosticsDrawer({ onCollapse }: { onCollapse: () => void }) {
   const ws = useWorkspace();
-  const tab = useStore(ws.ui).drawerTab;
+  const ui = useStore(ws.ui);
+  const tab = ui.drawerTab;
   return (
     <section aria-label="Diagnostics" className="flex h-full min-h-0 flex-col">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border/60 px-2">
@@ -42,11 +46,33 @@ export function DiagnosticsDrawer({ onCollapse }: { onCollapse: () => void }) {
             {DEMO_MODE && <TabsTrigger value="chaos">Chaos Lab</TabsTrigger>}
           </TabsList>
         </Tabs>
-        <Tip label="Collapse (Ctrl `)">
-          <Button size="icon-xs" variant="ghost" className="ml-auto" aria-label="Collapse diagnostics" onClick={onCollapse}>
-            <Icon icon={MinusSignIcon} size={14} />
-          </Button>
-        </Tip>
+        <div className="ml-auto flex items-center gap-1">
+          <Tip label={ui.maximizedPanel === 'drawer' ? 'Restore drawer' : 'Maximize drawer'}>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label={ui.maximizedPanel === 'drawer' ? 'Restore drawer' : 'Maximize drawer'}
+              onClick={() => ws.maximizePanel('drawer')}
+            >
+              <Icon icon={ui.maximizedPanel === 'drawer' ? MinimizeScreenIcon : MaximizeScreenIcon} size={14} />
+            </Button>
+          </Tip>
+          <Tip label="Collapse (Ctrl `)">
+            <Button size="icon-xs" variant="ghost" aria-label="Collapse diagnostics" onClick={onCollapse}>
+              <Icon icon={MinusSignIcon} size={14} />
+            </Button>
+          </Tip>
+          <Tip label="Close drawer">
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Close diagnostics drawer"
+              onClick={() => ws.ui.update((s) => ({ ...s, drawerOpen: false }))}
+            >
+              <Icon icon={Cancel01Icon} size={14} />
+            </Button>
+          </Tip>
+        </div>
       </div>
       <div className="min-h-0 flex-1">
         {tab === 'console' && <ConsolePanel />}
