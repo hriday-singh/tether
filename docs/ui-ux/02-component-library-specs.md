@@ -15,7 +15,7 @@ This document specifies the exact third-party libraries, UI primitives, icon fam
 | **Text Continuity** | `torph` | `torph/react` (`<TextMorph />`) | Dependency-free animated text continuity component. Character-level morphing for state labels and tickers. |
 | **Live Metrics & Charts**| `bklit-ui` | `@bklit/line-chart`, `@bklit/gauge` | Real-time RTT latency & propagation line charts in the Sync Diagnostics drawer; gauge for chaos storm convergence. |
 | **Thinking Animation** | `thinking-orbs` | Canvas utility in `components/ui/thinking-orb.tsx` | Lightweight 2D canvas orb for room connection, reconnecting, and bot storm simulation states. |
-| **Micro-Interactions** | `React Bits` | Verified OSS snippets in `components/ui/` | Count Up (latency millisecond counter), Hold Button (host kick confirmation), Decrypted Text (room invite ID reveal). |
+| **Micro-Interactions** | `React Bits` | Verified OSS snippets in `components/ui/` | Count Up (latency millisecond counter), Hold Button (host kick confirmation). Scrambled text effects are strictly omitted in favor of instant `<TextMorph>` copy feedback. |
 | **Smooth Scroll** | `Lenis` | `@darkroom.engineering/lenis` | **Landing page only (`/`)**. Strictly disabled inside the workspace to prevent hijacking CodeMirror scroll events. |
 | **Layout Motion** | `motion` | `framer-motion` (`LazyMotion` + `domAnimation`) | Presence avatar entry/exit and panel transitions only. All standard hover/focus states use CSS transitions. |
 | **Code Editor** | `CodeMirror 6` | `@codemirror/*`, `y-codemirror.next` | Core real-time CRDT editor with syntax highlighting, remote presence flags, active line highlight, and bracket matching. |
@@ -141,7 +141,10 @@ A 2D HTML5 canvas component simulates fluid, glowing orbs representing backgroun
   * `idle`: Low pulse frequency, opacity `0.4`, accent tint.
   * `connecting` / `reconnecting`: Dual spinning orbits with smooth easing.
   * `storm-active`: Turbulent multi-particle pulse during bot storm execution.
-* **Performance**: Pauses rendering via `requestAnimationFrame` when tab is in background or element is off-screen (`IntersectionObserver`). Respects `prefers-reduced-motion`.
+* **Performance & Bundle Discipline**:
+  * Pauses rendering via `requestAnimationFrame` when tab is in background or element is off-screen (`IntersectionObserver`). Respects `prefers-reduced-motion`.
+  * **Strict Code-Splitting**: Both `thinking-orbs` and `@bklit/*` chart packages are dynamically imported via `next/dynamic({ ssr: false })` and only mounted when their respective diagnostics drawer or storm modal is opened.
+  * **Zero-JS Fallback**: Default status pills use a hardware-accelerated CSS keyframe pulse (`opacity` / `transform` only) to ensure zero bundle penalty for everyday editing sessions.
 
 ---
 

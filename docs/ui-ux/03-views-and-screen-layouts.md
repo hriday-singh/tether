@@ -85,6 +85,13 @@ The desktop workspace uses an **Inset Floating Card Layout** with `react-resizab
   * Current room host display name.
   * Round-trip ping.
 
+### Responsive Viewport Strategy (Desktop & Laptops)
+To prevent code view cramping on laptops and smaller desktop displays:
+* **Large Desktop Viewports (≥ 1280px / `xl`)**: Full 3-pane split (CodeMirror Editor + Live Sandboxed Preview + Sidebar) mounted simultaneously using `react-resizable-panels`.
+* **Medium Desktop & Laptops (1024px – 1279px / `lg`)**: 2-pane priority layout (CodeMirror Editor taking ≥ 65% width + Sidebar). The Live Preview pane transforms into a collapsible side-drawer or segmented toggle inside the editor pane, guaranteeing CodeMirror maintains a minimum width of at least `600px` without horizontal line crowding.
+* **Tablet Viewports (768px – 1023px / `md`)**: Fullscreen Editor with top capsule bar and persistent 44px bottom drawer tabs for People, Activity, and Console.
+* **Mobile Viewports (< 768px)**: Single-column fullscreen editor with touch-adapted action pills and swipeable bottom sheets.
+
 ---
 
 ## 3. Mobile Workspace Layout
@@ -125,9 +132,9 @@ The landing page introduces the product with clean typography, restrained dark s
 3. **Action Cards (Two-Column Grid)**:
    * **Create Room Card**: Display name input, language selector (with vector logos), optional passcode input, and primary "Create Room" button.
    * **Join by ID Card**: Room ID input, passcode input, and "Enter Room" button.
-4. **Proof Strip**:
-   * 4-stat proof grid: `0 lost edits under network partition` · `p95 ack < 40ms` · `Lossless 5 op/s token-bucket throttling` · `Chaos tested in CI`.
-5. **Minimal Footer**: Clean credits, documentation links, zero clutter.
+4. **Technical Benchmark Matrix (Zero-SaaS-Cliché Proof Bar)**:
+   * Rendered as an authentic engineering spec strip (monospace data labels, quiet borders, zero glowing gradients or oversized vanity counters): `0 lost edits under network partition` · `p95 ack < 40ms` · `Lossless 5 op/s token-bucket throttling` · `50+ seed chaos tested in CI`.
+5. **Minimal Footer**: Clean repository credits, architecture doc links, zero marketing fluff.
 
 ---
 

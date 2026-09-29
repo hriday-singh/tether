@@ -28,7 +28,7 @@ The interface borrows VS Code's intuitive layout (central editor, collapsible pa
 | Charts & Gauges | **bklit-ui** | `@bklit/line-chart`, `@bklit/gauge` | Live Line Chart for RTT latency and sync propagation; Gauge for chaos storm results |
 | Loading / Chaos | **thinking-orbs** | 2D Canvas in `components/ui/` | Ambient orbital canvas animation for connecting, reconnecting, and storm states |
 | Motion | **motion** | `framer-motion` (`LazyMotion`) | Layout & presence transitions only. All standard hover/focus states use pure CSS transitions |
-| Micro-Interactions | **React Bits** | Verified OSS components | Count Up (latency ticker), Hold Button (hold to kick), Decrypted Text (room ID reveal) |
+| Micro-Interactions | **React Bits** | Verified OSS components | Count Up (latency ticker), Hold Button (hold to kick confirmation). Direct instant `<TextMorph>` for copy |
 | Smooth Scroll | **Lenis** | `@darkroom.engineering/lenis` | **Landing page only (`/`)**. Strictly disabled in workspace to protect editor wheel events |
 | Landing Blocks | **Tailark OSS** | `components/landing/` | Restyled with design tokens; collectui footers for layout reference |
 | Editor | **CodeMirror 6** | `@codemirror/*`, `y-codemirror.next` | CRDT collaborative editor with syntax highlighting, remote cursors, and line highlights |

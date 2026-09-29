@@ -138,14 +138,14 @@ Each user joining a room is assigned one of 8 deterministic presence colors base
 |---|---|---|---|---|
 | `p1` | Azure | `oklch(0.78 0.14 230)` | `oklch(0.55 0.16 230)` | Cursor flag, caret, selection tint |
 | `p2` | Emerald | `oklch(0.78 0.15 150)` | `oklch(0.52 0.16 150)` | Cursor flag, caret, selection tint |
-| `p3` | Amber | `oklch(0.80 0.15 75)` | `oklch(0.56 0.16 75)` | Cursor flag, caret, selection tint |
+| `p3` | Amber | `oklch(0.80 0.15 75)` | `oklch(0.48 0.16 75)` | Cursor flag, caret, selection tint (darkened for AA ≥ 5:1 contrast against light surface) |
 | `p4` | Violet | `oklch(0.76 0.15 290)` | `oklch(0.54 0.16 290)` | Cursor flag, caret, selection tint |
 | `p5` | Rose | `oklch(0.75 0.16 10)` | `oklch(0.55 0.17 10)` | Cursor flag, caret, selection tint |
 | `p6` | Cyan | `oklch(0.80 0.13 200)` | `oklch(0.53 0.14 200)` | Cursor flag, caret, selection tint |
 | `p7` | Orange | `oklch(0.78 0.16 50)` | `oklch(0.54 0.17 50)` | Cursor flag, caret, selection tint |
 | `p8` | Lime | `oklch(0.82 0.16 125)` | `oklch(0.52 0.16 125)` | Cursor flag, caret, selection tint |
 
-Selection tints render at `0.18` opacity in dark mode and `0.22` opacity in light mode to prevent masking underlying syntax highlighting.
+Selection tints render at `0.18` opacity in dark mode and `0.22` opacity in light mode to prevent masking underlying syntax highlighting. Remote cursor flags render with a solid presence pill background paired with high-contrast text ink (`oklch(0.99 0 0)` or `oklch(0.18 0.01 240)`), guaranteeing WCAG AA compliance across all 8 slots.
 
 ---
 
@@ -233,9 +233,11 @@ To avoid the boxy, sharp-edged feel of legacy editors while maintaining architec
 ### Inset Well Architecture
 Instead of rigid 0px edge-to-edge square panels touching the browser frame:
 - The outer viewport provides a `p-2` to `p-2.5` padded background well (`bg-background`).
-- Each workspace pane (Editor, Preview, Sidebar, Bottom Drawer) is rendered as a distinct **floating card** (`bg-card rounded-2xl border border-border/50 overflow-hidden shadow-sm`).
+- Each workspace pane (Editor, Preview, Sidebar, Bottom Drawer) is rendered as a distinct **floating card** (`bg-card rounded-2xl border border-border/50 overflow-hidden`).
 - Top Bar and Status Bar render as floating capsule containers (`rounded-xl` or `rounded-full`).
 
-### Elevation & Borders
-Surfaces use subtle contrast borders (`1px solid var(--border)`) paired with low-opacity ambient shadows:
-`box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--border)`.
+### Elevation & Borders (Strict Ghost-Card Prevention)
+Surfaces use crisp architectural borders paired with tight, defined elevations (blur ≤ 6px, strictly avoiding wide ≥ 16px blur drop-shadow anti-patterns):
+- **Default Card Elevation**: `box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08); border: 1px solid var(--border);`
+- **Floating Capsule Bars**: `box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.12); border: 1px solid var(--border);`
+- **Modal Overlays & Popovers**: `box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.20); border: 1px solid var(--border);`
