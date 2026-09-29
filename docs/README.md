@@ -1,4 +1,4 @@
-# Docs — Live Collaborative Workspace & Code Pad (WEB-02)
+# Tether — Real-Time Collaborative Code Workspace (WEB-02)
 
 Status: **DRAFT v1, pending review**. Nothing gets built until these docs are approved.
 Last updated: 2026-09-29

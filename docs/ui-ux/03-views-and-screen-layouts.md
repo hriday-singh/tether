@@ -17,38 +17,47 @@ The application comprises five primary screen states and four interactive overla
 
 ---
 
-## 2. Desktop Workspace Wireframe & Resizable Panes
+## 2. Desktop Workspace Wireframe & Inset Card Architecture
 
-The desktop workspace uses `react-resizable-panels` (via `shadcn/ui` Resizable) with saved layout proportions stored in `localStorage('ide-layout-desktop')`.
+The desktop workspace uses an **Inset Floating Card Layout** with `react-resizable-panels`. Instead of rigid, edge-to-edge square panels, the workspace sits inside a subtle padded background canvas (`p-2.5 gap-2.5`), with each pane encapsulated in a floating card with continuous rounded corners (`rounded-2xl`).
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ [Logo] room-982 ⧉ · [HTML ▾] · Invite Link    [Avatars 4] · ✓ Verified · 24ms · ⌘K [⚙] │ TOP BAR (40px)
-├───────────────────────────────────────────┬──────────────────┬─────────────────────────┤
-│ CodeMirror 6 Editor                       │ Live Preview     │ Right Sidebar (Tabs):   │
-│                                           │ (Collapsible)    │ [People (4)] [Activity] │
-│ 1 <!DOCTYPE html>                         │                  ├─────────────────────────┤
-│ 2 <html>                                  │                  │ • Sarah (Host)          │
-│ 3   <body>                                │ Sandboxed        │ • Alex  [Follow]        │
-│ 4     <h1>Collaborative IDE</h1>          │ <iframe>         │ • Ravi   (Typing...)    │
-│ 5   </body>                               │                  │ • Elena  (Idle)         │
-│ 6 </html>                                 │                  │                         │
-│                                           │                  │ ─────────────────────── │
-│ [Alex ↑ Ln 4] (Off-screen cursor chip)    │                  │ Feed:                   │
-│                                           │                  │ 14:02 Alex joined       │
-├───────────────────────────────────────────┴──────────────────┴─────────────────────────┤
-│ Bottom Drawer (Collapsible & Resizable)                                                │
-│ [Console]  [Sync Diagnostics & Latency Chart]  [Chaos Bot Storm Lab]          [—] [✕]  │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│ > console.log("Initialized room sync");                                                │
-│   [p95: 28ms] [Pending: 0 ops] [Convergence Checksum: 0x8f2a1b9c] [Verified 2s ago]   │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│ ● Online · Ln 4, Col 12 · UTF-8 · HTML5 · 4 Peers · Host: Sarah · 24 ms                │ STATUS BAR (24px)
-└────────────────────────────────────────────────────────────────────────────────────────┘
+╭─ Floating Top Capsule Bar (h-10, rounded-xl, px-3, bg-card/80 backdrop-blur) ───────────────────────╮
+│ [Tether] ( room-982 ⧉ ) · [HTML ▾] · ( Share )     [Avatars 4] · ( ✓ Verified ) · ( 24ms ) · ( ⌘K ) [⚙] │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  ▼ 8px gap
+╭─ Floating Editor Card (rounded-2xl) ───╮ ╭─ Floating Preview (rounded-2xl) ─╮ ╭─ Floating Sidebar (rounded-2xl) ─╮
+│ 1 <!DOCTYPE html>                      │ │                                  │ │ ( People 4 )   Activity          │
+│ 2 <html>                               │ │ Sandboxed Live HTML Preview      │ ├──────────────────────────────────┤
+│ 3   <body>                             │ │ [Rendered DOM Output]            │ │ • Sarah [Host]                   │
+│ 4     <h1>Tether</h1>                  │ │                                  │ │ • Alex  ( Follow )               │
+│ 5   </body>                            │ │                                  │ │ • Ravi  (Typing...)              │
+│ 6 </html>                              │ │                                  │ │ • Elena (Idle)                   │
+│                                        │ │                                  │ │ ──────────────────────────────── │
+│ ( Alex ↑ Ln 4 ) [Pill Chip]            │ │                                  │ │ 14:02 Alex joined room           │
+╰────────────────────────────────────────╯ ╰──────────────────────────────────╯ ╰──────────────────────────────────╯
+  ▼ 8px gap
+╭─ Floating Diagnostics Drawer Card (rounded-2xl, collapsible) ────────────────────────────────────────╮
+│ ( Console )   ( Sync & Latency Chart )   ( Chaos Lab )                                         [—] [✕] │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ > console.log("Tether room sync initialized");                                                       │
+│   ( RTT p95: 28ms ) · ( Pending: 0 ops ) · ( Checksum: 0x8f2a1b9c ) · ( Verified 2s ago )           │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯
+  ▼ 6px gap
+╭─ Floating Bottom Status Capsule (h-7, rounded-xl, px-3, font-mono text-xs) ──────────────────────────╮
+│ ● Online · Ln 4, Col 12 · UTF-8 · HTML5                    4 Peers · Host: Sarah · Ping: 24 ms        │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-### Pane Breakdown
-* **Top Bar (40px height)**:
+### Inset Card & Pill Geometry Breakdown
+* **Floating Capsule Bars (Top & Status)**: `rounded-xl` or `rounded-full` island bars with backdrop blur (`backdrop-blur-md bg-card/80 border border-border/50`).
+* **Major Floating Cards (Editor, Preview, Sidebar, Bottom Drawer)**:
+  * Wrapped in `rounded-2xl` (16px radius) with `overflow-hidden` and `border border-border/40`.
+  * Separated by fluid 8px gaps instead of harsh 0px dividers.
+* **Pills & Status Indicators**:
+  * All status badges ("Verified in sync", "24 ms", room ID pill, off-screen cursor chips) use `rounded-full` capsules with subtle border glows.
+* **Interactive Buttons & Inputs**:
+  * Form inputs, action buttons, and dropdown selectors use `rounded-xl` (10px–12px) for comfortable click targets and visual warmth.
   * Brand icon + Room ID pill with copy trigger (`morphicons` + `<TextMorph>`).
   * Language selector dropdown with `theSVG` vector logo.
   * Share Invite button (opens dialog or copies URL).
@@ -91,7 +100,7 @@ On mobile viewports (`< 768px`), horizontal splitting is disabled:
 │ 1 <!DOCTYPE html>                                      │
 │ 2 <html>                                               │
 │ 3   <body>                                             │
-│ 4     <h1>Collaborative IDE</h1>                       │
+│ 4     <h1>Tether</h1>                                  │
 │ 5   </body>                                            │
 │ 6 </html>                                              │
 ├────────────────────────────────────────────────────────┤

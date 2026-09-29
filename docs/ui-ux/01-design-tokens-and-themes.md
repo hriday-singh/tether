@@ -215,14 +215,27 @@ export const fontMono = localFont({
 
 ---
 
-## 5. Border Radius & Elevation Scale
+## 5. Border Radius & Inset Panel Geometry
 
-* `rounded-none`: Editor canvas, splitter gutters, status bar
-* `rounded-sm` (`4px`): Badges, tooltips, inline code pills, command palette items
-* `rounded-md` (`6px`): Buttons, text inputs, dropdown menu items, tabs
-* `rounded-lg` (`8px`): Cards, dialogs, drawers, floating toolbars
-* `rounded-full`: Avatar circles, presence pill indicators
+To avoid the boxy, sharp-edged feel of legacy editors while maintaining architectural precision, Tether uses an **Inset Floating Card Layout** with balanced, continuous corner curves (squircle-like feel).
 
-### Elevation
-No heavy dropped shadows. Surfaces are separated by border lines (`1px solid var(--border)`). For floating overlays (`cmdk`, dropdown menus, tooltips), we use a restrained ambient shadow:
-`box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border)`.
+### Radius Scale
+
+| Token | Pixels | Usage |
+|---|---|---|
+| `rounded-sm` | `4px` | Small tooltips, sub-pixel indicator dots |
+| `rounded-md` | `6px` | Inline code chips, context menu items, gutter fold markers |
+| `rounded-lg` | `8px` | Secondary buttons, dropdown triggers, segmented tab options |
+| `rounded-xl` | `12px` | Primary buttons, text inputs, search fields, top & status capsule bars |
+| `rounded-2xl` | `16px` | **Major Floating Panes**: CodeMirror editor card, Live Preview panel, Sidebar card, Bottom Drawer card, `⌘K` Palette, Settings Modal |
+| `rounded-full` | `9999px` | **All Status Badges & Pills**: "Verified in sync", "24 ms", Room ID pill, avatar circles, presence badges, segmented pill sliders |
+
+### Inset Well Architecture
+Instead of rigid 0px edge-to-edge square panels touching the browser frame:
+- The outer viewport provides a `p-2` to `p-2.5` padded background well (`bg-background`).
+- Each workspace pane (Editor, Preview, Sidebar, Bottom Drawer) is rendered as a distinct **floating card** (`bg-card rounded-2xl border border-border/50 overflow-hidden shadow-sm`).
+- Top Bar and Status Bar render as floating capsule containers (`rounded-xl` or `rounded-full`).
+
+### Elevation & Borders
+Surfaces use subtle contrast borders (`1px solid var(--border)`) paired with low-opacity ambient shadows:
+`box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--border)`.

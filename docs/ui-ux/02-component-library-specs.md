@@ -1,6 +1,6 @@
 # 02 — Component Library Specifications
 
-This document specifies the exact third-party libraries, UI primitives, icon families, micro-interaction components, and dual-morphing tools used to build the collaborative IDE.
+This document specifies the exact third-party libraries, UI primitives, icon families, micro-interaction components, and dual-morphing tools used to build Tether.
 
 ---
 
