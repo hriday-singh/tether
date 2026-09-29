@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as Y from 'yjs';
 import { createDatabase, DatabaseSession } from '../db/database.js';
 import { RoomRepo } from '../repo/roomRepo.js';
@@ -167,6 +167,42 @@ describe('Services Layer', () => {
       const id = persistenceService.flush('r1');
       expect(id).toBe(1);
       expect(acksReceived).toEqual([42]); // Acked after DB write!
+    });
+
+    it('retains updates and acks on database failure, retrying on subsequent flush', () => {
+      roomRepo.create({ id: 'r-fail', epoch: 'e1', createdBy: 'u1' });
+
+      const acksReceived: number[] = [];
+      const ackRecipient = {
+        seq: 99,
+        sendAck: (s: number) => acksReceived.push(s),
+      };
+
+      const doc = new Y.Doc();
+      doc.getText('t').insert(0, 'CrashTest');
+      const update = Y.encodeStateAsUpdate(doc);
+
+      persistenceService.enqueueUpdate('r-fail', update, ackRecipient);
+
+      // Mock updateRepo.insertBatch to throw once
+      const origInsert = updateRepo.insertBatch.bind(updateRepo);
+      let failedOnce = false;
+      vi.spyOn(updateRepo, 'insertBatch').mockImplementation((roomId, merged) => {
+        if (!failedOnce) {
+          failedOnce = true;
+          throw new Error('Database disk error');
+        }
+        return origInsert(roomId, merged);
+      });
+
+      // First flush should throw
+      expect(() => persistenceService.flush('r-fail')).toThrow('Database disk error');
+      expect(acksReceived.length).toBe(0); // Ack withheld!
+
+      // Second flush should succeed and commit the retained updates
+      const id = persistenceService.flush('r-fail');
+      expect(id).toBe(1);
+      expect(acksReceived).toEqual([99]); // Ack sent after successful commit!
     });
   });
 });

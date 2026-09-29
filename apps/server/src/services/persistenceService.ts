@@ -64,30 +64,49 @@ export class PersistenceService {
       return 0;
     }
 
-    this.pendingUpdates.delete(roomId);
     const acks = this.pendingAcks.get(roomId) ?? [];
-    this.pendingAcks.delete(roomId);
 
     // Merge updates losslessly into one binary payload
     const merged = updates.length === 1 ? updates[0]! : Y.mergeUpdates(updates);
-    const lastId = this.updateRepo.insertBatch(roomId, merged);
 
-    // Send acks only AFTER successful DB commit (Invariant I6)
-    for (const ack of acks) {
-      ack.sendAck(ack.seq);
-    }
+    try {
+      const lastId = this.updateRepo.insertBatch(roomId, merged);
 
-    // Check compaction
-    if (docForCompaction) {
-      const totalRows = this.updateRepo.countUpdates(roomId);
-      if (totalRows >= COMPACT_AFTER_ROWS) {
-        const snapshot = Y.encodeStateAsUpdate(docForCompaction);
-        this.roomRepo.updateSnapshot(roomId, snapshot, new Date().toISOString());
-        this.updateRepo.compactBefore(roomId, lastId);
+      // Delete ONLY after successful DB commit
+      this.pendingUpdates.delete(roomId);
+      this.pendingAcks.delete(roomId);
+
+      // Send acks only AFTER successful DB commit (Invariant I6)
+      for (const ack of acks) {
+        ack.sendAck(ack.seq);
       }
-    }
 
-    return lastId;
+      // Check compaction
+      if (docForCompaction) {
+        const totalRows = this.updateRepo.countUpdates(roomId);
+        if (totalRows >= COMPACT_AFTER_ROWS) {
+          const snapshot = Y.encodeStateAsUpdate(docForCompaction);
+          this.roomRepo.updateSnapshot(roomId, snapshot, new Date().toISOString());
+          this.updateRepo.compactBefore(roomId, lastId);
+        }
+      }
+
+      return lastId;
+    } catch (err) {
+      // Re-schedule flush with backoff/retry, withholding acks
+      if (!this.flushTimers.has(roomId)) {
+        const retryTimer = setTimeout(() => {
+          this.flushTimers.delete(roomId);
+          try {
+            this.flush(roomId, docForCompaction);
+          } catch {
+            // Suppress unhandled rejection in timer; will retry on subsequent schedule
+          }
+        }, this.flushWindowMs);
+        this.flushTimers.set(roomId, retryTimer);
+      }
+      throw err;
+    }
   }
 
   public destroy(): void {

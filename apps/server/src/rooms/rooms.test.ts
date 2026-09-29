@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as Y from 'yjs';
 import WebSocket from 'ws';
 import * as encoding from 'lib0/encoding';
-import { WS_CLOSE_CODES, FRAME_KINDS, MAX_DOC_BYTES, SLOW_CONSUMER_BYTES } from '@tether/shared/constants';
+import { WS_CLOSE_CODES, FRAME_KINDS, SLOW_CONSUMER_BYTES } from '@tether/shared/constants';
 import { decodeFrame } from '@tether/shared/protocol/codec';
 import { createDatabase, DatabaseSession } from '../db/database.js';
 import { RoomRepo } from '../repo/roomRepo.js';
@@ -223,8 +223,41 @@ describe('Rooms & RoomRegistry', () => {
     it('closes connection with WS_CLOSE_CODES.DOC_TOO_LARGE when doc size exceeds MAX_DOC_BYTES', () => {
       roomRepo.create({ id: 'test-cap-room', epoch: 'epoch-1', createdBy: 'u1' });
 
+      // Pre-fill initial doc snapshot near the 2 MB limit (e.g. 1.8 MB)
+      const initialDoc = new Y.Doc();
+      initialDoc.getText('codemirror').insert(0, 'x'.repeat(1_800_000));
+      const initialSnapshot = Y.encodeStateAsUpdate(initialDoc);
+
       const room = new Room(
         'test-cap-room',
+        'epoch-1',
+        initialSnapshot,
+        [],
+        persistenceService,
+        auditService
+      );
+
+      const aliceWs = new MockSocket();
+      room.addConnection(aliceWs as unknown as WebSocket, { id: 'u1', name: 'Alice', colorIndex: 0 });
+
+      // An incremental update of 300 KB is well under MAX_FRAME_BYTES (512 KB),
+      // but pushes the total doc size over MAX_DOC_BYTES (2 MB)
+      const incrementalDoc = new Y.Doc();
+      incrementalDoc.getText('codemirror').insert(0, 'y'.repeat(300_000));
+      const update = Y.encodeStateAsUpdate(incrementalDoc);
+
+      room.handleInboundUpdate(aliceWs as unknown as WebSocket, 1, update, new Uint8Array(0));
+
+      expect(aliceWs.closedCode).toBe(WS_CLOSE_CODES.DOC_TOO_LARGE);
+
+      room.destroy();
+    });
+
+    it('closes active sockets with WS_CLOSE_CODES.RESTART (1012) on destroy', () => {
+      roomRepo.create({ id: 'test-destroy-room', epoch: 'epoch-1', createdBy: 'u1' });
+
+      const room = new Room(
+        'test-destroy-room',
         'epoch-1',
         null,
         [],
@@ -235,17 +268,9 @@ describe('Rooms & RoomRegistry', () => {
       const aliceWs = new MockSocket();
       room.addConnection(aliceWs as unknown as WebSocket, { id: 'u1', name: 'Alice', colorIndex: 0 });
 
-      // Create an update that pushes doc size > MAX_DOC_BYTES (2 MB)
-      const bigDoc = new Y.Doc();
-      const bigText = 'a'.repeat(MAX_DOC_BYTES + 1000);
-      bigDoc.getText('codemirror').insert(0, bigText);
-      const update = Y.encodeStateAsUpdate(bigDoc);
-
-      room.handleInboundUpdate(aliceWs as unknown as WebSocket, 1, update, new Uint8Array(0));
-
-      expect(aliceWs.closedCode).toBe(WS_CLOSE_CODES.DOC_TOO_LARGE);
-
       room.destroy();
+
+      expect(aliceWs.closedCode).toBe(WS_CLOSE_CODES.RESTART);
     });
   });
 

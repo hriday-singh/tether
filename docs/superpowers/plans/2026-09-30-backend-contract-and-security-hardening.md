@@ -204,7 +204,7 @@ apps/server/
 - Produces:
   - `ProtocolGuard` tracking per-connection state (`hasStep1`, `hasStep2`, `handshakeComplete`, `lastSeq`)
 
-- [ ] **Step 1: Write unit tests for `ProtocolGuard`**
+- [x] **Step 1: Write unit tests for `ProtocolGuard`**
   Test rules:
   1. Non-`SYNC_STEP1` first frame -> returns `4009`.
   2. Duplicate `SYNC_STEP1` -> returns `4009`.
@@ -212,15 +212,15 @@ apps/server/
   4. Non-increasing sequence number (`seq <= lastSeq`) -> returns `4009`.
   5. Valid sequence (`SYNC_STEP1` -> server reply -> `SYNC_STEP2` -> `UPDATE(seq=1)` -> `UPDATE(seq=2)`) -> allowed.
 
-- [ ] **Step 2: Implement `ProtocolGuard` in `apps/server/src/sync/protocolGuard.ts`**
+- [x] **Step 2: Implement `ProtocolGuard` in `apps/server/src/sync/protocolGuard.ts`**
   Implement state machine validating frames against spec rules.
 
-- [ ] **Step 3: Wire into `connectionHandler.ts` and `room.ts`**
+- [x] **Step 3: Wire into `connectionHandler.ts` and `room.ts`**
   - Attach `ProtocolGuard` to each connection in `connectionHandler.ts`.
   - In `room.ts` broadcast loop: check if `conn.bufferedAmount > SLOW_CONSUMER_BYTES`. If so, close with `WS_CLOSE_CODES.SLOW_CONSUMER` (4008).
   - In `room.ts` `handleInboundUpdate`: verify total doc size `Y.encodeStateAsUpdate(this.doc).byteLength <= MAX_DOC_BYTES`. If exceeded, reject and close with `WS_CLOSE_CODES.DOC_TOO_LARGE` (4013).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/server test`
   Expected: PASS
 
@@ -243,14 +243,14 @@ apps/server/
   - Crash-safe flush: retain updates/acks in memory until `insertBatch` successfully returns
   - Clean shutdown: set draining flag (upgrade gate returns 503) and terminate all active WebSockets with 1012
 
-- [ ] **Step 1: Write unit tests for safe flush on failure**
+- [x] **Step 1: Write unit tests for safe flush on failure**
   In `services.test.ts`: mock `updateRepo.insertBatch` to throw an error once, verify `persistenceService.flush` retains updates and retries on next call without losing data.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/server test`
   Expected: FAIL
 
-- [ ] **Step 3: Implement safe flush and graceful drain**
+- [x] **Step 3: Implement safe flush and graceful drain**
   - In `PersistenceService.flush`:
     ```typescript
     try {
@@ -270,7 +270,7 @@ apps/server/
   - In `Room.destroy(closeCode = WS_CLOSE_CODES.SERVER_RESTART)`: close all active WebSockets with code `1012`.
   - In `index.ts`: in shutdown hook, set draining to `true`, flush all rooms, and close sockets with `1012`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/server test`
   Expected: PASS
 
@@ -278,19 +278,19 @@ apps/server/
 
 ### Task 6: Full Verification Suite
 
-- [ ] **Step 1: Run all unit and integration tests**
+- [x] **Step 1: Run all unit and integration tests**
   Run: `pnpm test`
   Expected: PASS across all packages.
 
-- [ ] **Step 2: Run chaos CI test**
+- [x] **Step 2: Run chaos CI test**
   Run: `pnpm run chaos:ci`
   Expected: PASS
 
-- [ ] **Step 3: Run typecheck**
+- [x] **Step 3: Run typecheck**
   Run: `pnpm typecheck`
   Expected: Clean compilation with 0 errors.
 
-- [ ] **Step 4: Run linter**
+- [x] **Step 4: Run linter**
   Run: `pnpm lint`
   Expected: Clean lint pass.
 

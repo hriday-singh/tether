@@ -22,6 +22,11 @@ export interface UpgradeGateDependencies {
 }
 
 const ipConnectionCounts = new Map<string, number>();
+let isDraining = false;
+
+export function setDraining(draining: boolean): void {
+  isDraining = draining;
+}
 
 export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDependencies) {
   return async function handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
@@ -33,6 +38,10 @@ export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDepende
           reason
       );
       socket.destroy();
+    }
+
+    if (isDraining) {
+      return reject(503, 'Service Unavailable: Server Draining');
     }
 
     const url = request.url ?? '';

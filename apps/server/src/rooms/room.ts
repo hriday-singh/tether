@@ -292,15 +292,18 @@ export class Room {
     return this.connections.size;
   }
 
-  public destroy(): void {
+  public destroy(closeCode: number = WS_CLOSE_CODES.RESTART): void {
     if (this.checksumQuietTimer) {
       clearTimeout(this.checksumQuietTimer);
       this.checksumQuietTimer = null;
     }
     this.hostElector.destroy();
-    for (const ctx of this.connContexts.values()) {
+    for (const [conn, ctx] of this.connContexts.entries()) {
       ctx.throttle.destroy();
       ctx.awarenessBinding.cleanup();
+      if (conn.readyState === WebSocket.OPEN) {
+        conn.close(closeCode, 'Server Restarting');
+      }
     }
     this.connections.clear();
     this.connContexts.clear();
