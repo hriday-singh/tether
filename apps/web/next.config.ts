@@ -7,6 +7,8 @@ import type { NextConfig } from 'next';
 const sharedDist = '../../packages/shared/dist/index.js';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  outputFileTracingRoot: path.join(import.meta.dirname, '../..'),
   reactStrictMode: true,
   turbopack: {
     root: path.join(import.meta.dirname, '../..'),

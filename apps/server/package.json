@@ -21,7 +21,8 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build:pkg": "tsc"
+    "build:pkg": "tsc",
+    "build": "tsc"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",

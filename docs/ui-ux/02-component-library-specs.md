@@ -13,7 +13,7 @@ This document specifies the exact third-party libraries, UI primitives, icon fam
 | **Language Logos** | `theSVG` | Raw SVGs in `components/icons/brands/` | Authentic language badges for TypeScript, JavaScript, Python, HTML5, CSS3, Go, Rust, Markdown, and SQL. |
 | **Icon Path Morphs** | `morphicons` | `morphicons` (6 kB) | Smooth SVG morphs between icon pairs: Copy ➔ Check, Play ➔ Stop, Lock ➔ Unlock, Menu ➔ Close. |
 | **Text Continuity** | `torph` | `torph/react` (`<TextMorph />`) | Dependency-free animated text continuity component. Character-level morphing for state labels and tickers. |
-| **Live Metrics & Charts**| `bklit-ui` | `@bklit/line-chart`, `@bklit/gauge` | Real-time RTT latency & propagation line charts in the Sync Diagnostics drawer; gauge for chaos storm convergence. |
+| **Live Metrics & Charts**| Custom SVG (`bklit-ui` spec) | `components/ui/charts.tsx` | Real-time RTT latency & propagation line charts in the Sync Diagnostics drawer; gauge for chaos storm convergence. Uses zero-dependency SVG equivalents mirroring the bklit API due to npm availability. |
 | **Thinking Animation** | `thinking-orbs` | Canvas utility in `components/ui/thinking-orb.tsx` | Lightweight 2D canvas orb for room connection, reconnecting, and bot storm simulation states. |
 | **Micro-Interactions** | `React Bits` | Verified OSS snippets in `components/ui/` | Count Up (latency millisecond counter), Hold Button (host kick confirmation). Scrambled text effects are strictly omitted in favor of instant `<TextMorph>` copy feedback. |
 | **Smooth Scroll** | `Lenis` | `@darkroom.engineering/lenis` | **Landing page only (`/`)**. Strictly disabled inside the workspace to prevent hijacking CodeMirror scroll events. |

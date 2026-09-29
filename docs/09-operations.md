@@ -37,7 +37,7 @@ For one-command deployment to an AWS EC2 instance:
 ```bash
 docker compose up -d                  # runs web + server with mounted SQLite volume
 ```
-*(If testing the full-scale PostgreSQL setup, `docker-compose.postgres.yml` can be invoked to spin up a managed PostgreSQL service container alongside).*
+*(If testing or running with PostgreSQL, invoke `docker compose --profile postgres up -d` to launch the managed PostgreSQL container alongside).*
 
 ## Observability
 

@@ -41,10 +41,10 @@
 - Create: `docker-compose.yml`
 - Update: `.env.example`
 
-- [ ] **Step 1:** Create `apps/server/Dockerfile` with multi-stage build (pnpm install, build packages, run production server).
-- [ ] **Step 2:** Create `apps/web/Dockerfile` with Next.js standalone output.
-- [ ] **Step 3:** Create `docker-compose.yml` defining `web` (:3000), `server` (:4000), mounted volume `./data:/data` for SQLite, and an optional `postgres` profile.
-- [ ] **Step 4:** Verify docker compose syntax and ensure `.env.example` is complete and up-to-date.
+- [x] **Step 1:** Create `apps/server/Dockerfile` with multi-stage build (pnpm install, build packages, run production server).
+- [x] **Step 2:** Create `apps/web/Dockerfile` with Next.js standalone output.
+- [x] **Step 3:** Create `docker-compose.yml` defining `web` (:3000), `server` (:4000), mounted volume `./data:/data` for SQLite, and an optional `postgres` profile.
+- [x] **Step 4:** Verify docker compose syntax and ensure `.env.example` is complete and up-to-date.
 
 ---
 
