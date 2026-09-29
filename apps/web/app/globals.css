@@ -142,6 +142,7 @@
   --border: oklch(0.4 0 0);
   --input: oklch(0.5 0 0);
   --primary: oklch(0.85 0.16 230);
+  --primary-foreground: oklch(0.12 0.01 260);
   --ring: oklch(0.85 0.16 230);
   --editor-bg: oklch(0.06 0 0);
   --editor-line-number: oklch(0.7 0 0);
@@ -220,16 +221,16 @@
   /* Type scale (docs/ui-ux/01 §3), scaled by the UI font-scale preference */
   --text-micro: calc(11px * var(--ui-scale));
   --text-micro--line-height: 1.3;
-  --text-caption: calc(12px * var(--ui-scale));
+  --text-caption: calc(12.5px * var(--ui-scale));
   --text-caption--line-height: 1.4;
-  --text-body: calc(13px * var(--ui-scale));
+  --text-body: calc(14px * var(--ui-scale));
   --text-body--line-height: 1.5;
-  --text-title: calc(15px * var(--ui-scale));
+  --text-title: calc(16.5px * var(--ui-scale));
   --text-title--line-height: 1.4;
-  --text-display: calc(20px * var(--ui-scale));
+  --text-display: calc(22px * var(--ui-scale));
   --text-display--line-height: 1.3;
-  --text-hero: clamp(2rem, 4vw + 1rem, 3.75rem);
-  --text-hero--line-height: 1.05;
+  --text-hero: clamp(2.25rem, 4vw + 1rem, 3.75rem);
+  --text-hero--line-height: 1.1;
 
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -304,6 +305,17 @@
     font-family: var(--font-sans);
     font-size: var(--text-body);
     -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
   :focus-visible {
     outline: 2px solid var(--ring);

@@ -26,25 +26,25 @@ export function ScreenTooSmallGate() {
   return (
     <CenterCard
       icon={MonitorIcon}
-      title="Please try on a bigger screen or refresh"
+      title="Desktop display required"
       actions={
         <>
-          <Button onClick={() => window.location.reload()}>
-            <Icon icon={ArrowReloadHorizontalIcon} /> Refresh Screen
-          </Button>
-          <Button variant="outline" asChild>
+          <Button asChild>
             <Link href="/">
               <Icon icon={Home01Icon} /> Return to Home
             </Link>
+          </Button>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <Icon icon={ArrowReloadHorizontalIcon} /> Recheck Display
           </Button>
         </>
       }
     >
       <p>
-        Tether is a collaborative workspace designed for desktop screens (1024px and wider). Split code editing, presence
-        and diagnostics need the room to avoid collisions.
+        Tether&apos;s multi-pane workspace requires a screen at least 1024 px wide to host editor, presence,
+        and diagnostics panels without collisions.
       </p>
-      <p className="mt-3 text-caption">Auto-unlocks when the window is expanded.</p>
+      <p className="mt-3 text-caption">Expands automatically when the window is resized.</p>
     </CenterCard>
   );
 }

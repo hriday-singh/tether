@@ -1,4 +1,18 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import dotenv from 'dotenv';
 import { z } from 'zod';
+
+function initEnv(): void {
+  const cwdEnv = path.resolve(process.cwd(), '.env');
+  const rootEnv = path.resolve(process.cwd(), '../../.env');
+  if (fs.existsSync(cwdEnv)) {
+    dotenv.config({ path: cwdEnv });
+  } else if (fs.existsSync(rootEnv)) {
+    dotenv.config({ path: rootEnv });
+  }
+}
+initEnv();
 
 export const ServerConfigSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),

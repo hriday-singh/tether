@@ -173,7 +173,7 @@ export function JoinRoomCard() {
       <Field id="j-name" label="Display name" error={errors.name}>
         <Input id="j-name" autoComplete="nickname" maxLength={50} value={name} placeholder={mounted ? sessions.lastName() || 'Ravi' : 'Ravi'} onChange={(e) => setName(e.target.value)} aria-invalid={!!errors.name} />
       </Field>
-      <Field id="j-pass" label="Passcode (if the room has one)" error={errors.passcode}>
+      <Field id="j-pass" label="Passcode (if required)" error={errors.passcode}>
         <Input id="j-pass" type="password" autoComplete="current-password" value={passcode} onChange={(e) => setPasscode(e.target.value)} aria-invalid={!!errors.passcode} />
       </Field>
       {errors.form && (

@@ -52,13 +52,13 @@
 **Files:**
 - Create: `.github/workflows/ci.yml`
 
-- [ ] **Step 1:** Create `.github/workflows/ci.yml` running on Node 22 with pnpm cache.
-- [ ] **Step 2:** Configure jobs for:
+- [x] **Step 1:** Create `.github/workflows/ci.yml` running on Node 22 with pnpm cache.
+- [x] **Step 2:** Configure jobs for:
   - `lint`: `pnpm lint`
   - `typecheck`: `pnpm typecheck`
   - `test`: `pnpm test`
   - `chaos`: `pnpm run chaos:ci`
-- [ ] **Step 3:** Verify all commands match repository scripts.
+- [x] **Step 3:** Verify all commands match repository scripts.
 
 ---
 
@@ -84,14 +84,14 @@ export interface ClientStats {
 }
 ```
 
-- [ ] **Step 1:** Write unit tests for `StatsStore` in `packages/sync-client/src/statsStore.test.ts` (percentile calculation, sliding window of 60 samples).
-- [ ] **Step 2:** Implement `StatsStore` in `packages/sync-client/src/statsStore.ts`.
-- [ ] **Step 3:** Wire `StatsStore` into `SyncClient`: record RTT on `pong` and ack latency on `ack`. Expose `client.stats` and `onStatsChange` callback.
-- [ ] **Step 4:** Run Vitest to verify all tests pass.
+- [x] **Step 1:** Write unit tests for `StatsStore` in `packages/sync-client/src/statsStore.test.ts` (percentile calculation, sliding window of 60 samples).
+- [x] **Step 2:** Implement `StatsStore` in `packages/sync-client/src/statsStore.ts`.
+- [x] **Step 3:** Wire `StatsStore` into `SyncClient`: record RTT on `pong` and ack latency on `ack`. Expose `client.stats` and `onStatsChange` callback.
+- [x] **Step 4:** Run Vitest to verify all tests pass.
 
 ---
 
-### Task 5: Milestone M3 — Wake Fast Path (`WAKE_PROBE_MS`)
+### Task 4: Milestone M3 — Wake Fast Path (`WAKE_PROBE_MS`)
 **Files:**
 - Create: `packages/sync-client/src/wakeManager.ts`
 - Create: `packages/sync-client/src/wakeManager.test.ts`
@@ -107,10 +107,10 @@ export interface WakeManagerOptions {
 }
 ```
 
-- [ ] **Step 1:** Write unit tests for `WakeManager` in `packages/sync-client/src/wakeManager.test.ts` simulating `visibilitychange`, `focus`, `pageshow`, and `online`.
-- [ ] **Step 2:** Implement `WakeManager` in `packages/sync-client/src/wakeManager.ts`.
-- [ ] **Step 3:** Integrate `WakeManager` into `SyncClient` (attach in browser environments, trigger immediate ping on wake, force close and zero-backoff reconnect if unacknowledged within 2,000ms, and immediate offline status on `offline` event).
-- [ ] **Step 4:** Run Vitest to verify all tests pass.
+- [x] **Step 1:** Write unit tests for `WakeManager` in `packages/sync-client/src/wakeManager.test.ts` simulating `visibilitychange`, `focus`, `pageshow`, and `online`.
+- [x] **Step 2:** Implement `WakeManager` in `packages/sync-client/src/wakeManager.ts`.
+- [x] **Step 3:** Integrate `WakeManager` into `SyncClient` (attach in browser environments, trigger immediate ping on wake, force close and zero-backoff reconnect if unacknowledged within 2,000ms, and immediate offline status on `offline` event).
+- [x] **Step 4:** Run Vitest to verify all tests pass.
 
 ---
 

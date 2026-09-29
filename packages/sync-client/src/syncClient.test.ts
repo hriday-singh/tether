@@ -40,6 +40,29 @@ class MockWebSocket {
   }
 }
 
+class MockEventTarget {
+  private listeners = new Map<string, Set<(event?: unknown) => void>>();
+
+  public addEventListener(event: string, handler: (event?: unknown) => void): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(handler);
+  }
+
+  public removeEventListener(event: string, handler: (event?: unknown) => void): void {
+    this.listeners.get(event)?.delete(handler);
+  }
+
+  public dispatchEvent(event: string, payload?: unknown): void {
+    this.listeners.get(event)?.forEach((handler) => handler(payload));
+  }
+}
+
+class MockDocumentTarget extends MockEventTarget {
+  public visibilityState: string = 'visible';
+}
+
 describe('SyncClient', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -183,6 +206,203 @@ describe('SyncClient', () => {
     // Advance 30 seconds -> no reconnect attempted
     vi.advanceTimersByTime(30000);
     expect(MockWebSocket.instances.length).toBe(1);
+
+    client.destroy();
+  });
+
+  it('records RTT latency when receiving server pong and emits onStatsChange', () => {
+    const doc = new Y.Doc();
+    let now = 2000;
+    const statsCallback = vi.fn();
+
+    const client = new SyncClient({
+      url: 'ws://localhost:3000/ws/rooms/demo',
+      token: 'jwt.token',
+      doc,
+      webSocketFactory: (url, p) => new MockWebSocket(url, p) as unknown as WebSocket,
+      clock: () => now,
+      onStatsChange: statsCallback,
+    });
+
+    client.connect();
+    vi.runOnlyPendingTimers();
+
+    const ws = MockWebSocket.instances[0]!;
+
+    // Server sends pong for a ping sent at ts = 1950
+    now = 2000;
+    ws.simulateServerMessage(
+      JSON.stringify({
+        t: 'pong',
+        id: 123,
+        ts: 1950,
+        serverQueueMs: 0,
+      })
+    );
+
+    expect(client.stats.rtt.sampleCount).toBe(1);
+    expect(client.stats.rtt.latestMs).toBe(50);
+    expect(client.stats.rtt.p50Ms).toBe(50);
+    expect(statsCallback).toHaveBeenCalledTimes(1);
+
+    client.destroy();
+  });
+
+  it('records Ack latency when receiving server ack and emits onStatsChange', () => {
+    const doc = new Y.Doc();
+    let now = 1000;
+    const statsCallback = vi.fn();
+
+    const client = new SyncClient({
+      url: 'ws://localhost:3000/ws/rooms/demo',
+      token: 'jwt.token',
+      doc,
+      webSocketFactory: (url, p) => new MockWebSocket(url, p) as unknown as WebSocket,
+      clock: () => now,
+      onStatsChange: statsCallback,
+    });
+
+    client.connect();
+    vi.runOnlyPendingTimers();
+
+    const ws = MockWebSocket.instances[0]!;
+
+    // Make edit at now = 1000 -> sends UPDATE seq 1
+    doc.getText('codemirror').insert(0, 'Hello');
+    expect(client.unackedCount).toBe(1);
+
+    // Ack arrives at now = 1120 (latency = 120ms)
+    now = 1120;
+    ws.simulateServerMessage(JSON.stringify({ t: 'ack', seq: 1 }));
+
+    expect(client.unackedCount).toBe(0);
+    expect(client.stats.ackLatency.sampleCount).toBe(1);
+    expect(client.stats.ackLatency.latestMs).toBe(120);
+    expect(client.stats.ackLatency.p50Ms).toBe(120);
+    expect(statsCallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ackLatency: expect.objectContaining({ latestMs: 120, sampleCount: 1 }),
+      })
+    );
+
+    client.destroy();
+  });
+
+  it('sends immediate ping on wake event when connected and starts wake probe', () => {
+    const doc = new Y.Doc();
+    const mockWindow = new MockEventTarget();
+    const mockDocument = new MockDocumentTarget();
+
+    const client = new SyncClient({
+      url: 'ws://localhost:3000/ws/rooms/demo',
+      token: 'jwt.token',
+      doc,
+      webSocketFactory: (url, p) => new MockWebSocket(url, p) as unknown as WebSocket,
+      wakeTarget: { window: mockWindow, document: mockDocument },
+    });
+
+    client.connect();
+    vi.runOnlyPendingTimers();
+
+    const ws = MockWebSocket.instances[0]!;
+    // Simulate server welcome so status is connected
+    ws.simulateServerMessage(
+      JSON.stringify({
+        t: 'welcome',
+        self: { id: 'u1', name: 'User 1', colorIndex: 0, joinedAt: new Date().toISOString(), status: 'active', isHost: true, isBot: false },
+        members: [],
+        hostId: 'u1',
+        room: { id: 'demo', language: 'javascript', locked: false, hasPasscode: false, epoch: '123e4567-e89b-12d3-a456-426614174000' },
+        token: 'token',
+        eventSeq: 0,
+      })
+    );
+    expect(client.connectionStatus).toBe('connected');
+
+    ws.sentFrames = [];
+
+    // Trigger focus event on mockWindow
+    mockWindow.dispatchEvent('focus');
+
+    // Should have sent ping frame immediately
+    expect(ws.sentFrames.length).toBe(1);
+    const sentMsg = JSON.parse(ws.sentFrames[0] as string);
+    expect(sentMsg.t).toBe('ping');
+    expect(client.wakeManagerInstance?.isProbing).toBe(true);
+
+    // Pong clears probe
+    ws.simulateServerMessage(JSON.stringify({ t: 'pong', id: sentMsg.id, ts: sentMsg.ts, serverQueueMs: 0 }));
+    expect(client.wakeManagerInstance?.isProbing).toBe(false);
+
+    client.destroy();
+  });
+
+  it('reconnects with zero backoff when wake probe times out', () => {
+    const doc = new Y.Doc();
+    const mockWindow = new MockEventTarget();
+    const mockDocument = new MockDocumentTarget();
+
+    const client = new SyncClient({
+      url: 'ws://localhost:3000/ws/rooms/demo',
+      token: 'jwt.token',
+      doc,
+      webSocketFactory: (url, p) => new MockWebSocket(url, p) as unknown as WebSocket,
+      wakeTarget: { window: mockWindow, document: mockDocument },
+    });
+
+    client.connect();
+    vi.runOnlyPendingTimers();
+
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateServerMessage(
+      JSON.stringify({
+        t: 'welcome',
+        self: { id: 'u1', name: 'User 1', colorIndex: 0, joinedAt: new Date().toISOString(), status: 'active', isHost: true, isBot: false },
+        members: [],
+        hostId: 'u1',
+        room: { id: 'demo', language: 'javascript', locked: false, hasPasscode: false, epoch: '123e4567-e89b-12d3-a456-426614174000' },
+        token: 'token',
+        eventSeq: 0,
+      })
+    );
+
+    // Wake event triggers probe
+    mockWindow.dispatchEvent('focus');
+    expect(client.wakeManagerInstance?.isProbing).toBe(true);
+
+    // Timeout (2000ms) without pong -> force close and immediate reconnect
+    vi.advanceTimersByTime(2000);
+
+    // New WebSocket instance created immediately (zero backoff)
+    expect(MockWebSocket.instances.length).toBe(2);
+    expect(client.connectionStatus).toBe('connecting');
+
+    client.destroy();
+  });
+
+  it('switches status to offline immediately on browser offline event', () => {
+    const doc = new Y.Doc();
+    const mockWindow = new MockEventTarget();
+    const mockDocument = new MockDocumentTarget();
+    let status = '';
+
+    const client = new SyncClient({
+      url: 'ws://localhost:3000/ws/rooms/demo',
+      token: 'jwt.token',
+      doc,
+      webSocketFactory: (url, p) => new MockWebSocket(url, p) as unknown as WebSocket,
+      wakeTarget: { window: mockWindow, document: mockDocument },
+      onStatusChange: (s) => {
+        status = s;
+      },
+    });
+
+    client.connect();
+    vi.runOnlyPendingTimers();
+
+    mockWindow.dispatchEvent('offline');
+    expect(client.connectionStatus).toBe('offline');
+    expect(status).toBe('offline');
 
     client.destroy();
   });

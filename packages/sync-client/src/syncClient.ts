@@ -19,16 +19,20 @@ import {
   FRAME_KINDS,
   PROTOCOL_VERSION,
   WS_CLOSE_CODES,
+  WAKE_PROBE_MS,
 } from '@tether/shared/constants';
 import { calculateBackoff } from '@tether/shared/backoff';
 import { areStateVectorsEqual, hashString } from '@tether/shared/checksum';
+import { StatsStore, ClientStats } from './statsStore.js';
+import { WakeManager, WakeTarget, WakeDocumentTarget } from './wakeManager.js';
 
 export type ClientConnectionStatus =
   | 'disconnected'
   | 'connecting'
   | 'connected'
   | 'reconnecting'
-  | 'kicked';
+  | 'kicked'
+  | 'offline';
 
 export type SyncState = 'synced' | 'saving' | 'saved' | 'mismatch';
 
@@ -43,8 +47,15 @@ export interface SyncClientOptions {
   onRosterChange?: (members: Member[]) => void;
   onHostChange?: (hostId: string | null) => void;
   onWelcome?: (welcome: { self: Member; room: RoomMetadata }) => void;
+  onStatsChange?: (stats: ClientStats) => void;
   onError?: (err: Error) => void;
   clock?: () => number;
+  statsWindowSize?: number;
+  wakeProbeTimeoutMs?: number;
+  wakeTarget?: {
+    window?: WakeTarget;
+    document?: WakeDocumentTarget;
+  };
 }
 
 export class SyncClient {
@@ -66,6 +77,9 @@ export class SyncClient {
   private pendingAwarenessUpdate: Uint8Array = new Uint8Array(0);
   private pendingAcks = new Map<number, { docUpdate: Uint8Array; sentAt: number }>();
 
+  private statsStore: StatsStore;
+  private wakeManager: WakeManager | null = null;
+
   private lastSentAt = 0;
   private batchTimer: NodeJS.Timeout | null = null;
   private pingTimer: NodeJS.Timeout | null = null;
@@ -82,6 +96,7 @@ export class SyncClient {
   private onRosterChange?: (members: Member[]) => void;
   private onHostChange?: (hostId: string | null) => void;
   private onWelcome?: (welcome: { self: Member; room: RoomMetadata }) => void;
+  private onStatsChange?: (stats: ClientStats) => void;
   private onError?: (err: Error) => void;
 
   constructor(options: SyncClientOptions) {
@@ -99,7 +114,44 @@ export class SyncClient {
     this.onRosterChange = options.onRosterChange;
     this.onHostChange = options.onHostChange;
     this.onWelcome = options.onWelcome;
+    this.onStatsChange = options.onStatsChange;
     this.onError = options.onError;
+
+    this.statsStore = new StatsStore(options.statsWindowSize ?? 60);
+
+    this.wakeManager = new WakeManager({
+      probeTimeoutMs: options.wakeProbeTimeoutMs ?? WAKE_PROBE_MS,
+      target: options.wakeTarget,
+      onWakePing: () => {
+        if (this.status === 'connected' && this.ws?.readyState === WebSocket.OPEN) {
+          this.sendPing();
+          this.wakeManager?.startProbe();
+        } else if (
+          this.status === 'disconnected' ||
+          this.status === 'reconnecting' ||
+          this.status === 'offline'
+        ) {
+          this.reconnectAttempts = 0;
+          this.connect();
+        }
+      },
+      onWakeTimeout: () => {
+        if (this.status === 'connected') {
+          this.ws?.terminate?.() ?? this.ws?.close();
+          this.reconnectAttempts = 0;
+          this.connect();
+        }
+      },
+      onOffline: () => {
+        if (this.status !== 'kicked' && !this.isDestroyed) {
+          this.setStatus('offline');
+          if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+          }
+        }
+      },
+    });
 
     // Listen to local Y.Doc updates
     this.doc.on('update', this.handleLocalDocUpdate);
@@ -222,8 +274,22 @@ export class SyncClient {
           this.onHostChange?.(parsed.hostId);
           break;
         }
+        case 'pong': {
+          const now = this.clock();
+          const rtt = Math.max(0, now - parsed.ts);
+          this.statsStore.recordRtt(rtt);
+          this.wakeManager?.clearProbe();
+          this.onStatsChange?.(this.statsStore.getStats());
+          break;
+        }
         case 'ack': {
-          this.pendingAcks.delete(parsed.seq);
+          const pending = this.pendingAcks.get(parsed.seq);
+          if (pending) {
+            const ackLatency = Math.max(0, this.clock() - pending.sentAt);
+            this.statsStore.recordAckLatency(ackLatency);
+            this.pendingAcks.delete(parsed.seq);
+            this.onStatsChange?.(this.statsStore.getStats());
+          }
           if (this.pendingAcks.size === 0) {
             this.setSyncState('saved');
           }
@@ -351,14 +417,18 @@ export class SyncClient {
     this.ws.send(data);
   }
 
+  public sendPing(): void {
+    this.sendControl({
+      t: 'ping',
+      id: Math.floor(Math.random() * 100000),
+      ts: this.clock(),
+    });
+  }
+
   private startPingTimer(): void {
     this.stopPingTimer();
     this.pingTimer = setInterval(() => {
-      this.sendControl({
-        t: 'ping',
-        id: Math.floor(Math.random() * 100000),
-        ts: this.clock(),
-      });
+      this.sendPing();
     }, CLIENT_PING_MS);
   }
 
@@ -425,6 +495,10 @@ export class SyncClient {
     if (this.deadTimer) clearTimeout(this.deadTimer);
     this.stopPingTimer();
 
+    this.wakeManager?.destroy();
+    this.wakeManager = null;
+    this.statsStore.reset();
+
     if (this.ws) {
       if (this.ws.readyState === WebSocket.OPEN) {
         this.sendControl({ t: 'leave' });
@@ -446,5 +520,17 @@ export class SyncClient {
 
   public get unackedCount(): number {
     return this.pendingAcks.size;
+  }
+
+  public get stats(): ClientStats {
+    return this.statsStore.getStats();
+  }
+
+  public get statsStoreInstance(): StatsStore {
+    return this.statsStore;
+  }
+
+  public get wakeManagerInstance(): WakeManager | null {
+    return this.wakeManager;
   }
 }

@@ -13,7 +13,7 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] ESLint + Prettier
 - [x] Vitest config per package
 - [x] Dockerization: `apps/server/Dockerfile`, `apps/web/Dockerfile` (standalone), `docker-compose.yml` (web + server + persistent SQLite volume + optional postgres profile), `.dockerignore`, `.env.example`
-- [ ] GitHub Actions: lint, typecheck, unit, integration (SQLite in-memory), `chaos:ci`
+- [x] GitHub Actions: lint, typecheck, unit, integration (SQLite in-memory), `chaos:ci`
 
 ### M1: Shared protocol
 - [x] `constants.ts` (all limits from [04](04-protocol.md#limits-single-source-packagessharedsrcconstantsts))
@@ -41,8 +41,8 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] Seq + ack tracking, pending count
 - [x] Heartbeat, dead-connection detection, jittered backoff, close-code policy
 - [ ] y-indexeddb restore-before-connect, epoch-scoped keys, clear on leave/kick/reset
-- [ ] Stats store: RTT, ack latency (p50/p95)
-- [ ] Wake fast path (visibility / focus / pageshow / online probe, `WAKE_PROBE_MS`)
+- [x] Stats store: RTT, ack latency (p50/p95)
+- [x] Wake fast path (visibility / focus / pageshow / online probe, `WAKE_PROBE_MS`)
 - [ ] Classify pre-`welcome` failures via admission probe; `reauth` keeps local copy
 - [x] P1 client: `checksum` handling, reset-from-server on mismatch, verified state
 - [x] Injected WebSocket constructor (browser + Node)

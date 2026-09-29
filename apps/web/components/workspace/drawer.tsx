@@ -317,8 +317,7 @@ function ChaosLab() {
           </>
         ) : (
           <p className="max-w-sm text-caption text-muted-foreground">
-            Spawns up to {STORM_MAX_BOTS} simulated peers typing under latency and faults, then checks that every replica ends byte
-            for byte identical.
+            Simulates up to {STORM_MAX_BOTS} concurrent peers typing under latency and network faults to verify replica convergence.
           </p>
         )}
       </div>

@@ -1,10 +1,12 @@
 'use client';
 
-import { CheckmarkCircle02Icon, RefreshIcon } from '@hugeicons/core-free-icons';
+import { CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import { useEffect, useState } from 'react';
 import { LanguageLogo } from '@/components/icons/language-logo';
 import { presenceClass } from '@/components/ui/avatar';
-import { MorphIcon, TextMorph } from '@/components/ui/motion';
+import { Icon } from '@/components/ui/icon';
+import { TextMorph } from '@/components/ui/motion';
+import { ThinkingOrb } from '@/components/ui/thinking-orb';
 import { useMediaQuery } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 
@@ -78,7 +80,11 @@ export function MiniEditor() {
             settled ? 'border-success/30 text-success' : 'border-primary/30 text-primary',
           )}
         >
-          <MorphIcon icon={settled ? CheckmarkCircle02Icon : RefreshIcon} size={12} />
+          {settled ? (
+            <Icon icon={CheckmarkCircle02Icon} size={12} />
+          ) : (
+            <ThinkingOrb state="working" tone="primary" size={20} animated label="Syncing" className="-my-1 size-3.5" />
+          )}
           <TextMorph>{settled ? 'Verified in sync' : 'Syncing…'}</TextMorph>
         </span>
       </div>

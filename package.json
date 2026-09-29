@@ -15,8 +15,10 @@
     "lint": "eslint .",
     "build:pkg": "npm run build:pkg --workspaces --if-present",
     "build": "npm run typecheck && npm run test && npm run build:pkg",
-    "dev:server": "npm --workspace=@tether/server run dev",
-    "start:server": "npm --workspace=@tether/server start",
+    "dev": "pnpm --filter @tether/server --filter @tether/web --parallel dev",
+    "dev:server": "pnpm --filter @tether/server dev",
+    "dev:web": "pnpm --filter @tether/web dev",
+    "start:server": "pnpm --filter @tether/server start",
     "chaos:ci": "vitest run --project @tether/chaos",
     "bench": "pnpm --filter @tether/chaos run bench"
   },

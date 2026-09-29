@@ -12,7 +12,7 @@ import {
   Settings01Icon,
   Share08Icon,
   StopIcon,
-  Tick01Icon,
+  CheckmarkCircle02Icon,
 } from '@hugeicons/core-free-icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -125,7 +125,7 @@ function RoomIdPill({ roomId }: { roomId: string }) {
         aria-label={copied ? 'Room ID copied' : `Copy room ID ${roomId}`}
       >
         <span className="truncate">{roomId}</span>
-        <MorphIcon icon={copied ? Tick01Icon : Copy01Icon} size={13} className={cn(copied ? 'text-success' : 'text-muted-foreground')} />
+        <MorphIcon icon={copied ? CheckmarkCircle02Icon : Copy01Icon} size={13} className={cn(copied ? 'text-success' : 'text-muted-foreground')} />
       </button>
     </Tip>
   );
@@ -146,7 +146,7 @@ export function InviteButton({ roomId }: { roomId: string }) {
   };
   return (
     <Button size="sm" variant="ghost" onClick={() => void share()}>
-      <MorphIcon icon={copied ? Tick01Icon : Share08Icon} size={14} />
+      <MorphIcon icon={copied ? CheckmarkCircle02Icon : Share08Icon} size={14} />
       <TextMorph>{copied ? 'Copied' : 'Share'}</TextMorph>
     </Button>
   );

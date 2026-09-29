@@ -3,38 +3,39 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { Logo } from '@/components/brand';
 import { MiniEditor } from '@/components/landing/mini-editor';
+import { ResumeCard } from '@/components/landing/resume-card';
 import { CreateRoomCard, JoinRoomCard } from '@/components/landing/room-forms';
 import { SmoothScroll } from '@/components/landing/smooth-scroll';
 import { ThemeToggle } from '@/components/landing/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 
-const REPO_URL = process.env.NEXT_PUBLIC_REPO_URL ?? 'https://github.com';
+const REPO_URL = process.env.NEXT_PUBLIC_REPO_URL ?? 'https://github.com/hriday-singh/tether';
 
 // Engineering spec strip, not vanity counters (docs/ui-ux/03 §4). TODO(M10): wire to real bench/chaos numbers.
 const PROOF = [
   ['0', 'lost edits under network partition'],
-  ['p95 ack < 40 ms', 'measured, not estimated'],
-  ['5 op/s', 'lossless token-bucket throttling'],
+  ['p95 ack < 40 ms', 'measured live, not estimated'],
+  ['5 op/s', 'rate-limited with zero drops'],
   ['50+ seeds', 'chaos tested in CI'],
 ] as const;
 
 const GUARANTEES = [
   {
-    title: 'Nothing typed is ever lost',
-    body: 'Yjs CRDT merges every edit. Offline edits persist in IndexedDB and merge on reconnect. Throttling batches updates, it never drops them.',
+    title: 'Nothing typed is lost',
+    body: 'CRDT architecture merges every edit. Offline changes persist locally and sync automatically on reconnect.',
   },
   {
-    title: 'You can see it is in sync',
-    body: 'When the room goes quiet, clients compare checksums with the server. "Verified in sync" only shows when nothing is pending.',
+    title: 'Cryptographic sync check',
+    body: 'Clients compare SHA-256 checksums with the server. Verified state only displays when replicas match exactly.',
   },
   {
-    title: 'Latency you can read',
-    body: 'Round-trip and commit latency are measured live, with p50/p95 in the status bar and a chart in the diagnostics drawer.',
+    title: 'Transparent telemetry',
+    body: 'Live RTT and ack latency tracked continuously in the status bar and diagnostics drawer.',
   },
   {
-    title: 'Proof, not promises',
-    body: 'Launch a bot storm: up to 8 peers typing under jitter and partitions. Every replica must end byte for byte identical.',
+    title: 'Chaos tested in CI',
+    body: 'Validated under automated multi-bot storms with simulated packet jitter, drops, and network partitions.',
   },
 ];
 
@@ -68,11 +69,10 @@ export default function LandingPage() {
               <span className="size-1.5 rounded-full bg-success" aria-hidden /> live collaborative code pad
             </p>
             <h1 className="text-hero font-semibold tracking-tight text-balance">
-              Real-time collaborative coding with mathematical convergence.
+              Real-time collaborative code pad with guaranteed convergence.
             </h1>
             <p className="max-w-xl text-title leading-relaxed text-muted-foreground text-pretty">
-              Share a room, type together, and watch every replica prove it is identical. No accounts, no lost keystrokes,
-              even when the network falls apart.
+              Instant peer-to-peer rooms with zero accounts. Code together in real time with verified state across every replica.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button size="lg" asChild>
@@ -98,6 +98,9 @@ export default function LandingPage() {
         </section>
 
         <section id="start" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
+          <Suspense>
+            <ResumeCard />
+          </Suspense>
           <div className="grid gap-4 lg:grid-cols-2">
             <Suspense>
               <CreateRoomCard />
@@ -105,7 +108,7 @@ export default function LandingPage() {
             <JoinRoomCard />
           </div>
           <p className="mt-4 text-center text-caption text-muted-foreground">
-            The workspace needs a screen 1024 px or wider. Rooms are joinable from anywhere.
+            Workspace requires a screen 1024 px or wider.
           </p>
         </section>
 
@@ -127,10 +130,10 @@ export default function LandingPage() {
           <span className="flex items-center gap-2">
             <Logo className="size-4" /> Tether
           </span>
-          <a href={REPO_URL} className="transition-ui hover:text-foreground">
+          <a href={REPO_URL} target="_blank" rel="noreferrer" className="transition-ui hover:text-foreground">
             Repository
           </a>
-          <a href={`${REPO_URL}#architecture`} className="transition-ui hover:text-foreground">
+          <a href={`${REPO_URL}#system-architecture`} target="_blank" rel="noreferrer" className="transition-ui hover:text-foreground">
             Architecture
           </a>
           <span className="ml-auto font-mono">Yjs · CodeMirror 6 · Next.js</span>

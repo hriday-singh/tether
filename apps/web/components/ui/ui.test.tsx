@@ -15,6 +15,13 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: 'Action button' });
     expect(button).toBeInTheDocument();
   });
+
+  it('applies dark high-contrast text color for primary button variant', () => {
+    const classes = buttonVariants({ variant: 'primary' });
+    expect(classes).toContain('bg-primary');
+    expect(classes).toContain('text-primary-foreground');
+    expect(classes).toContain('dark:text-neutral-950');
+  });
 });
 
 describe('InputOTP', () => {

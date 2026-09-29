@@ -237,7 +237,7 @@ function JoinGate({
                   onClick={() => setOtpMode(false)}
                   className="text-micro text-muted-foreground underline underline-offset-4 hover:text-foreground"
                 >
-                  Switch to password field
+                  Use password field
                 </button>
               </div>
             ) : (
@@ -256,7 +256,7 @@ function JoinGate({
                   onClick={() => setOtpMode(true)}
                   className="self-end text-micro text-muted-foreground underline underline-offset-4 hover:text-foreground"
                 >
-                  Use PIN slots (OTP)
+                  Use PIN slots
                 </button>
               </div>
             )}

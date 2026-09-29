@@ -37,13 +37,20 @@ export class WakeManager {
     this.onWakeTimeout = options.onWakeTimeout;
     this.onOffline = options.onOffline;
 
+    const g =
+      typeof globalThis !== 'undefined'
+        ? (globalThis as unknown as Record<string, unknown>)
+        : undefined;
+
     this.windowTarget =
       options.target?.window ??
-      (typeof window !== 'undefined' ? (window as unknown as WakeTarget) : undefined);
+      (g && typeof g.window === 'object' && g.window !== null
+        ? (g.window as unknown as WakeTarget)
+        : undefined);
     this.documentTarget =
       options.target?.document ??
-      (typeof document !== 'undefined'
-        ? (document as unknown as WakeDocumentTarget)
+      (g && typeof g.document === 'object' && g.document !== null
+        ? (g.document as unknown as WakeDocumentTarget)
         : undefined);
 
     this.attach();
