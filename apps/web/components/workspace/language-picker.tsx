@@ -10,17 +10,23 @@ import { toast } from '@/components/ui/toaster';
 import { useStore } from '@/lib/hooks';
 import { LANGUAGE_IDS, LANGUAGES, languageInfo, type LanguageId } from '@/lib/languages';
 import { CommandError } from '@/lib/sync';
+import { randomId } from '@/lib/utils';
 import { useWorkspace } from './context';
 
 /** Room-wide syntax mode. Host-only in the UI, and the server enforces it too. Pending until ok/error. */
 export function LanguagePicker({ disabled }: { disabled: boolean }) {
-  const { client } = useWorkspace();
+  const ws = useWorkspace();
+  const { client } = ws;
   const current = languageInfo(useStore(client.room).room.language);
   const [pending, setPending] = useState<LanguageId | null>(null);
 
   const change = async (id: LanguageId) => {
     if (id === current.id) return;
     setPending(id);
+    if (languageInfo(id).preview !== null) {
+      ws.ui.update((s) => ({ ...s, previewOpen: true, editorView: 'preview' }));
+      ws.preview.set({ runId: randomId(4), scripts: false });
+    }
     try {
       await client.command({ t: 'room.language', language: id });
     } catch (e) {

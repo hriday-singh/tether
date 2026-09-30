@@ -29,3 +29,10 @@ export function createConsoleStore() {
   };
 }
 export type ConsoleStore = ReturnType<typeof createConsoleStore>;
+
+/** Formats a console entry as a readable Markdown snippet for sharing in chat or clipboard. */
+export function formatConsoleSnippet(entry: ConsoleEntry): string {
+  const time = new Date(entry.at).toLocaleTimeString([], { hour12: false });
+  const badge = entry.level.toUpperCase();
+  return `\`\`\`text\n[Console ${badge} · ${time}]\n${entry.text}\n\`\`\``;
+}

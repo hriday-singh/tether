@@ -1,7 +1,7 @@
 # Tether — Real-Time Collaborative Code Workspace (WEB-02)
 
-Status: **DRAFT v1, pending review**. Nothing gets built until these docs are approved.
-Last updated: 2026-09-29
+Status: **Active / Implemented v1.0**. All core milestones verified with 275+ tests passing across 60 test suites.
+Last updated: 2026-09-30
 
 ## One-line pitch
 
@@ -36,7 +36,7 @@ If a feature threatens any of these four, the feature loses.
 | 08 | [Testing & verification](08-testing-and-verification.md) | Chaos harness, property tests, latency bench |
 | 09 | [Operations](09-operations.md) | Env config, local run, observability, shutdown, scale path |
 | 10 | [Roadmap & TODO](10-roadmap.md) | 2-week plan + week-3 stretch checklist |
-| 11 | [Decisions log](11-decisions.md) | ADRs (001–016) + research sources |
+| 11 | [Decisions log](11-decisions.md) | ADRs (001–017) + research sources |
 | 12 | [UI / UX direction](12-ui-ux.md) | "Quiet IDE" aesthetic, verified libraries, and ADR-016 overview |
 | — | [**UI/UX Specs Suite**](ui-ux/) | **Dedicated modular frontend & UI/UX architecture:** |
 | · | [01 — Design tokens & themes](ui-ux/01-design-tokens-and-themes.md) | Semantic OKLCH tokens, dark/light scales, presence colors, zero-emoji rule |
@@ -45,14 +45,14 @@ If a feature threatens any of these four, the feature loses.
 | · | [04 — Settings & theme picker](ui-ux/04-settings-and-theme-picker.md) | VS Code-style `⌘K` Theme QuickPick with arrow preview, settings modal, preferences schema |
 | · | [05 — Sandbox preview & console](ui-ux/05-sandbox-preview-and-console.md) | Client-side sandboxed iframe preview, 5s watchdog Web Worker runner, DevTools console UI |
 
-## Locked decisions (2026-09-29)
+## Locked decisions (2026-09-29 / 2026-09-30)
 
 | Topic | Decision |
 |---|---|
 | Core pitch | Zero-loss sync + measured latency, proven by chaos tests |
 | Sync engine | Yjs (CRDT, **v13 pinned**) + **our own** WebSocket server on `y-protocols` |
 | Identity | Guest display name + signed room session token (no accounts) |
-| Database & Deployment v1 | SQLite (WAL mode, `better-sqlite3`) for POC/dev and single-node Docker Compose; PostgreSQL (AWS RDS) documented for multi-node production scale |
+| Database & Deployment v1 | SQLite (WAL mode, `node:sqlite`) for POC/dev and single-node Docker Compose; PostgreSQL (AWS RDS) documented for multi-node production scale |
 | Host handover | 5 s grace on abrupt disconnect (env-configurable), instant on clean leave |
 | Editor scope | One shared doc per room, room-level language picker |
 | Time budget | Plan for 2 weeks, week-3 stretch list kept in roadmap |
@@ -62,6 +62,8 @@ If a feature threatens any of these four, the feature loses.
 | UI/UX & Theme Architecture | "Quiet IDE" style, dark default + equivalent light mode, VS Code `⌘K` theme picker (ADR-016) |
 | Preview & DevTools Console | Client-side isolated sandboxed iframe + 5s watchdog Web Worker (ADR-016) |
 | Icon & Morphing System | Hugeicons stroke-rounded (zero emoji policy), `theSVG` brand logos, dual morphing via `morphicons` (SVG paths) + `torph` (animated text) |
+| Text chat | Adopted over control channel (`chat.send`/`chat.msg`), separate table & token bucket, gapless seq (ADR-017) |
+
 
 ## Rules for these docs
 

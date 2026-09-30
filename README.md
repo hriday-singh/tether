@@ -11,7 +11,9 @@ Tether is a modern, real-time collaborative workspace designed for zero document
 
 - **Zero-Loss CRDT Sync**: Real-time collaboration using pinned Yjs v13 with custom WebSocket protocols and token-bucket throttled updates.
 - **Measured Latency**: Keystroke-to-peer latency is continuously measured and displayed live in the UI (p50 / p95 metrics).
-- **Chaos Resilience Tested**: 140+ automated unit, property-based, and chaos tests simulating split-brain network partitions, duplicated frames, and client reconnect storms.
+- **Chaos Resilience Tested**: 275+ automated unit, property-based, and chaos tests across 60 test suites simulating split-brain network partitions, duplicated frames, and client reconnect storms.
+- **Real-Time Text Chat**: Room text chat with gapless per-room sequence ordering, optimistic updates, unread indicators, and SQLite / PostgreSQL persistence.
+- **Bot Storm Spawner**: Host-triggered demo storm spawner running virtual bot clients under simulated network faults with clean pre-storm state rollback via `Y.UndoManager`.
 - **"Quiet IDE" Aesthetic**: Minimalist, distraction-free interface built with Next.js 16, Tailwind CSS v4, Radix UI primitives, semantic themes, and smooth SVG/text morphing.
 - **Sandboxed Execution**: Client-side sandboxed iframe preview with a 5-second watchdog Web Worker runner for safe JavaScript, HTML, and Python execution.
 - **Flexible Storage**: Zero-dependency embedded SQLite via Node 22 (`node:sqlite`) for local development, with first-class PostgreSQL support for production scale.
@@ -69,8 +71,23 @@ The setup script configures your environment, creates `.env` with a secure 256-b
 
 **POSIX (Linux / macOS / WSL / Git Bash):**
 ```bash
+# Ensure execution permissions on Linux/macOS
+chmod +x ./setup.sh ./launch.sh
+
+# Run interactive setup wizard
 ./setup.sh
 ```
+
+> [!NOTE]
+> **Linux / macOS Permission Notice:**
+> If you encounter `Permission denied` when trying to execute `./setup.sh`:
+> ```text
+> crane1@thecrane:/srv/dev/web-apps/tether$ ./setup.sh
+> -bash: ./setup.sh: Permission denied
+> crane1@thecrane:/srv/dev/web-apps/tether$ chmod +x ./setup.sh ./launch.sh
+> crane1@thecrane:/srv/dev/web-apps/tether$ ./setup.sh
+> ```
+> Both `setup.sh` and `launch.sh` require executable bit permissions (`chmod +x`).
 
 > **Quick-Start Tip:** Every prompt has a recommended default. You can simply press **`Enter`** throughout the prompts to configure local development with zero-setup SQLite and automatically launch the servers!
 
@@ -82,7 +99,10 @@ The setup script configures your environment, creates `.env` with a secure 256-b
 2. **Database Configuration**:
    - `[1] SQLite` *(Default, embedded in Node 22, zero external setup)*
    - `[2] PostgreSQL` *(Docker-managed container on port 5432 or custom external URL)*
-3. **Auto-Launch**:
+3. **Port Configuration**:
+   - **Backend Server Port**: default `:4000` *(Customizable; automatically updates `PORT`, `SERVER_PORT`, `NEXT_PUBLIC_API_URL`, and `NEXT_PUBLIC_WS_URL`)*
+   - **Frontend Web Client Port**: default `:3001` *(Customizable; automatically updates `WEB_PORT` and `ALLOWED_ORIGINS`)*
+4. **Auto-Launch**:
    - Prompts *"Launch dev servers now? [Y/n]"* at the end of setup to start immediately.
 
 ---
@@ -152,6 +172,19 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/tether
 
 ---
 
+## Latency Benchmarks
+
+Measured using the automated benchmark harness (`pnpm bench`) simulating 5 concurrent clients on localhost:
+
+| Benchmark Scenario | Samples | Min | p50 (Median) | p95 | p99 | Max | Mean |
+|--------------------|---------|-----|--------------|-----|-----|-----|------|
+| **Isolated Edits** (1 edit/s per client) | 200 | 0.67 ms | **1.60 ms** | **6.27 ms** | 13.06 ms | 13.26 ms | 2.50 ms |
+| **Burst Typing** (15 chars/s per client) | 500 | 1.41 ms | **8.33 ms** | **124.26 ms** | 142.71 ms | 143.31 ms | 37.46 ms |
+
+Burst typing latency remains bounded by the 200 ms cooperative batching window and token-bucket throttle rate limiter.
+
+---
+
 ## NPM Scripts & Verification
 
 All standard scripts are managed from the root `package.json`:
@@ -163,13 +196,14 @@ pnpm dev:server       # Launch Fastify backend only (:4000)
 pnpm dev:web          # Launch Next.js frontend only (:3001)
 
 # Testing & Verification
-pnpm test             # Run all 140+ unit, integration, and chaos tests
+pnpm test             # Run all 275+ unit, integration, and chaos tests (60 suites)
 pnpm chaos:ci         # Run automated chaos resilience test suite
+pnpm bench            # Run latency benchmark harness (5 clients)
 pnpm typecheck        # Run TypeScript checks across all workspaces
 pnpm lint             # Run ESLint
 
 # Building
-pnpm build:pkg        # Compile @tether/shared to dist/
+pnpm build:pkg        # Compile shared packages (@tether/shared & @tether/sync-client) to dist/
 pnpm build            # Full workspace compilation and verification
 ```
 

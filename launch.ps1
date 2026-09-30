@@ -99,6 +99,17 @@ if (-not (Test-Path $envPath)) {
     }
 }
 
+# Detect configured ports
+$backendPort = "4000"
+$frontendPort = "3001"
+if (Test-Path $envPath) {
+    $envContent = Get-Content $envPath
+    $portMatch = $envContent | Select-String -Pattern "^PORT=(\d+)" | Select-Object -First 1
+    if ($portMatch) { $backendPort = $portMatch.Matches.Groups[1].Value }
+    $webPortMatch = $envContent | Select-String -Pattern "^WEB_PORT=(\d+)" | Select-Object -First 1
+    if ($webPortMatch) { $frontendPort = $webPortMatch.Matches.Groups[1].Value }
+}
+
 # 2. Build Check
 $sharedDist = Join-Path $PSScriptRoot "packages/shared/dist/index.js"
 if (-not (Test-Path $sharedDist)) {
@@ -112,9 +123,9 @@ if ([string]::IsNullOrEmpty($Target)) {
     $choice = Prompt-Choice `
         -PromptText "Select what to launch:" `
         -Options @(
-            "Local: Both Servers (Backend :4000 + Web :3001) [Recommended]",
-            "Local: Backend Server Only (Fastify + WS on :4000)",
-            "Local: Frontend Web Client Only (Next.js on :3001)",
+            "Local: Both Servers (Backend :$backendPort + Web :$frontendPort) [Recommended]",
+            "Local: Backend Server Only (Fastify + WS on :$backendPort)",
+            "Local: Frontend Web Client Only (Next.js on :$frontendPort)",
             "Docker Compose: Web + Server",
             "Docker Compose: Web + Server + PostgreSQL"
         ) `
@@ -171,17 +182,17 @@ Write-Host "============================================================" -Foreg
 switch ($Target) {
     "both" {
         Write-Host "Endpoints:" -ForegroundColor Cyan
-        Write-Host "  * Web App:       http://localhost:3001" -ForegroundColor Cyan
-        Write-Host "  * Backend API:   http://localhost:4000" -ForegroundColor Cyan
-        Write-Host "  * WebSocket:     ws://localhost:4000" -ForegroundColor Cyan
-        Write-Host "  * Health Check:  http://localhost:4000/health/ready" -ForegroundColor Cyan
+        Write-Host "  * Web App:       http://localhost:$frontendPort" -ForegroundColor Cyan
+        Write-Host "  * Backend API:   http://localhost:$backendPort" -ForegroundColor Cyan
+        Write-Host "  * WebSocket:     ws://localhost:$backendPort" -ForegroundColor Cyan
+        Write-Host "  * Health Check:  http://localhost:$backendPort/health/ready" -ForegroundColor Cyan
         Write-Host ""
 
         if ($SeparateWindows) {
             Write-Step "Opening Backend Server in new window..."
-            Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Tether Backend Server (:4000)' -ForegroundColor Cyan; pnpm --filter @tether/server dev"
+            Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Tether Backend Server (:$backendPort)' -ForegroundColor Cyan; pnpm --filter @tether/server dev"
             Write-Step "Opening Frontend Client in new window..."
-            Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Tether Web Client (:3001)' -ForegroundColor Green; pnpm --filter @tether/web dev"
+            Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Tether Web Client (:$frontendPort)' -ForegroundColor Green; pnpm --filter @tether/web dev"
             Write-Success "Both servers launched in dedicated terminal windows."
         } else {
             Write-Host "Press Ctrl+C to stop both servers." -ForegroundColor Gray
@@ -192,16 +203,16 @@ switch ($Target) {
 
     "server" {
         Write-Host "Backend API & WebSocket Server" -ForegroundColor Cyan
-        Write-Host "  * URL:    http://localhost:4000" -ForegroundColor Cyan
-        Write-Host "  * WS:     ws://localhost:4000" -ForegroundColor Cyan
-        Write-Host "  * Health: http://localhost:4000/health/ready" -ForegroundColor Cyan
+        Write-Host "  * URL:    http://localhost:$backendPort" -ForegroundColor Cyan
+        Write-Host "  * WS:     ws://localhost:$backendPort" -ForegroundColor Cyan
+        Write-Host "  * Health: http://localhost:$backendPort/health/ready" -ForegroundColor Cyan
         Write-Host ""
         & pnpm --filter @tether/server dev
     }
 
     "web" {
         Write-Host "Frontend Web Client (Next.js)" -ForegroundColor Green
-        Write-Host "  * URL: http://localhost:3001" -ForegroundColor Green
+        Write-Host "  * URL: http://localhost:$frontendPort" -ForegroundColor Green
         Write-Host ""
         & pnpm --filter @tether/web dev
     }

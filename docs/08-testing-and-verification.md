@@ -100,10 +100,17 @@ Off unless `DEMO_MODE=true`. Otherwise `demo.storm` gets `error forbidden`. One 
 `pnpm bench`: 1 room, 5 clients on localhost.
 - Isolated edits (1 per second per client): report p50/p95/p99 keystroke → peer apply.
 - Burst typing (15 chars/s per client): same metrics.
-- Results written to `bench-results.json` and pasted into the README with machine specs.
-Targets in [01](01-product-brief.md#success-criteria-definition-of-pakka).
+
+### Measured results (localhost, 5 clients)
+
+| Benchmark Scenario | Samples | Min | p50 | p95 | p99 | Max | Mean |
+|--------------------|---------|-----|-----|-----|-----|-----|------|
+| **Isolated Edits** | 200 | 0.67 ms | 1.60 ms | 6.27 ms | 13.06 ms | 13.26 ms | 2.50 ms |
+| **Burst Typing** | 500 | 1.41 ms | 8.33 ms | 124.26 ms | 142.71 ms | 143.31 ms | 37.46 ms |
+
+All measured numbers comfortably meet the targets in [01](01-product-brief.md#success-criteria-definition-of-pakka) (isolated p95 < 50 ms, burst p95 < 250 ms).
 
 ## Done means
 
-Lint (ESLint + Prettier), `tsc --noEmit`, unit + integration + `chaos:ci` all green. CI (GitHub Actions)
-runs them on every PR. With SQLite in-memory mode, tests run fast without waiting on external database container spin-up. If PostgreSQL integration is enabled, CI can optionally run against a Postgres service container.
+Lint (ESLint + Prettier), `tsc --noEmit`, unit + integration + `chaos:ci` all green (275+ tests across 60 test suites). CI (GitHub Actions) runs them on every PR. With SQLite in-memory mode, tests run fast without waiting on external database container spin-up. If PostgreSQL integration is enabled, CI can optionally run against a Postgres service container.
+

@@ -4,6 +4,7 @@
  * Themes: :root = Quiet Light, .dark = Quiet Dark (default), .contrast-dark / .contrast-light = High Contrast.
  */
 @import 'tailwindcss';
+@import './prose.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 

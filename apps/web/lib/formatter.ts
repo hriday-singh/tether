@@ -52,6 +52,13 @@ export async function formatCode(code: string, languageId: LanguageId): Promise<
           plugins: [parserMarkdown.default],
         });
       }
+      case 'json': {
+        try {
+          return JSON.stringify(JSON.parse(code), null, 2) + '\n';
+        } catch {
+          return beautifyIndentation(code, languageId);
+        }
+      }
       default:
         return beautifyIndentation(code, languageId);
     }

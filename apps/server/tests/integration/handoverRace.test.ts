@@ -288,17 +288,23 @@ describe('Host Handover Timing & Race Integration Tests', () => {
     const ws = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/dup-room`, ['collab.v1', token2]);
 
     let welcomeMsg: any = null;
-    ws.on('message', (data) => {
-      try {
-        const msg = JSON.parse(data.toString());
-        if (msg.t === 'welcome') {
-          welcomeMsg = msg;
-        }
-      } catch {}
+    const welcomePromise = new Promise<void>((resolve) => {
+      ws.on('message', (data) => {
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.t === 'welcome') {
+            welcomeMsg = msg;
+            resolve();
+          }
+        } catch {}
+      });
     });
 
     await new Promise((resolve) => ws.on('open', resolve));
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    await Promise.race([
+      welcomePromise,
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ]);
 
     expect(welcomeMsg).not.toBeNull();
     // Names in members array should be disambiguated: "Alice" and "alice (2)"

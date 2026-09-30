@@ -185,15 +185,21 @@ const ChatRow = memo(function ChatRow({
           </div>
         )}
         {/* Plain text only: React escapes it, and chat never renders HTML. */}
-        <p
-          className={cn(
-            'whitespace-pre-wrap break-words text-body text-foreground transition-ui',
-            row.state === 'sending' && 'opacity-60',
-            row.state === 'failed' && 'text-destructive',
-          )}
-        >
-          {row.text}
-        </p>
+        {row.text.startsWith('```') && row.text.endsWith('```') ? (
+          <pre className="rounded-lg border border-border/60 bg-card/80 p-2 font-mono text-micro overflow-x-auto whitespace-pre-wrap text-foreground">
+            {row.text.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '')}
+          </pre>
+        ) : (
+          <p
+            className={cn(
+              'whitespace-pre-wrap break-words text-body text-foreground transition-ui',
+              row.state === 'sending' && 'opacity-60',
+              row.state === 'failed' && 'text-destructive',
+            )}
+          >
+            {row.text}
+          </p>
+        )}
         {row.state === 'failed' && (
           <div className="flex items-center gap-1 text-micro text-destructive">
             <Icon icon={Alert02Icon} size={12} />

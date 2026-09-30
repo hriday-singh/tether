@@ -62,7 +62,7 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
 
 ## ADR-010: Database engine & persistence (SQLite for POC, PostgreSQL for Production Scale)
 - **Context:** The system needs durable persistence for room snapshots, merged update logs (flushed every 250 ms), member records, and gapless audit events. Keystroke sync itself is entirely in-memory (Yjs + WebSockets).
-- **Decision:** Use **SQLite** (via `better-sqlite3` with Write-Ahead Logging `WAL` mode) for local development, automated testing, and single-node Docker Compose deployments. Maintain a 1:1 mapped **PostgreSQL** schema ([06](06-data-model.md)) and repository pattern abstraction (`apps/server/src/repo/`) for enterprise multi-node production scale (AWS RDS PostgreSQL).
+- **Decision:** Use **SQLite** (via Node 22 built-in `node:sqlite` with Write-Ahead Logging `WAL` mode) for local development, automated testing, and single-node Docker Compose deployments. Maintain a 1:1 mapped **PostgreSQL** schema ([06](06-data-model.md)) and repository pattern abstraction (`apps/server/src/repo/`) for enterprise multi-node production scale (AWS RDS PostgreSQL).
 - **Consequences:** Zero external database dependencies for local development and CI; instant in-memory test runs; Docker Compose runs seamlessly on a single EC2 instance with a mounted volume; clean migration path to AWS RDS PostgreSQL when horizontal scaling is required. Acked edits remain 100% durable.
 
 ## ADR-011: IndexedDB local copy in v1

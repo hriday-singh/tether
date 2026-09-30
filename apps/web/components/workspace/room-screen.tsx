@@ -13,11 +13,11 @@ import { Field, Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { ThinkingOrb } from '@/components/ui/thinking-orb';
 import { api, ApiError, DisplayNameSchema, type RoomInfo } from '@/lib/api';
-import { useMounted, useStore } from '@/lib/hooks';
+import { useMediaQuery, useMounted, useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
 import { seedKey, sessions, type RoomSession } from '@/lib/session';
 import { createSyncClient, type SyncClient } from '@/lib/sync';
-import { CenterCard, RoomNotFound } from './gates';
+import { CenterCard, RoomNotFound, ScreenTooSmallGate } from './gates';
 import { Workspace } from './workspace';
 
 export function RoomScreen({ roomId }: { roomId: string }) {
@@ -27,9 +27,14 @@ export function RoomScreen({ roomId }: { roomId: string }) {
 }
 
 function RoomScreenClient({ roomId }: { roomId: string }) {
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
   const [session, setSession] = useState<RoomSession | null>(() => sessions.get(roomId));
   const [prefillName, setPrefillName] = useState<string>(() => sessions.get(roomId)?.name ?? sessions.lastName());
   const info = useQuery({ queryKey: ['room', roomId], queryFn: () => api.getRoom(roomId), retry: (n, e) => !(e instanceof ApiError) && n < 2 });
+
+  if (!isDesktop) {
+    return <ScreenTooSmallGate />;
+  }
 
   if (info.error instanceof ApiError && info.error.code === 'not_found') return <RoomNotFound roomId={roomId} />;
   if (!session) {

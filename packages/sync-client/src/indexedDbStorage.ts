@@ -4,13 +4,13 @@ const DB_NAME = 'tether_storage_v1';
 const STORE_NAME = 'snapshots';
 
 export interface StorageIDBFactory {
-  open(name: string, version?: number): any;
+  open(name: string, version?: number): IDBOpenDBRequest;
 }
 
 export interface StorageIDBDatabase {
   objectStoreNames: { contains(name: string): boolean };
-  createObjectStore(name: string, options?: any): any;
-  transaction(storeNames: any, mode?: any): any;
+  createObjectStore(name: string, options?: IDBObjectStoreParameters): IDBObjectStore;
+  transaction(storeNames: string | string[], mode?: IDBTransactionMode): IDBTransaction;
   close?(): void;
 }
 
@@ -29,7 +29,7 @@ export function getIndexedDBFactory(customFactory?: StorageIDBFactory): StorageI
     return customFactory;
   }
   if (typeof globalThis !== 'undefined' && 'indexedDB' in globalThis) {
-    return (globalThis as any).indexedDB as StorageIDBFactory;
+    return (globalThis as unknown as Record<string, unknown>).indexedDB as StorageIDBFactory;
   }
   return null;
 }

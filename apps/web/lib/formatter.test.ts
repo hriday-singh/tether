@@ -31,6 +31,12 @@ describe('formatCode', () => {
     expect(formatted).toContain('    System.out.println("Hello");');
   });
 
+  it('formats json cleanly', async () => {
+    const unformatted = '{"a":1,"b":[2,3],"c":{"d":true}}';
+    const formatted = await formatCode(unformatted, 'json');
+    expect(formatted).toBe('{\n  "a": 1,\n  "b": [\n    2,\n    3\n  ],\n  "c": {\n    "d": true\n  }\n}\n');
+  });
+
   it('returns empty/whitespace string unchanged', async () => {
     expect(await formatCode('', 'typescript')).toBe('');
     expect(await formatCode('   \n  ', 'c')).toBe('   \n  ');

@@ -41,7 +41,7 @@ export class SandboxedWorkerRunner {
   private watchdog: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
-    private readonly WorkerImpl: WorkerCtor = Worker,
+    private readonly WorkerImpl: WorkerCtor = typeof Worker !== 'undefined' ? Worker : (class DummyWorker {} as unknown as WorkerCtor),
     private readonly timeoutMs = RUN_TIMEOUT_MS,
   ) {}
 

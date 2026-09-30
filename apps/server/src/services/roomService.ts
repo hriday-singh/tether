@@ -44,7 +44,7 @@ export class RoomService {
     language?: string;
     createKey?: string | null;
   }): Promise<CreateRoomResult | { error: 'room_taken'; suggestion: string }> {
-    let slug = params.roomId ? params.roomId.toLowerCase().trim() : generateRoomSlug();
+    const slug = params.roomId ? params.roomId.toLowerCase().trim() : generateRoomSlug();
 
     if (!SLUG_REGEX.test(slug)) {
       throw new Error('Invalid roomId format. Must be 3-32 lowercase alphanumeric characters or hyphens.');

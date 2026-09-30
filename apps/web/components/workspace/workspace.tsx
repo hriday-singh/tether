@@ -2,20 +2,17 @@
 
 import {
   AlertCircleIcon,
-  BubbleChatIcon,
   Cancel01Icon,
   CodeIcon,
   Copy01Icon,
-  CpuIcon,
   Download04Icon,
   Home01Icon,
   MaximizeScreenIcon,
   MinimizeScreenIcon,
-  UserGroupIcon,
 } from '@hugeicons/core-free-icons';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { Button } from '@/components/ui/button';
 import { Kbd, Segmented, Skeleton, Tip } from '@/components/ui/controls';
@@ -28,12 +25,12 @@ import { useMediaQuery, useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
 import type { RoomSession } from '@/lib/session';
 import type { SyncClient } from '@/lib/sync';
-import { cn, isMac } from '@/lib/utils';
-import { ChatPanel } from './chat-panel';
+import { cn, isMac, randomId } from '@/lib/utils';
 import { CommandPalette } from './command-palette';
 import { createWorkspace, useWorkspace, WorkspaceProvider } from './context';
 import { DiagnosticsDrawer } from './drawer';
 import { DropZoneOverlay } from './drop-zone';
+import { ScreenTooSmallGate } from './gates';
 import { HostSheet } from './host-sheet';
 import { FollowController, OffscreenCursors } from './presence-overlays';
 import { PreviewPane } from './preview-pane';
@@ -74,23 +71,55 @@ function Shell() {
   const wide = useMediaQuery('(min-width: 1280px)');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const kicked = status.connection === 'kicked';
-  const showPreviewPane = wide && language.preview !== null && ui.previewOpen;
-  const showSidebar = ui.sidebarOpen;
+  const hasPreview = language.preview !== null;
+  const showPreviewPane = ui.zenMode ? hasPreview : wide && hasPreview && ui.previewOpen;
+  const showSidebar = !ui.zenMode && ui.sidebarOpen;
   const drawer = usePanelRef();
 
   useGlobalShortcuts();
+
+  // Automatically activate preview when switching to a previewable language (e.g. HTML, CSS, Markdown, JSON).
+  const prevLangRef = useRef(room.room.language);
+  useEffect(() => {
+    const prev = prevLangRef.current;
+    const current = room.room.language;
+    if (prev !== current) {
+      prevLangRef.current = current;
+      const currInfo = languageInfo(current);
+      if (currInfo.preview !== null) {
+        ws.ui.update((s) => ({
+          ...s,
+          previewOpen: true,
+          editorView: 'preview',
+        }));
+        ws.preview.set({ runId: randomId(4), scripts: false });
+      }
+    }
+  }, [room.room.language, ws]);
 
   // Sync the drawer panel with ui.drawerOpen, both ways.
   useEffect(() => {
     const p = drawer.current;
     if (!p) return;
-    if (ui.drawerOpen && p.isCollapsed()) p.expand();
-    if (!ui.drawerOpen && !p.isCollapsed()) p.collapse();
-  }, [ui.drawerOpen, drawer]);
+    if (!ui.zenMode && ui.drawerOpen && p.isCollapsed()) p.expand();
+    if ((ui.zenMode || !ui.drawerOpen) && !p.isCollapsed()) p.collapse();
+  }, [ui.zenMode, ui.drawerOpen, drawer]);
 
   const horizontalIds = ['editor'];
   if (showPreviewPane) horizontalIds.push('preview');
   if (showSidebar) horizontalIds.push('sidebar');
+
+  useEffect(() => {
+    if (!isDesktop) {
+      ws.client.pause();
+    } else {
+      ws.client.resume();
+    }
+  }, [isDesktop, ws.client]);
+
+  if (!isDesktop) {
+    return <ScreenTooSmallGate />;
+  }
 
   return (
     <div className={cn('flex h-dvh flex-col gap-2 bg-background p-2.5', ui.zenMode && 'p-0')}>
@@ -111,8 +140,16 @@ function Shell() {
       {kicked && <KickedBanner />}
 
       <main className="min-h-0 flex-1 relative">
-        {!isDesktop ? (
-          <MobileWorkspace kicked={kicked} />
+        {ui.zenMode ? (
+          <DesktopResizableLayout
+            kicked={kicked}
+            wide={wide}
+            showPreviewPane={showPreviewPane}
+            showSidebar={showSidebar}
+            horizontalIds={horizontalIds}
+            languagePreview={language.preview !== null}
+            drawer={drawer}
+          />
         ) : ui.maximizedPanel ? (
           <MaximizedPanelView
             kicked={kicked}
@@ -130,12 +167,14 @@ function Shell() {
           />
         )}
       </main>
-      {!ui.zenMode && (isDesktop ? <StatusBar /> : <MobileNavBar />)}
+      {!ui.zenMode && <StatusBar />}
 
       <CommandPalette />
       <HostSheet />
       <SettingsDialog
         open={ui.settings}
+        section={ui.settingsSection ?? 'appearance'}
+        onSectionChange={(sec) => ws.ui.update((s) => ({ ...s, settingsSection: sec }))}
         onOpenChange={(v) => ws.ui.update((s) => ({ ...s, settings: v }))}
         onLatencyChange={(ms) => ws.client.lab.setLatency(ms)}
       />
@@ -222,18 +261,20 @@ function DesktopEditorPanel({
               <span className="font-mono text-micro text-muted-foreground">({lang.label})</span>
             </div>
           )}
-          <div className="ml-auto flex items-center gap-1">
-            <Tip label="Maximize editor">
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                onClick={() => ws.maximizePanel('editor')}
-                aria-label="Maximize editor"
-              >
-                <Icon icon={MaximizeScreenIcon} size={14} />
-              </Button>
-            </Tip>
-          </div>
+          {!ui.zenMode && (
+            <div className="ml-auto flex items-center gap-1">
+              <Tip label="Maximize editor">
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => ws.maximizePanel('editor')}
+                  aria-label="Maximize editor"
+                >
+                  <Icon icon={MaximizeScreenIcon} size={14} />
+                </Button>
+              </Tip>
+            </div>
+          )}
         </div>
 
         <div className={cn('relative min-h-0 flex-1', !wide && ui.editorView === 'preview' && languagePreview && 'hidden')}>
@@ -272,6 +313,30 @@ function DesktopResizableLayout({
   const ui = useStore(ws.ui);
   const hLayout = useDefaultLayout({ id: `tether:layout:h:${horizontalIds.join('-')}`, panelIds: horizontalIds, storage });
   const vLayout = useDefaultLayout({ id: 'tether:layout:v', panelIds: ['main', 'drawer'], storage });
+
+  if (ui.zenMode) {
+    return (
+      <ResizableGroup key={`zen-${horizontalIds.join('-')}`} orientation="horizontal" defaultLayout={hLayout.defaultLayout} onLayoutChanged={hLayout.onLayoutChanged}>
+        <DesktopEditorPanel
+          kicked={kicked}
+          wide={wide}
+          languagePreview={languagePreview}
+          showPreviewPane={showPreviewPane}
+          showSidebar={false}
+        />
+        {showPreviewPane && (
+          <>
+            <ResizableHandle />
+            <ResizablePanel id="preview" minSize="20" defaultSize="50" collapsible>
+              <section aria-label="Live preview" className={card}>
+                <PreviewPane />
+              </section>
+            </ResizablePanel>
+          </>
+        )}
+      </ResizableGroup>
+    );
+  }
 
   return (
     <ResizableGroup orientation="vertical" defaultLayout={vLayout.defaultLayout} onLayoutChanged={vLayout.onLayoutChanged}>
@@ -327,128 +392,6 @@ function DesktopResizableLayout({
   );
 }
 
-function MobileWorkspace({ kicked }: { kicked: boolean }) {
-  const ws = useWorkspace();
-  const ui = useStore(ws.ui);
-  const room = useStore(ws.client.room);
-  const language = languageInfo(room.room.language);
-
-  return (
-    <div className="size-full min-h-0 flex-1 relative">
-      {ui.mobileTab === 'editor' && (
-        <section aria-label="Editor" className={cn(card, 'relative size-full')}>
-          {language.preview && (
-            <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/60 px-3">
-              <Segmented
-                aria-label="Editor or preview"
-                value={ui.editorView}
-                onValueChange={(v) => ws.ui.update((s) => ({ ...s, editorView: v }))}
-                options={[
-                  { value: 'code', label: 'Code' },
-                  { value: 'preview', label: 'Preview' },
-                ]}
-              />
-            </div>
-          )}
-          <div className={cn('relative min-h-0 flex-1', ui.editorView === 'preview' && language.preview && 'hidden')}>
-            <Editor readOnly={kicked} />
-            <OffscreenCursors />
-            <FollowController />
-          </div>
-          {ui.editorView === 'preview' && language.preview && (
-            <div className="min-h-0 flex-1">
-              <PreviewPane header={false} />
-            </div>
-          )}
-        </section>
-      )}
-
-      {ui.mobileTab === 'chat' && (
-        <section aria-label="Room chat" className={cn(card, 'relative size-full')}>
-          <ChatPanel active={ui.mobileTab === 'chat'} />
-        </section>
-      )}
-
-      {ui.mobileTab === 'activity' && (
-        <aside aria-label="People and activity" className={cn(card, 'relative size-full')}>
-          <Sidebar />
-        </aside>
-      )}
-
-      {ui.mobileTab === 'diagnostics' && (
-        <div className={cn(card, 'relative size-full')}>
-          <DiagnosticsDrawer />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MobileNavBar() {
-  const ws = useWorkspace();
-  const ui = useStore(ws.ui);
-  const rosterCount = useStore(ws.client.roster).length;
-  const unread = useStore(ws.chatUnread);
-
-  const tabs: Array<{
-    id: 'editor' | 'chat' | 'activity' | 'diagnostics';
-    label: string;
-    icon: typeof CodeIcon;
-    badge?: number;
-  }> = [
-    { id: 'editor', label: 'Editor', icon: CodeIcon },
-    { id: 'chat', label: 'Chat', icon: BubbleChatIcon, badge: unread },
-    { id: 'activity', label: 'Team', icon: UserGroupIcon, badge: rosterCount },
-    { id: 'diagnostics', label: 'Tools', icon: CpuIcon },
-  ];
-
-  return (
-    <nav
-      aria-label="Mobile workspace navigation"
-      className="flex h-12 shrink-0 items-center justify-around rounded-xl border border-border/60 bg-card/95 px-1 shadow-card backdrop-blur-md"
-    >
-      {tabs.map((tab) => {
-        const active = ui.mobileTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => {
-              ws.ui.update((s) => ({ ...s, mobileTab: tab.id }));
-              if (tab.id === 'chat') ws.chatUnread.set(0);
-            }}
-            className={cn(
-              'relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 text-caption font-medium transition-ui',
-              'min-h-[44px] touch-manipulation',
-              active
-                ? 'text-primary'
-                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-            )}
-          >
-            <div className="relative">
-              <Icon icon={tab.icon} size={18} />
-              {tab.badge !== undefined && tab.badge > 0 && (
-                <span
-                  className={cn(
-                    'absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none',
-                    tab.id === 'chat'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  )}
-                >
-                  {tab.badge > 99 ? '99+' : tab.badge}
-                </span>
-              )}
-            </div>
-            <span className="text-[11px] leading-tight">{tab.label}</span>
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
 
 function useGlobalShortcuts() {
   const ws = useWorkspace();

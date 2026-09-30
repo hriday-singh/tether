@@ -1,8 +1,10 @@
 import { HighlightStyle, syntaxHighlighting, syntaxTree, type LanguageSupport } from '@codemirror/language';
+import { linter, lintGutter } from '@codemirror/lint';
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import type { LanguageId } from '@/lib/languages';
+import { createLinterSource } from './linter';
 
 /** Language support loaded on demand per language (docs/07: code-split per language). */
 export function loadLanguage(id: LanguageId): Promise<LanguageSupport> {
@@ -33,6 +35,8 @@ export function loadLanguage(id: LanguageId): Promise<LanguageSupport> {
       ]).then(([clike, lang]) => new lang.LanguageSupport(lang.StreamLanguage.define(clike.csharp)));
     case 'markdown':
       return import('@codemirror/lang-markdown').then((m) => m.markdown());
+    case 'json':
+      return import('@codemirror/lang-json').then((m) => m.json());
     case 'sql':
       return import('@codemirror/lang-sql').then((m) => m.sql());
   }
@@ -53,7 +57,7 @@ export const quietTheme = EditorView.theme({
     fontFeatureSettings: "'tnum', 'zero'",
     overscrollBehavior: 'contain',
   },
-  '.cm-content': { caretColor: 'var(--primary)', padding: '12px 0' },
+  '.cm-content': { caretColor: 'var(--primary)', padding: '0.85em 0' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--primary)', borderLeftWidth: '2px' },
   '.cm-gutters': {
     backgroundColor: 'var(--editor-bg)',
@@ -61,7 +65,7 @@ export const quietTheme = EditorView.theme({
     border: 'none',
     borderRight: '1px solid var(--editor-gutter-border)',
   },
-  '.cm-lineNumbers .cm-gutterElement': { padding: '0 12px 0 16px', cursor: 'pointer' },
+  '.cm-lineNumbers .cm-gutterElement': { padding: '0 0.45em 0 0.9em', cursor: 'pointer' },
   '.cm-activeLine': { backgroundColor: 'var(--editor-active-line)' },
   '.cm-activeLineGutter': { backgroundColor: 'var(--editor-active-line)', color: 'var(--foreground)' },
   '.cm-selectionLayer': { zIndex: '0 !important' },
@@ -276,7 +280,89 @@ export const quietTheme = EditorView.theme({
     border: '1px solid var(--border)',
     borderRadius: '8px',
   },
+  '.cm-tooltip-lint': {
+    padding: '0',
+    backgroundColor: 'var(--popover)',
+    color: 'var(--popover-foreground)',
+    border: '1px solid var(--border)',
+    borderRadius: '8px',
+    boxShadow: 'var(--shadow-card)',
+    overflow: 'hidden',
+  },
+  '.cm-diagnostic': {
+    padding: '6px 10px',
+    fontSize: 'var(--text-caption, 12px)',
+    fontFamily: 'var(--font-sans)',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '6px',
+    borderLeft: '3px solid transparent',
+  },
+  '.cm-diagnostic-error': {
+    borderLeftColor: 'var(--destructive)',
+    backgroundColor: 'color-mix(in oklch, var(--destructive) 6%, transparent)',
+    color: 'var(--foreground)',
+  },
+  '.cm-diagnostic-warning': {
+    borderLeftColor: 'var(--warning)',
+    backgroundColor: 'color-mix(in oklch, var(--warning) 6%, transparent)',
+    color: 'var(--foreground)',
+  },
+  '.cm-lintRange-error': {
+    backgroundImage: 'none',
+    textDecoration: 'underline wavy var(--destructive)',
+    textUnderlineOffset: '3px',
+  },
+  '.cm-lintRange-warning': {
+    backgroundImage: 'none',
+    textDecoration: 'underline wavy var(--warning)',
+    textUnderlineOffset: '3px',
+  },
+  '.cm-lint-marker': {
+    width: '0.62em',
+    height: '0.62em',
+    borderRadius: '9999px',
+    display: 'block',
+    margin: 'auto',
+  },
+  '.cm-lint-marker-error': {
+    content: '""',
+    backgroundColor: 'var(--destructive)',
+    boxShadow: '0 0 0 0.18em color-mix(in oklch, var(--destructive) 25%, transparent)',
+  },
+  '.cm-lint-marker-warning': {
+    content: '""',
+    backgroundColor: 'var(--warning)',
+    boxShadow: '0 0 0 0.18em color-mix(in oklch, var(--warning) 25%, transparent)',
+  },
+  '.cm-gutter-lint': {
+    width: '1.4em',
+    border: 'none',
+  },
+  '.cm-gutter-lint .cm-gutterElement': {
+    padding: '0 !important',
+    display: 'flex !important',
+    alignItems: 'center !important',
+    justifyContent: 'center !important',
+  },
 });
+
+/** Dynamic theme extension configuring code font size so CodeMirror internal line layout measures accurately. */
+export function editorFontSizeTheme(sizePx: number): Extension {
+  return EditorView.theme({
+    '&': {
+      fontSize: `${sizePx}px`,
+    },
+  });
+}
+
+/** Returns CodeMirror lint extension with debounced Lezer/specialized diagnostics for this language. */
+export function createLinterExtension(langId: LanguageId): Extension {
+  return [
+    linter(createLinterSource(langId), { delay: 250 }),
+    lintGutter(),
+  ];
+}
 
 export const quietHighlight = syntaxHighlighting(
   HighlightStyle.define([

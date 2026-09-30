@@ -24,7 +24,7 @@ import { languageInfo } from '@/lib/languages';
 import { loadPreferences } from '@/lib/prefs';
 import { useWorkspace } from '../context';
 import { collab, peersFacet, toggleLineHighlight, type PeerInfo } from './collab';
-import { bracketColors, loadLanguage, quietHighlight, quietTheme } from './setup';
+import { bracketColors, createLinterExtension, editorFontSizeTheme, loadLanguage, quietHighlight, quietTheme } from './setup';
 
 function peersOf(roster: readonly Member[]): ReadonlyMap<string, PeerInfo> {
   return new Map(roster.map((m) => [m.id, { name: m.name, colorIndex: m.colorIndex }]));
@@ -42,6 +42,7 @@ export default function Editor({ readOnly = false }: { readOnly?: boolean }) {
   const roster = useStore(client.roster);
   const language = useStore(client.room).room.language;
   const c = useRef({
+    fontSize: new Compartment(),
     language: new Compartment(),
     peers: new Compartment(),
     gutter: new Compartment(),
@@ -49,6 +50,7 @@ export default function Editor({ readOnly = false }: { readOnly?: boolean }) {
     tabs: new Compartment(),
     brackets: new Compartment(),
     readOnly: new Compartment(),
+    linter: new Compartment(),
   }).current;
 
   // Mount once per client.
@@ -61,6 +63,7 @@ export default function Editor({ readOnly = false }: { readOnly?: boolean }) {
       state: EditorState.create({
         doc: client.text.toString(),
         extensions: [
+          c.fontSize.of(editorFontSizeTheme(prefs.editorFontSize)),
           c.gutter.of(prefs.lineNumbers ? [lineNumbers(gutterHandlers(ws)), highlightActiveLineGutter()] : []),
           highlightActiveLine(),
           drawSelection(),
@@ -76,6 +79,7 @@ export default function Editor({ readOnly = false }: { readOnly?: boolean }) {
           c.tabs.of([EditorState.tabSize.of(prefs.tabSize), indentUnit.of(' '.repeat(prefs.tabSize))]),
           c.wrap.of(prefs.wordWrap ? EditorView.lineWrapping : []),
           c.language.of([]),
+          c.linter.of(createLinterExtension(languageInfo(language).id)),
           c.readOnly.of([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]),
           yCollab(client.text, null, { undoManager }),
           c.peers.of(peersFacet.of(peersOf(client.roster.get()))),
@@ -132,7 +136,9 @@ export default function Editor({ readOnly = false }: { readOnly?: boolean }) {
 
   useEffect(() => {
     let cancelled = false;
-    void loadLanguage(languageInfo(language).id).then((support) => {
+    const langId = languageInfo(language).id;
+    reconfigure(c.linter, createLinterExtension(langId));
+    void loadLanguage(langId).then((support) => {
       if (!cancelled) reconfigure(c.language, support);
     });
     return () => {
@@ -156,6 +162,14 @@ export default function Editor({ readOnly = false }: { readOnly?: boolean }) {
     () => reconfigure(c.readOnly, [EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]),
     [readOnly], // eslint-disable-line react-hooks/exhaustive-deps
   );
+  useEffect(() => {
+    reconfigure(c.fontSize, editorFontSizeTheme(prefs.editorFontSize));
+    ws.view.current?.requestMeasure();
+    const id = requestAnimationFrame(() => {
+      ws.view.current?.requestMeasure();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [prefs.editorFontSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div

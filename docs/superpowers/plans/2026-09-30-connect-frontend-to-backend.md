@@ -46,7 +46,7 @@
   - `SyncClientOptions.onEvent?: (event: AuditEvent) => void`
   - `SyncClient.prototype.command(cmd: ClientControlMessage & { rid: string }): Promise<void>`
 
-- [ ] **Step 1: Write unit tests in `packages/sync-client/src/syncClient.test.ts`**
+- [x] **Step 1: Write unit tests in `packages/sync-client/src/syncClient.test.ts`**
   Add tests verifying:
   1. Inbound `FRAME_KINDS.UPDATE` with non-empty `awarenessUpdate` triggers `onAwarenessUpdate`.
   2. Inbound control messages:
@@ -55,11 +55,11 @@
      - `t: 'ok'` with matching `rid` resolves pending `command(cmd)`.
      - `t: 'error'` with matching `rid` rejects pending `command(cmd)`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/sync-client test`
   Expected: FAIL on new command and awareness tests.
 
-- [ ] **Step 3: Implement awareness handling & command dispatch in `syncClient.ts`**
+- [x] **Step 3: Implement awareness handling & command dispatch in `syncClient.ts`**
   - Add optional callbacks to `SyncClientOptions`: `onAwarenessUpdate`, `onRoomUpdate`, `onEvent`.
   - Maintain `pendingCommands = new Map<string, { resolve: () => void; reject: (err: Error) => void; timer: NodeJS.Timeout }>()`.
   - In `handleBinaryFrame`: if `frame.awarenessUpdate?.byteLength > 0`, call `this.onAwarenessUpdate?.(frame.awarenessUpdate)`.
@@ -67,11 +67,11 @@
   - Implement `command(cmd)`: send control message and return Promise with 5,000ms timeout.
   - In `destroy()`: reject any pending command promises and clear timers.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/sync-client test`
   Expected: PASS
 
-- [ ] **Step 5: Build package**
+- [x] **Step 5: Build package**
   Run: `pnpm --filter @tether/sync-client build:pkg`
 
 ---
@@ -90,7 +90,7 @@
   - `fetchApi: Api` exported in `apps/web/lib/api/fetch-client.ts`
   - Dynamic export `api: Api` in `apps/web/lib/api/index.ts` selecting `fetchApi` when `NEXT_PUBLIC_SYNC_MODE === 'server'`.
 
-- [ ] **Step 1: Write unit tests in `apps/web/lib/api/fetch-client.test.ts`**
+- [x] **Step 1: Write unit tests in `apps/web/lib/api/fetch-client.test.ts`**
   Mock global `fetch` with Vitest and test:
   1. `createRoom`: sends `POST /api/rooms` with body, `Idempotency-Key` header, returns `JoinResult`, handles 409 `room_taken` with suggestion.
   2. `getRoom`: sends `GET /api/rooms/:id`, returns `RoomInfo`, handles 404 with `ApiError('not_found')`.
@@ -98,11 +98,11 @@
   4. `events`: sends `GET /api/rooms/:id/events` with `Authorization: Bearer <token>`, returns `EventsPage`.
   5. `admission`: sends `GET /api/rooms/:id/admission` with `Authorization: Bearer <token>`, returns `AdmissionStatus`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/web test lib/api/fetch-client.test.ts`
   Expected: FAIL (file does not exist).
 
-- [ ] **Step 3: Implement `fetchApi` in `apps/web/lib/api/fetch-client.ts`**
+- [x] **Step 3: Implement `fetchApi` in `apps/web/lib/api/fetch-client.ts`**
   - Read `NEXT_PUBLIC_API_URL || 'http://localhost:4000'`.
   - Implement standard request helper translating non-2xx responses into `ApiError` instances matching `ApiErrorCode`.
   - Implement `createRoom`, `getRoom`, `joinRoom`, `events`, `admission`.
@@ -120,7 +120,7 @@
     export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE !== 'false';
     ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/web test lib/api/fetch-client.test.ts`
   Expected: PASS
 
@@ -144,7 +144,7 @@
   - `ServerSyncClient` implementing `SyncClient`
   - `createSyncClient` updated to return `new ServerSyncClient(opts)` when `NEXT_PUBLIC_SYNC_MODE === 'server'`.
 
-- [ ] **Step 1: Write unit tests in `apps/web/lib/sync/server-sync-client.test.ts`**
+- [x] **Step 1: Write unit tests in `apps/web/lib/sync/server-sync-client.test.ts`**
   Test:
   1. Instantiation creates `doc`, `text`, `awareness`, and reactive stores (`status`, `stats`, `roster`, `room`, `presence`).
   2. Awareness bridge: local awareness changes invoke `syncClient.queueAwarenessUpdate`.
@@ -153,11 +153,11 @@
   5. `command`: forwards commands with UUID `rid` to protocol client.
   6. `leave` and `destroy`: cleanup sockets and local listeners.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/web test lib/sync/server-sync-client.test.ts`
   Expected: FAIL.
 
-- [ ] **Step 3: Implement `ServerSyncClient` in `apps/web/lib/sync/server-sync-client.ts`**
+- [x] **Step 3: Implement `ServerSyncClient` in `apps/web/lib/sync/server-sync-client.ts`**
   - Implement full `SyncClient` interface from `types.ts`.
   - Connect `IndexeddbPersistence` if running in browser environment.
   - Forward local doc updates and awareness updates to `ProtocolSyncClient`.
@@ -180,7 +180,7 @@
     }
     ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/web test lib/sync/server-sync-client.test.ts`
   Expected: PASS
 
@@ -191,18 +191,18 @@
 **Files:**
 - Inspect: All packages
 
-- [ ] **Step 1: Monorepo test suite**
+- [x] **Step 1: Monorepo test suite**
   Run: `pnpm test`
   Expected: All tests pass across `@tether/shared`, `@tether/server`, `@tether/sync-client`, `@tether/web`, and `@tether/chaos`.
 
-- [ ] **Step 2: TypeScript compilation**
+- [x] **Step 2: TypeScript compilation**
   Run: `pnpm typecheck`
   Expected: Clean compilation with 0 errors across all workspaces.
 
-- [ ] **Step 3: Lint check**
+- [x] **Step 3: Lint check**
   Run: `pnpm lint`
   Expected: Clean lint run.
 
-- [ ] **Step 4: Integration verification**
+- [x] **Step 4: Integration verification**
   Run chaos tests: `pnpm chaos:ci`
   Expected: Convergence verified under network faults.

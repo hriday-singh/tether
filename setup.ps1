@@ -34,10 +34,25 @@ param(
 
     [string]$DatabaseUrl = '',
 
+    [string]$BackendPort = '',
+
+    [string]$FrontendPort = '',
+
+    [string]$Port = '',
+
+    [string]$WebPort = '',
+
     [switch]$NonInteractive,
 
     [switch]$SkipLaunch
 )
+
+if ([string]::IsNullOrEmpty($BackendPort) -and -not [string]::IsNullOrEmpty($Port)) {
+    $BackendPort = $Port
+}
+if ([string]::IsNullOrEmpty($FrontendPort) -and -not [string]::IsNullOrEmpty($WebPort)) {
+    $FrontendPort = $WebPort
+}
 
 $ErrorActionPreference = 'Stop'
 
@@ -171,7 +186,38 @@ if ($Database -eq "postgres") {
     Write-Success "PostgreSQL URL: $DatabaseUrl"
 }
 
-# 3. Environment File Configuration (.env)
+# 3. Port Configuration
+if ([string]::IsNullOrEmpty($BackendPort)) {
+    $defaultBp = "4000"
+    $envPathProbe = Join-Path $PSScriptRoot ".env"
+    if (Test-Path $envPathProbe) {
+        $pMatch = Get-Content $envPathProbe | Select-String -Pattern "^PORT=(\d+)" | Select-Object -First 1
+        if ($pMatch) { $defaultBp = $pMatch.Matches.Groups[1].Value }
+    }
+    $BackendPort = Prompt-Text -PromptText "Enter backend server port" -DefaultValue $defaultBp
+}
+if ($BackendPort -notmatch '^\d+$') {
+    Write-Warn "Invalid backend port '$BackendPort'. Falling back to 4000."
+    $BackendPort = "4000"
+}
+Write-Success "Backend port selected: $BackendPort"
+
+if ([string]::IsNullOrEmpty($FrontendPort)) {
+    $defaultFp = "3001"
+    $envPathProbe = Join-Path $PSScriptRoot ".env"
+    if (Test-Path $envPathProbe) {
+        $wpMatch = Get-Content $envPathProbe | Select-String -Pattern "^WEB_PORT=(\d+)" | Select-Object -First 1
+        if ($wpMatch) { $defaultFp = $wpMatch.Matches.Groups[1].Value }
+    }
+    $FrontendPort = Prompt-Text -PromptText "Enter frontend web client port" -DefaultValue $defaultFp
+}
+if ($FrontendPort -notmatch '^\d+$') {
+    Write-Warn "Invalid frontend port '$FrontendPort'. Falling back to 3001."
+    $FrontendPort = "3001"
+}
+Write-Success "Frontend port selected: $FrontendPort"
+
+# 4. Environment File Configuration (.env)
 Write-Step "Configuring environment (.env)..."
 $envPath = Join-Path $PSScriptRoot ".env"
 $envExamplePath = Join-Path $PSScriptRoot ".env.example"
@@ -223,9 +269,25 @@ if ($Database -eq "sqlite") {
     }
 }
 
-# Ensure PORT defaults
-if ($envContent -match "PORT=3000" -and $envContent -match "NEXT_PUBLIC_API_URL=http://localhost:4000") {
-    $envContent = $envContent -replace "PORT=3000", "PORT=4000"
+# Update Ports in .env
+$envContent = $envContent -replace "(?m)^PORT=.*", "PORT=$BackendPort"
+$envContent = $envContent -replace "(?m)^SERVER_PORT=.*", "SERVER_PORT=$BackendPort"
+if ($envContent -match "(?m)^WEB_PORT=") {
+    $envContent = $envContent -replace "(?m)^WEB_PORT=.*", "WEB_PORT=$FrontendPort"
+} else {
+    $envContent += "`nWEB_PORT=$FrontendPort"
+}
+$envContent = $envContent -replace "(?m)^NEXT_PUBLIC_API_URL=.*", "NEXT_PUBLIC_API_URL=http://localhost:$BackendPort"
+$envContent = $envContent -replace "(?m)^NEXT_PUBLIC_WS_URL=.*", "NEXT_PUBLIC_WS_URL=ws://localhost:$BackendPort"
+
+# Update ALLOWED_ORIGINS to ensure frontend port is permitted
+$originsMatch = $envContent | Select-String -Pattern "(?m)^ALLOWED_ORIGINS=(.*)" | Select-Object -First 1
+if ($originsMatch) {
+    $currentOrigins = $originsMatch.Matches.Groups[1].Value
+    if ($currentOrigins -notlike "*localhost:$FrontendPort*") {
+        $newOrigins = "$currentOrigins,http://localhost:$FrontendPort,http://127.0.0.1:$FrontendPort"
+        $envContent = $envContent -replace "(?m)^ALLOWED_ORIGINS=.*", "ALLOWED_ORIGINS=$newOrigins"
+    }
 }
 
 [System.IO.File]::WriteAllText($envPath, $envContent, [System.Text.Encoding]::UTF8)
@@ -345,8 +407,8 @@ Write-Header "Setup Complete!"
 Write-Host "Summary of Configuration:" -ForegroundColor Green
 Write-Host "  - Mode:            $Mode"
 Write-Host "  - Database:        $Database"
-Write-Host "  - Backend Server:  http://localhost:4000 (WebSocket: ws://localhost:4000)"
-Write-Host "  - Frontend Client: http://localhost:3001 (or :3000 in Docker)"
+Write-Host "  - Backend Server:  http://localhost:$BackendPort (WebSocket: ws://localhost:$BackendPort)"
+Write-Host "  - Frontend Client: http://localhost:$FrontendPort (or :3000 in Docker)"
 Write-Host "  - Environment:     .env"
 Write-Host ""
 

@@ -234,6 +234,14 @@ describe('Bot Storm Spawner WebSocket Integration', () => {
       webSocketFactory: (url, protocols) => new WebSocket(url, protocols),
     });
     await hostClient.connect();
+    await new Promise<void>((resolve) => {
+      const interval = setInterval(() => {
+        if (hostClient.status === 'connected') {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 25);
+    });
 
     const guestToken = await joinService.issueRoomToken({
       roomId: 'nonhost-room',

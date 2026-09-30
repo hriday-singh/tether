@@ -8,6 +8,7 @@ import {
   Delete02Icon,
   BotIcon,
   ArrowRight01Icon,
+  Share08Icon,
 } from '@hugeicons/core-free-icons';
 import { STORM_MAX_BOTS, STORM_MAX_SECONDS, THROTTLE_BURST } from '@tether/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -21,7 +22,7 @@ import { ThinkingOrb } from '@/components/ui/thinking-orb';
 import { toast } from '@/components/ui/toaster';
 import { usePrefs } from '@/components/providers';
 import { DEMO_MODE } from '@/lib/api';
-import type { ConsoleEntry } from '@/lib/console-store';
+import { formatConsoleSnippet, type ConsoleEntry } from '@/lib/console-store';
 import { useNow, useStore } from '@/lib/hooks';
 import { CommandError, type StormSnapshot } from '@/lib/sync';
 import { SandboxedWorkerRunner } from '@/lib/worker-runner';
@@ -128,6 +129,27 @@ function ConsolePanel() {
     );
   };
 
+  const shareEntry = async (entry: ConsoleEntry) => {
+    try {
+      await ws.client.sendChat(crypto.randomUUID(), formatConsoleSnippet(entry));
+      toast.success('Console entry shared to room chat');
+    } catch {
+      toast.error('Failed to share to chat');
+    }
+  };
+
+  const shareAll = async () => {
+    if (shown.length === 0) return;
+    const lines = shown.slice(-10).map((e) => `[${e.level.toUpperCase()}] ${e.text}`).join('\n');
+    const msg = `\`\`\`text\n[Console Export (${shown.length} logs)]\n${lines}\n\`\`\``;
+    try {
+      await ws.client.sendChat(crypto.randomUUID(), msg);
+      toast.success('Recent logs shared to room chat');
+    } catch {
+      toast.error('Failed to share to chat');
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-2 border-b border-border/60 px-2 py-1.5">
@@ -136,6 +158,13 @@ function ConsolePanel() {
             <Icon icon={Delete02Icon} size={14} />
           </Button>
         </Tip>
+        {shown.length > 0 && (
+          <Tip label="Share recent logs to chat">
+            <Button size="icon-xs" variant="ghost" aria-label="Share recent logs to chat" onClick={() => void shareAll()}>
+              <Icon icon={Share08Icon} size={13} />
+            </Button>
+          </Tip>
+        )}
         <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter console" aria-label="Filter console" className="h-7 max-w-56 rounded-lg text-caption" />
         <Segmented<Filter>
           aria-label="Severity"
@@ -152,12 +181,25 @@ function ConsolePanel() {
       <div role="log" aria-label="Console output" className="min-h-0 flex-1 overflow-y-auto font-mono text-caption leading-normal">
         {shown.length === 0 && <p className="p-3 text-muted-foreground">Console output from Run and the live preview shows up here.</p>}
         {shown.map((e) => (
-          <div key={e.id} className={cn('flex gap-3 border-b border-border/40 px-3 py-1', LEVEL_CLASS[e.level])}>
-            <span className="shrink-0 text-muted-foreground tabular">{formatClock(e.at)}</span>
-            {e.level === 'warn' && <Icon icon={AlertCircleIcon} size={13} className="mt-0.5" />}
-            {e.level === 'error' && <Icon icon={CancelCircleIcon} size={13} className="mt-0.5" />}
-            {e.level === 'input' && <Icon icon={ArrowRight01Icon} size={13} className="mt-0.5" />}
-            <span className="min-w-0 break-words whitespace-pre-wrap">{e.text}</span>
+          <div key={e.id} className={cn('group flex items-start gap-3 border-b border-border/40 px-3 py-1 hover:bg-muted/20 transition-colors', LEVEL_CLASS[e.level])}>
+            <span className="shrink-0 text-muted-foreground tabular mt-0.5">{formatClock(e.at)}</span>
+            {e.level === 'warn' && <Icon icon={AlertCircleIcon} size={13} className="mt-0.5 shrink-0" />}
+            {e.level === 'error' && <Icon icon={CancelCircleIcon} size={13} className="mt-0.5 shrink-0" />}
+            {e.level === 'input' && <Icon icon={ArrowRight01Icon} size={13} className="mt-0.5 shrink-0" />}
+            <span className="min-w-0 flex-1 break-words whitespace-pre-wrap">{e.text}</span>
+            <div className="ml-auto hidden group-hover:flex items-center gap-1 shrink-0">
+              <Tip label="Share to room chat">
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  aria-label="Share to room chat"
+                  className="h-5 w-5 text-muted-foreground hover:text-foreground"
+                  onClick={() => void shareEntry(e)}
+                >
+                  <Icon icon={Share08Icon} size={12} />
+                </Button>
+              </Tip>
+            </div>
           </div>
         ))}
         <div ref={bottom} />
@@ -339,7 +381,7 @@ function StormControls({
         <Label htmlFor="storm-secs">
           Duration <span className="font-mono tabular">{seconds}s</span>
         </Label>
-        <Slider id="storm-secs" min={10} max={STORM_MAX_SECONDS} step={5} value={[seconds]} onValueChange={([v]) => setSeconds(v ?? 10)} aria-label="Duration in seconds" />
+        <Slider id="storm-secs" min={1} max={STORM_MAX_SECONDS} step={1} value={[seconds]} onValueChange={([v]) => setSeconds(v ?? 1)} aria-label="Duration in seconds" />
       </div>
       <label className="flex items-center justify-between gap-2 text-caption">
         Inject faults (jitter, reorder, stalls)

@@ -14,11 +14,12 @@ This file provides project-specific context and commands for Anthropic Claude Co
 - **Docker Compose**: `docker compose up -d` (or `docker compose --profile postgres up -d`)
 
 ### Verification & Testing
-- **Run All Tests**: `pnpm test`
+- **Run All Tests**: `pnpm test` (275+ tests across 60 suites)
 - **Typecheck**: `pnpm typecheck`
 - **Lint**: `pnpm lint`
 - **Chaos Tests**: `pnpm chaos:ci`
-- **Build Packages**: `pnpm build:pkg` (builds `@tether/shared` to `dist/`)
+- **Latency Benchmarks**: `pnpm bench`
+- **Build Packages**: `pnpm build:pkg` (builds `@tether/shared` and `@tether/sync-client` to `dist/`)
 
 ---
 
@@ -63,4 +64,4 @@ Template: `.env.example`
 2. **Never Run Migrations Automatically**: Output migration SQL/files and explain changes to the human operator.
 3. **Strict TypeScript**: No `any` — use `unknown` with type guards or define explicit interfaces.
 4. **File Length**: No single file should exceed 700 lines; keep components and services modular.
-5. **Shared Package Compilation**: When modifying `packages/shared`, always compile via `pnpm --filter @tether/shared build:pkg`.
+5. **Shared Package Compilation**: When modifying `packages/shared` or `packages/sync-client`, always compile via `pnpm build:pkg` (or `pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg`).

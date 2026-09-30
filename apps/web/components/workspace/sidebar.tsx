@@ -166,11 +166,11 @@ function SidebarTabsHeader({
       onWheel={handleWheel}
       className="flex items-center justify-between gap-2 border-b border-border/60 p-2"
     >
-      {/* Four tabs overflow a narrow sidebar: hover on the edge or scroll with wheel to pan; active tab auto-scrolls. */}
+      {/* Four tabs overflow a narrow sidebar: hover on the edge or scroll with wheel to pan; active tab auto-scrolls; expands on wider panels. */}
       <TabsList
         ref={listRef}
         aria-label="Sidebar"
-        className="flex min-w-0 flex-1 overflow-x-auto rounded-full bg-muted p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0"
+        className="flex min-w-0 flex-1 overflow-x-auto rounded-full bg-muted p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:flex-1 [&>*]:justify-center [&>*]:min-w-fit"
       >
         <TabsTrigger value="people">
           People <span className="tabular text-muted-foreground">{count}</span>

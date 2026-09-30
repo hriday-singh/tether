@@ -27,9 +27,11 @@ export function Toaster() {
         unstyled: true,
         classNames: {
           toast:
-            'flex w-(--width) items-start gap-2.5 rounded-xl border border-border bg-popover p-3 text-body text-popover-foreground shadow-overlay',
-          title: 'font-medium',
-          description: 'text-caption text-muted-foreground',
+            'flex w-(--width) items-start gap-3 rounded-xl border border-border bg-popover p-3 text-body text-popover-foreground shadow-overlay',
+          icon: 'flex size-5 shrink-0 items-center justify-center',
+          content: 'flex flex-col gap-0.5 flex-1 min-w-0',
+          title: 'font-medium leading-5',
+          description: 'text-caption text-muted-foreground leading-normal',
           actionButton:
             'ml-auto h-7 shrink-0 rounded-lg bg-primary px-2.5 text-caption font-medium text-primary-foreground',
           cancelButton: 'h-7 shrink-0 rounded-lg bg-muted px-2.5 text-caption',

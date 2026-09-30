@@ -104,7 +104,7 @@ export class BotStormManager {
       }
 
       // Small pause for updates to propagate and persist
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 400));
 
       for (const bot of activeStorm.bots) {
         bot.client.destroy();
@@ -161,7 +161,7 @@ export class BotStormManager {
           url: `ws://127.0.0.1:${options.port}/ws/rooms/${options.roomId}`,
           token,
           doc: botDoc,
-          webSocketFactory: (url, protocols) => {
+          webSocketFactory: (url: string, protocols?: string | string[]) => {
             if (options.faults) {
               return new FaultyWebSocket(url, protocols, {
                 transportOptions: { minLatencyMs: 15, maxLatencyMs: 100 },
@@ -169,7 +169,7 @@ export class BotStormManager {
             }
             return new WebSocket(url, protocols);
           },
-          onAwarenessUpdate: (update) => {
+          onAwarenessUpdate: (update: Uint8Array) => {
             awarenessProtocol.applyAwarenessUpdate(botAwareness, update, 'server');
           },
         });

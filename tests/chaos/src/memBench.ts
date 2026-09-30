@@ -132,7 +132,7 @@ async function main(): Promise<void> {
       token,
       doc,
       batchWindowMs: 30,
-      webSocketFactory: (url, protocols) => new WebSocket(url, protocols),
+      webSocketFactory: (url: string, protocols?: string | string[]) => new WebSocket(url, protocols),
     });
     clients.push({ client, doc, text: doc.getText('codemirror') });
     client.connect();

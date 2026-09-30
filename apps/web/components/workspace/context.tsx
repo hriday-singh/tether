@@ -17,6 +17,7 @@ export type SidebarTab = 'people' | 'chat' | 'activity' | 'scratchpad';
 export interface UIState {
   palette: false | 'commands' | 'theme';
   settings: boolean;
+  settingsSection?: 'appearance' | 'editor' | 'collab' | 'network';
   shortcuts: boolean;
   hostSheet: boolean;
   drawerOpen: boolean;
@@ -82,6 +83,7 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
     {
       palette: false,
       settings: false,
+      settingsSection: 'appearance',
       shortcuts: false,
       hostSheet: false,
       drawerOpen: false,
@@ -138,7 +140,7 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
       const language = languageInfo(client.room.get().room.language);
       if (language.preview === 'html') {
         preview.set({ runId: randomId(4), scripts: true });
-        ui.update((s) => ({ ...s, editorView: 'preview' }));
+        ui.update((s) => ({ ...s, previewOpen: true, editorView: 'preview' }));
         consoleStore.push('info', 'Preview reloaded with scripts enabled.', 'system');
         return;
       }

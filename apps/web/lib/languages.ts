@@ -11,16 +11,19 @@ export const LANGUAGE_IDS = [
   'csharp',
   'java',
   'markdown',
+  'json',
   'sql',
 ] as const;
 export type LanguageId = (typeof LANGUAGE_IDS)[number];
+
+export type PreviewMode = 'html' | 'css' | 'markdown' | 'json' | null;
 
 export interface LanguageInfo {
   id: LanguageId;
   label: string;
   ext: string;
-  /** Live preview in the sandboxed iframe. */
-  preview: 'html' | 'css' | null;
+  /** Live preview mode (iframe for html/css, rendered markdown, or collapsible json tree). */
+  preview: PreviewMode;
   /** Runs in the Web Worker runner (Run button, 5 s watchdog). */
   runnable: boolean;
 }
@@ -37,7 +40,8 @@ export const LANGUAGES: Record<LanguageId, LanguageInfo> = {
   cpp: { id: 'cpp', label: 'C++', ext: 'cpp', preview: null, runnable: false },
   csharp: { id: 'csharp', label: 'C#', ext: 'cs', preview: null, runnable: false },
   java: { id: 'java', label: 'Java', ext: 'java', preview: null, runnable: false },
-  markdown: { id: 'markdown', label: 'Markdown', ext: 'md', preview: null, runnable: false },
+  markdown: { id: 'markdown', label: 'Markdown', ext: 'md', preview: 'markdown', runnable: false },
+  json: { id: 'json', label: 'JSON', ext: 'json', preview: 'json', runnable: false },
   sql: { id: 'sql', label: 'SQL', ext: 'sql', preview: null, runnable: false },
 };
 
@@ -62,5 +66,6 @@ export const STARTER_CODE: Record<LanguageId, string> = {
   csharp: `// Tether — shared C# buffer\nusing System;\n\nnamespace Tether {\n    class Program {\n        static void Main(string[] args) {\n            Console.WriteLine("Hello, Tether!");\n        }\n    }\n}\n`,
   java: `// Tether — shared Java buffer\npublic class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, Tether!");\n    }\n}\n`,
   markdown: `# Tether notes\n\n- Edit together\n- Nothing gets lost\n`,
+  json: `{\n  "project": "Tether",\n  "version": "1.0.0",\n  "collaborative": true,\n  "features": [\n    "crdt-sync",\n    "sandboxed-execution",\n    "multi-format-preview",\n    "in-browser-linter"\n  ]\n}\n`,
   sql: `SELECT id, name\nFROM members\nWHERE room_id = 'demo'\nORDER BY joined_at;\n`,
 };

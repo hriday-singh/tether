@@ -3,7 +3,7 @@ import { TokenBucket } from './tokenBucket.js';
 
 describe('TokenBucket', () => {
   it('initializes with burst capacity and handles constructor errors', () => {
-    let now = 1000;
+    const now = 1000;
     const bucket = new TokenBucket(5, 5, () => now);
     expect(bucket.peek(now)).toBe(5);
 
@@ -12,7 +12,7 @@ describe('TokenBucket', () => {
   });
 
   it('allows consuming tokens up to burst and rejects when exhausted', () => {
-    let now = 1000;
+    const now = 1000;
     const bucket = new TokenBucket(5, 3, () => now);
 
     expect(bucket.take(2, now)).toBe(true);
@@ -62,7 +62,7 @@ describe('TokenBucket', () => {
   });
 
   it('resets to burst capacity correctly', () => {
-    let now = 1000;
+    const now = 1000;
     const bucket = new TokenBucket(5, 5, () => now);
     bucket.take(5, now);
     expect(bucket.peek(now)).toBe(0);

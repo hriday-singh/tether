@@ -1,42 +1,23 @@
 'use client';
 
-import {
-  Activity01Icon,
-  BubbleChatIcon,
-  BracketsIcon,
-  BrowserIcon,
-  CheckmarkCircle02Icon,
-  CodeIcon,
-  Copy01Icon,
-  Download04Icon,
-  HighlighterIcon,
-  KeyboardIcon,
-  Link01Icon,
-  PaintBoardIcon,
-  PlayIcon,
-  Search01Icon,
-  Settings01Icon,
-  SidebarBottomIcon,
-  SlidersHorizontalIcon,
-  UserGroupIcon,
-  ViewIcon,
-  Wifi01Icon,
-} from '@hugeicons/core-free-icons';
-import { openSearchPanel } from '@codemirror/search';
+import { CheckmarkCircle02Icon, Settings01Icon } from '@hugeicons/core-free-icons';
 import { Dialog as D } from 'radix-ui';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Kbd } from '@/components/ui/controls';
+import { Kbd, Tip } from '@/components/ui/controls';
 import { Icon } from '@/components/ui/icon';
-import { toast } from '@/components/ui/toaster';
 import { usePrefs } from '@/components/providers';
 import { useStore } from '@/lib/hooks';
-import { languageInfo } from '@/lib/languages';
 import { applyTheme, THEMES, type ThemeId } from '@/lib/prefs';
 import { isMac } from '@/lib/utils';
-import { formatCode } from '@/lib/formatter';
+import {
+  CATEGORIES,
+  buildPaletteCommands,
+  scoreCommand,
+  type PaletteCommand,
+} from './command-palette-items';
 import { useWorkspace } from './context';
-import { toggleLineHighlight } from './editor/collab';
 
 /** ⌘K palette + VS Code-style theme QuickPick (⌘K ⌘T): arrow keys preview live, Enter commits, Esc reverts. */
 export function CommandPalette() {
@@ -49,7 +30,7 @@ export function CommandPalette() {
         <D.Overlay className="fixed inset-0 z-[1000] bg-overlay data-[state=open]:animate-fade-in motion-reduce:animate-none" />
         <D.Content
           aria-describedby={undefined}
-          className="fixed top-[15vh] left-1/2 z-[1001] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-popover shadow-overlay outline-none data-[state=open]:animate-fade-in motion-reduce:animate-none"
+          className="fixed top-[15vh] left-1/2 z-[1001] w-[min(38rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-popover shadow-overlay outline-none data-[state=open]:animate-fade-in motion-reduce:animate-none"
         >
           <D.Title className="sr-only">{mode === 'theme' ? 'Select color theme' : 'Command palette'}</D.Title>
           {mode === 'theme' ? <ThemePick onClose={close} /> : mode === 'commands' ? <Commands onClose={close} /> : null}
@@ -103,351 +84,173 @@ function ThemePick({ onClose }: { onClose: () => void }) {
 
 function Commands({ onClose }: { onClose: () => void }) {
   const ws = useWorkspace();
-  const { client } = ws;
+  const router = useRouter();
   const { prefs, setPrefs } = usePrefs();
-  const roster = useStore(client.roster);
-  const room = useStore(client.room);
-  const lang = languageInfo(room.room.language);
+  const roster = useStore(ws.client.roster);
+  const room = useStore(ws.client.room);
+  const uiState = useStore(ws.ui);
   const mod = isMac() ? '⌘' : 'Ctrl';
-  const act = (fn: () => void) => () => {
-    onClose();
-    fn();
-  };
-  const ui = (patch: Partial<ReturnType<typeof ws.ui.get>>) => ws.ui.update((s) => ({ ...s, ...patch }));
 
-  const togglePref = <K extends 'ambientAnimations' | 'reduceMotion' | 'wordWrap' | 'lineNumbers' | 'bracketColors' | 'followUnlockOnInput' | 'offscreenCursorBadges' | 'telemetrySampling'>(
-    key: K,
-    name: string,
-  ) => {
-    const next = !prefs[key];
-    setPrefs({ [key]: next });
-    toast.success(`${name}: ${next ? 'Enabled' : 'Disabled'}`);
-  };
+  const [search, setSearch] = useState('');
+
+  const commands = useMemo<PaletteCommand[]>(() => {
+    return buildPaletteCommands({
+      ws,
+      uiState,
+      prefs,
+      setPrefs,
+      roster,
+      room,
+      mod,
+      onClose,
+      routerPush: router.push,
+    });
+  }, [ws, uiState, prefs, setPrefs, roster, room, mod, onClose, router]);
+
+  const scoredItems = useMemo(() => {
+    const q = search.trim();
+    if (!q) return [];
+    return commands
+      .map((cmd) => ({ cmd, score: scoreCommand(cmd, q) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score);
+  }, [commands, search]);
+
+  const isSearching = search.trim().length > 0;
 
   return (
     <Command
+      shouldFilter={false}
       loop
       onKeyDown={(e) => {
         // ⌘K ⌘T chord: jump straight to the theme picker.
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 't') {
           e.preventDefault();
-          ui({ palette: 'theme' });
+          ws.ui.update((s) => ({ ...s, palette: 'theme' }));
         }
       }}
     >
-      <CommandInput autoFocus placeholder="Type a command or search settings…" />
+      <CommandInput
+        autoFocus
+        placeholder="Type a command or search settings…"
+        value={search}
+        onValueChange={setSearch}
+      />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-
-        <CommandGroup heading="Editor">
-          <Item
-            icon={Search01Icon}
-            label="Find in document"
-            shortcut={`${mod} F`}
-            keywords={['find', 'search', 'replace', 'editor']}
-            onSelect={act(() => {
-              if (ws.view.current) openSearchPanel(ws.view.current);
-            })}
-          />
-          <Item
-            icon={CodeIcon}
-            label="Format document"
-            shortcut="Shift Alt F"
-            keywords={['format', 'prettier', 'beautify', 'indent', 'clean']}
-            onSelect={act(() => {
-              const isHost = room.hostId === room.selfId;
-              if (!isHost && room.room.locked) {
-                toast.info('Room is locked. Only the host can format.');
-                return;
-              }
-              const currentText = client.text.toString();
-              if (!currentText.trim()) return;
-              void formatCode(currentText, lang.id).then((formatted) => {
-                if (formatted === currentText) {
-                  toast.info('Document is already formatted');
-                  return;
-                }
-                client.doc.transact(() => {
-                  client.text.delete(0, client.text.length);
-                  client.text.insert(0, formatted);
-                });
-                toast.success('Document formatted');
-              }).catch(() => {
-                toast.error('Failed to format document');
-              });
-            })}
-          />
-          {(lang.runnable || lang.preview === 'html') && (
-            <Item icon={PlayIcon} label="Run code" shortcut={`${mod} Enter`} onSelect={act(() => void ws.run())} />
-          )}
-          <Item
-            icon={HighlighterIcon}
-            label="Highlight current lines for everyone"
-            shortcut="Alt H"
-            onSelect={act(() => ws.view.current && toggleLineHighlight(ws.view.current, client.awareness, client.text))}
-          />
-          <Item
-            icon={CodeIcon}
-            label={`Word Wrap: ${prefs.wordWrap ? 'On' : 'Off'}`}
-            keywords={['word wrap', 'wrap', 'editor', 'text', 'line wrap', 'settings']}
-            onSelect={act(() => togglePref('wordWrap', 'Word wrap'))}
-          />
-          <Item
-            icon={CodeIcon}
-            label={`Line Numbers: ${prefs.lineNumbers ? 'On' : 'Off'}`}
-            keywords={['line numbers', 'gutter', 'lines', 'editor', 'settings']}
-            onSelect={act(() => togglePref('lineNumbers', 'Line numbers'))}
-          />
-          <Item
-            icon={BracketsIcon}
-            label={`Bracket Pair Colorization: ${prefs.bracketColors ? 'On' : 'Off'}`}
-            keywords={['bracket pair colorization', 'brackets', 'parentheses', 'syntax', 'rainbow', 'editor', 'settings']}
-            onSelect={act(() => togglePref('bracketColors', 'Bracket pair colorization'))}
-          />
-          <Item
-            icon={CodeIcon}
-            label={`Increase Font Size (Current: ${prefs.editorFontSize}px)`}
-            keywords={['increase font size', 'font size', 'text size', 'larger', 'editor', 'settings']}
-            onSelect={act(() => {
-              const next = Math.min(18, prefs.editorFontSize + 1);
-              setPrefs({ editorFontSize: next });
-              toast.success(`Editor font size: ${next}px`);
-            })}
-          />
-          <Item
-            icon={CodeIcon}
-            label={`Decrease Font Size (Current: ${prefs.editorFontSize}px)`}
-            keywords={['decrease font size', 'font size', 'text size', 'smaller', 'editor', 'settings']}
-            onSelect={act(() => {
-              const next = Math.max(11, prefs.editorFontSize - 1);
-              setPrefs({ editorFontSize: next });
-              toast.success(`Editor font size: ${next}px`);
-            })}
-          />
-          <Item
-            icon={CodeIcon}
-            label="Tab Size: 2 Spaces"
-            keywords={['tab size', 'indentation', 'spaces', 'tab 2', 'editor', 'settings']}
-            onSelect={act(() => {
-              setPrefs({ tabSize: 2 });
-              toast.success('Tab size: 2 Spaces');
-            })}
-          />
-          <Item
-            icon={CodeIcon}
-            label="Tab Size: 4 Spaces"
-            keywords={['tab size', 'indentation', 'spaces', 'tab 4', 'editor', 'settings']}
-            onSelect={act(() => {
-              setPrefs({ tabSize: 4 });
-              toast.success('Tab size: 4 Spaces');
-            })}
-          />
-        </CommandGroup>
-
-        <CommandGroup heading="Appearance">
-          <Item icon={PaintBoardIcon} label="Preferences: Color Theme" shortcut={`${mod} K ${mod} T`} keywords={['theme', 'color', 'dark', 'light', 'appearance', 'palette']} onSelect={() => ui({ palette: 'theme' })} />
-          <Item
-            icon={PaintBoardIcon}
-            label="Theme: Quiet Dark (Default)"
-            keywords={['quiet dark', 'dark theme', 'theme', 'color', 'appearance']}
-            onSelect={act(() => {
-              setPrefs({ themeId: 'quiet-dark' });
-              toast.success('Theme set to Quiet Dark');
-            })}
-          />
-          <Item
-            icon={PaintBoardIcon}
-            label="Theme: Quiet Light"
-            keywords={['quiet light', 'light theme', 'theme', 'color', 'appearance']}
-            onSelect={act(() => {
-              setPrefs({ themeId: 'quiet-light' });
-              toast.success('Theme set to Quiet Light');
-            })}
-          />
-          <Item
-            icon={PaintBoardIcon}
-            label="Theme: High Contrast Dark"
-            keywords={['contrast dark', 'high contrast', 'dark theme', 'theme', 'accessibility']}
-            onSelect={act(() => {
-              setPrefs({ themeId: 'contrast-dark' });
-              toast.success('Theme set to High Contrast Dark');
-            })}
-          />
-          <Item
-            icon={PaintBoardIcon}
-            label="Theme: High Contrast Light"
-            keywords={['contrast light', 'high contrast', 'light theme', 'theme', 'accessibility']}
-            onSelect={act(() => {
-              setPrefs({ themeId: 'contrast-light' });
-              toast.success('Theme set to High Contrast Light');
-            })}
-          />
-          <Item
-            icon={SlidersHorizontalIcon}
-            label="UI Font Scale: Small"
-            keywords={['ui scale', 'font scale', 'small', 'zoom', 'appearance', 'settings']}
-            onSelect={act(() => {
-              setPrefs({ uiScale: 'sm' });
-              toast.success('UI scale set to Small');
-            })}
-          />
-          <Item
-            icon={SlidersHorizontalIcon}
-            label="UI Font Scale: Medium (Default)"
-            keywords={['ui scale', 'font scale', 'medium', 'zoom', 'appearance', 'settings']}
-            onSelect={act(() => {
-              setPrefs({ uiScale: 'md' });
-              toast.success('UI scale set to Medium');
-            })}
-          />
-          <Item
-            icon={SlidersHorizontalIcon}
-            label="UI Font Scale: Large"
-            keywords={['ui scale', 'font scale', 'large', 'zoom', 'appearance', 'settings']}
-            onSelect={act(() => {
-              setPrefs({ uiScale: 'lg' });
-              toast.success('UI scale set to Large');
-            })}
-          />
-          <Item
-            icon={SlidersHorizontalIcon}
-            label={`Ambient Animations: ${prefs.ambientAnimations ? 'On' : 'Off'}`}
-            keywords={['ambient animations', 'canvas', 'orbs', 'effects', 'appearance', 'settings']}
-            onSelect={act(() => togglePref('ambientAnimations', 'Ambient animations'))}
-          />
-          <Item
-            icon={SlidersHorizontalIcon}
-            label={`Reduce Motion: ${prefs.reduceMotion ? 'On' : 'Off'}`}
-            keywords={['reduce motion', 'motion', 'animations', 'transitions', 'accessibility', 'settings']}
-            onSelect={act(() => togglePref('reduceMotion', 'Reduce motion'))}
-          />
-        </CommandGroup>
-
-        <CommandGroup heading="Collaboration">
-          <Item
-            icon={UserGroupIcon}
-            label={`Unlock Follow on Input: ${prefs.followUnlockOnInput ? 'On' : 'Off'}`}
-            keywords={['unlock follow on input', 'follow', 'typing', 'scroll', 'collaboration', 'settings']}
-            onSelect={act(() => togglePref('followUnlockOnInput', 'Unlock follow on input'))}
-          />
-          <Item
-            icon={UserGroupIcon}
-            label={`Off-Screen Cursor Badges: ${prefs.offscreenCursorBadges ? 'On' : 'Off'}`}
-            keywords={['off-screen cursor badges', 'cursor', 'presence', 'badges', 'collaboration', 'settings']}
-            onSelect={act(() => togglePref('offscreenCursorBadges', 'Off-screen cursor badges'))}
-          />
-          <Item
-            icon={UserGroupIcon}
-            label={`Cursor Name Fade: ${prefs.cursorFlagFadeSeconds.toFixed(1)}s (Click to Cycle)`}
-            keywords={['cursor name fade', 'cursor', 'presence', 'flag', 'fade', 'duration', 'collaboration', 'settings']}
-            onSelect={act(() => {
-              const next = prefs.cursorFlagFadeSeconds >= 5 ? 1 : prefs.cursorFlagFadeSeconds + 1;
-              setPrefs({ cursorFlagFadeSeconds: next });
-              toast.success(`Cursor name fade: ${next}s`);
-            })}
-          />
-        </CommandGroup>
-
-        <CommandGroup heading="Network & Telemetry">
-          <Item
-            icon={Wifi01Icon}
-            label={`Live Latency Sampling: ${prefs.telemetrySampling ? 'On' : 'Off'}`}
-            keywords={['live latency sampling', 'telemetry', 'sampling', 'rtt', 'ping', 'network', 'settings']}
-            onSelect={act(() => togglePref('telemetrySampling', 'Live latency sampling'))}
-          />
-          <Item
-            icon={Wifi01Icon}
-            label={`Reset Simulated Latency to 0 ms (Current: ${prefs.simulatedLatencyMs}ms)`}
-            keywords={['reset simulated latency', 'latency', 'network', 'delay', 'jitter', 'settings']}
-            onSelect={act(() => {
-              setPrefs({ simulatedLatencyMs: 0 });
-              toast.success('Simulated latency reset to 0ms');
-            })}
-          />
-          <Item
-            icon={Wifi01Icon}
-            label="Simulated Latency: 50 ms (Mild jitter)"
-            keywords={['simulated latency 50ms', 'latency', 'network', 'delay', 'settings']}
-            onSelect={act(() => {
-              setPrefs({ simulatedLatencyMs: 50 });
-              toast.success('Simulated latency set to 50ms');
-            })}
-          />
-          <Item
-            icon={Wifi01Icon}
-            label="Simulated Latency: 150 ms (Cross-region demo)"
-            keywords={['simulated latency 150ms', 'latency', 'network', 'delay', 'settings']}
-            onSelect={act(() => {
-              setPrefs({ simulatedLatencyMs: 150 });
-              toast.success('Simulated latency set to 150ms');
-            })}
-          />
-        </CommandGroup>
-
-        <CommandGroup heading="View">
-          <Item icon={SidebarBottomIcon} label="Toggle diagnostics drawer" shortcut="Ctrl `" keywords={['drawer', 'diagnostics', 'telemetry', 'events', 'chaos']} onSelect={act(() => ws.ui.update((s) => ({ ...s, drawerOpen: !s.drawerOpen })))} />
-          <Item icon={PlayIcon} label="Open Console" keywords={['console', 'logs', 'output', 'terminal']} onSelect={act(() => ws.openDrawerTab('console'))} />
-          <Item icon={Wifi01Icon} label="Open Sync & Latency Stats" keywords={['stats', 'sync', 'latency', 'ping', 'telemetry']} onSelect={act(() => ws.openDrawerTab('sync'))} />
-          <Item icon={CodeIcon} label="Toggle Zen Mode" shortcut={`${mod} Shift F`} keywords={['zen', 'distraction free', 'fullscreen']} onSelect={act(() => ws.ui.update((s) => ({ ...s, zenMode: !s.zenMode })))} />
-          <Item icon={UserGroupIcon} label="Show people" keywords={['sidebar', 'people', 'roster', 'users']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'people', sidebarOpen: true })))} />
-          <Item icon={BubbleChatIcon} label="Show chat" keywords={['sidebar', 'chat', 'message', 'talk']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'chat', sidebarOpen: true })))} />
-          <Item icon={Activity01Icon} label="Show activity" keywords={['sidebar', 'activity', 'events', 'log']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'activity', sidebarOpen: true })))} />
-          <Item icon={CodeIcon} label="Show scratchpad" keywords={['sidebar', 'scratchpad', 'notes', 'clipboard']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'scratchpad', sidebarOpen: true })))} />
-          {lang.preview && <Item icon={BrowserIcon} label="Toggle preview pane" keywords={['preview', 'browser', 'html', 'live']} onSelect={act(() => ws.togglePanel('preview'))} />}
-        </CommandGroup>
-
-        {roster.length > 1 && (
-          <CommandGroup heading="People">
-            {roster
-              .filter((m) => m.id !== room.selfId)
-              .map((m) => (
-                <Item key={m.id} icon={ViewIcon} label={`Follow ${m.name}`} keywords={['follow', m.name, 'collaborator']} onSelect={act(() => ws.follow.set(m.id))} />
+        {isSearching ? (
+          scoredItems.length === 0 ? (
+            <CommandEmpty>No results found for &ldquo;{search}&rdquo;</CommandEmpty>
+          ) : (
+            <CommandGroup heading="Matching Commands">
+              {scoredItems.map(({ cmd }) => (
+                <PaletteItem
+                  key={cmd.id}
+                  icon={cmd.icon}
+                  label={cmd.label}
+                  shortcut={cmd.shortcut}
+                  category={cmd.category}
+                  showCategory={true}
+                  settingsAction={cmd.settingsAction}
+                  onSelect={cmd.onSelect}
+                  onSettingsClick={() => {
+                    if (cmd.settingsAction) {
+                      onClose();
+                      ws.ui.update((s) => ({
+                        ...s,
+                        settings: true,
+                        settingsSection: cmd.settingsAction!.section,
+                      }));
+                    }
+                  }}
+                />
               ))}
-          </CommandGroup>
+            </CommandGroup>
+          )
+        ) : (
+          CATEGORIES.map((category) => {
+            const items = commands.filter((c) => c.category === category);
+            if (items.length === 0) return null;
+            return (
+              <CommandGroup key={category} heading={category}>
+                {items.map((cmd) => (
+                  <PaletteItem
+                    key={cmd.id}
+                    icon={cmd.icon}
+                    label={cmd.label}
+                    shortcut={cmd.shortcut}
+                    category={cmd.category}
+                    showCategory={false}
+                    settingsAction={cmd.settingsAction}
+                    onSelect={cmd.onSelect}
+                    onSettingsClick={() => {
+                      if (cmd.settingsAction) {
+                        onClose();
+                        ws.ui.update((s) => ({
+                          ...s,
+                          settings: true,
+                          settingsSection: cmd.settingsAction!.section,
+                        }));
+                      }
+                    }}
+                  />
+                ))}
+              </CommandGroup>
+            );
+          })
         )}
-
-        <CommandGroup heading="Room">
-          <Item icon={Link01Icon} label="Copy invite link" keywords={['copy', 'invite', 'link', 'share', 'room']} onSelect={act(() => void navigator.clipboard.writeText(`${location.origin}/r/${ws.roomId}`).then(() => toast.success('Invite link copied')))} />
-          <Item icon={Copy01Icon} label="Copy all code" keywords={['copy', 'code', 'all', 'clipboard']} onSelect={act(() => void navigator.clipboard.writeText(client.text.toString()).then(() => toast.success('Copied')))} />
-          <Item
-            icon={Download04Icon}
-            label={`Download ${ws.roomId}.${lang.ext}`}
-            keywords={['download', 'export', 'save', 'file']}
-            onSelect={act(() => {
-              const url = URL.createObjectURL(new Blob([client.text.toString()], { type: 'text/plain' }));
-              Object.assign(document.createElement('a'), { href: url, download: `${ws.roomId}.${lang.ext}` }).click();
-              URL.revokeObjectURL(url);
-            })}
-          />
-        </CommandGroup>
-
-        <CommandGroup heading="Settings Dialog">
-          <Item icon={Settings01Icon} label="Open Settings Dialog" shortcut={`${mod} ,`} keywords={['settings', 'preferences', 'dialog', 'modal', 'options']} onSelect={act(() => ui({ settings: true }))} />
-          <Item icon={KeyboardIcon} label="Keyboard shortcuts" shortcut="?" keywords={['keyboard', 'shortcuts', 'help', 'hotkeys']} onSelect={act(() => ui({ shortcuts: true }))} />
-        </CommandGroup>
       </CommandList>
     </Command>
   );
 }
 
-function Item({
+function PaletteItem({
   icon,
   label,
   shortcut,
-  keywords,
+  category,
+  showCategory = false,
+  settingsAction,
   onSelect,
+  onSettingsClick,
 }: {
   icon: Parameters<typeof Icon>[0]['icon'];
   label: string;
   shortcut?: string;
-  keywords?: string[];
+  category?: string;
+  showCategory?: boolean;
+  settingsAction?: { label: string; section: 'editor' | 'appearance' | 'collab' | 'network' };
   onSelect: () => void;
+  onSettingsClick?: () => void;
 }) {
   return (
-    <CommandItem onSelect={onSelect} value={label} keywords={keywords}>
-      <Icon icon={icon} className="text-muted-foreground" />
-      <span className="flex-1">{label}</span>
-      {shortcut && <Kbd>{shortcut}</Kbd>}
+    <CommandItem
+      onSelect={onSelect}
+      value={label}
+      className="group flex items-center gap-2 rounded-lg px-2 py-2 text-body outline-none select-none transition-ui"
+    >
+      <Icon icon={icon} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-ui" />
+      <span className="flex-1 truncate">{label}</span>
+      {showCategory && category && (
+        <span className="hidden sm:inline-flex rounded-full bg-muted/80 px-2 py-0.5 text-micro font-medium text-muted-foreground">
+          {category}
+        </span>
+      )}
+      {settingsAction && (
+        <Tip label="Configure in Settings">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSettingsClick?.();
+            }}
+            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-ui"
+            aria-label={`Configure ${label} in settings`}
+          >
+            <Icon icon={Settings01Icon} size={13} />
+          </button>
+        </Tip>
+      )}
+      {shortcut && <Kbd className="shrink-0">{shortcut}</Kbd>}
     </CommandItem>
   );
 }

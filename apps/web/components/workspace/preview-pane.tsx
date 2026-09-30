@@ -19,6 +19,8 @@ import { languageInfo } from '@/lib/languages';
 import { buildPreviewDoc, isConsoleMessage } from '@/lib/preview';
 import { cn, randomId } from '@/lib/utils';
 import { useWorkspace } from './context';
+import { JsonPreview } from './preview/json-preview';
+import { MarkdownPreview } from './preview/markdown-preview';
 
 const DEBOUNCE_MS = 300;
 const WATCHDOG_MS = 5000;
@@ -34,11 +36,24 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
   const { client } = ws;
   const mode = languageInfo(useStore(client.room).room.language).preview;
   const run = useStore(ws.preview);
-  const [doc, setDoc] = useState('');
+  const [doc, setDoc] = useState(() =>
+    mode === 'html' || mode === 'css'
+      ? buildPreviewDoc(mode, client.text.toString(), { runScripts: ws.preview.get().scripts, runId: ws.preview.get().runId })
+      : '',
+  );
+  const [prevMode, setPrevMode] = useState(mode);
+  if (prevMode !== mode) {
+    setPrevMode(mode);
+    if (mode === 'html' || mode === 'css') {
+      setDoc(buildPreviewDoc(mode, client.text.toString(), { runScripts: ws.preview.get().scripts, runId: ws.preview.get().runId }));
+    }
+  }
   const [zoom, setZoom] = useState<number>(1);
   const [zoomOpen, setZoomOpen] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const lastBeat = useRef(0);
+
+  const [liveText, setLiveText] = useState(() => client.text.toString());
 
   // Close zoom popover when clicking into iframe or window blurs
   useEffect(() => {
@@ -48,18 +63,25 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
     return () => window.removeEventListener('blur', onBlur);
   }, [zoomOpen]);
 
-  // Rebuild on text change (debounced). An edit after "Run page" drops back to script-free live mode.
+  // Rebuild on text change (debounced).
   useEffect(() => {
     if (!mode) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const build = (scripts: boolean) =>
-      setDoc(buildPreviewDoc(mode, client.text.toString(), { runScripts: scripts, runId: ws.preview.get().runId }));
+    const build = (scripts: boolean) => {
+      setLiveText(client.text.toString());
+      if (mode === 'html' || mode === 'css') {
+        setDoc(buildPreviewDoc(mode, client.text.toString(), { runScripts: scripts, runId: ws.preview.get().runId }));
+      }
+    };
     build(ws.preview.get().scripts);
     const onChange = () => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
-        if (ws.preview.get().scripts) ws.preview.set({ runId: randomId(4), scripts: false });
-        else build(false);
+        setLiveText(client.text.toString());
+        if (mode === 'html' || mode === 'css') {
+          if (ws.preview.get().scripts) ws.preview.set({ runId: randomId(4), scripts: false });
+          else build(false);
+        }
       }, DEBOUNCE_MS);
     };
     client.text.observe(onChange);
@@ -119,10 +141,19 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
   if (!mode) {
     return (
       <div className="grid h-full place-items-center p-6 text-center text-caption text-muted-foreground">
-        Live preview is available for HTML and CSS rooms.
+        Live preview is available for HTML, CSS, Markdown, and JSON rooms.
       </div>
     );
   }
+
+  const badgeLabel =
+    mode === 'markdown'
+      ? 'live · markdown'
+      : mode === 'json'
+        ? 'live · json tree'
+        : run.scripts
+          ? 'scripts on'
+          : 'live · scripts off';
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -130,8 +161,8 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
         <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border/60 px-2">
           <Icon icon={BrowserIcon} size={14} className="text-muted-foreground" />
           <span className="text-caption font-medium">Preview</span>
-          <Badge tone={run.scripts ? 'warning' : 'neutral'} className="ml-1">
-            {run.scripts ? 'scripts on' : 'live · scripts off'}
+          <Badge tone={run.scripts && (mode === 'html' || mode === 'css') ? 'warning' : 'neutral'} className="ml-1">
+            {badgeLabel}
           </Badge>
           <div className="ml-auto flex items-center gap-0.5">
             <Tip label="Refresh">
@@ -245,19 +276,23 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
         </div>
       )}
       <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
-        <iframe
-          ref={frame}
-          key={run.runId}
-          title="Sandboxed live preview"
-          sandbox="allow-scripts"
-          srcDoc={doc}
-          referrerPolicy="no-referrer"
-          className={cn(
-            'absolute top-0 left-0 origin-top-left border-0 bg-preview-canvas',
-            zoomOpen && 'pointer-events-none',
-          )}
-          style={{ width: `${100 / zoom}%`, height: `${100 / zoom}%`, transform: `scale(${zoom})` }}
-        />
+        {(mode === 'html' || mode === 'css') && (
+          <iframe
+            ref={frame}
+            key={`${mode}-${run.runId}`}
+            title="Sandboxed live preview"
+            sandbox="allow-scripts"
+            srcDoc={doc}
+            referrerPolicy="no-referrer"
+            className={cn(
+              'absolute top-0 left-0 origin-top-left border-0 bg-preview-canvas',
+              zoomOpen && 'pointer-events-none',
+            )}
+            style={{ width: `${100 / zoom}%`, height: `${100 / zoom}%`, transform: `scale(${zoom})` }}
+          />
+        )}
+        {mode === 'markdown' && <MarkdownPreview content={liveText} zoom={zoom} />}
+        {mode === 'json' && <JsonPreview content={liveText} zoom={zoom} />}
       </div>
     </div>
   );

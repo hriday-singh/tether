@@ -71,7 +71,7 @@ Every message has a `t` discriminator. Unknown `t` or failed Zod parse closes wi
 | `host.transfer` | `memberId` | host | Manual handover to an active member |
 | `room.language` | `language: LanguageId` | host | Change syntax mode for everyone |
 | `verify.mismatch` | `sv, hash` | anyone | Client saw equal state vectors but a different hash (P1). Metric + log, then client resets from server |
-| `demo.storm` | `bots: 1–8, seconds: 10–60, faults: boolean` | host, `DEMO_MODE` only | Start a bot storm (P2, see [08](08-testing-and-verification.md#bot-storm-p2-demo-mode)) |
+| `demo.storm` | `bots: 1–8, seconds: 1–60, faults: boolean` | host, `DEMO_MODE` only | Start a bot storm (P2, see [08](08-testing-and-verification.md#bot-storm-p2-demo-mode)) |
 | `chat.send` | `rid: uuid, text: string` (trimmed, 1–`CHAT_MAX_CHARS`) | anyone | Store and broadcast `chat.msg`, then `ok {rid}`. `rid` is the idempotency key: a resend returns the stored message to the sender only. Own bucket per connection (`CHAT_RATE_PER_SEC`/`CHAT_BURST`); over it gets `error {rid, code:"rate_limited"}`, no disconnect ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015)) |
 
 Host-only messages from non-hosts get `error {code:"forbidden"}` (no disconnect: a race with host

@@ -142,7 +142,7 @@ export async function runChaosSession(options: ChaosRunOptions = {}): Promise<Ch
       token,
       doc: clientDoc,
       batchWindowMs: 100,
-      webSocketFactory: (url, protocols) => {
+      webSocketFactory: (url: string, protocols?: string | string[]) => {
         const sock = new FaultyWebSocket(url, protocols, {
           transportOptions: {
             rng: () => prng.nextFloat(),

@@ -82,24 +82,24 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] Edit-summary coalescer (5 s idle / 30 s max) + tests
 - [x] Live `event` push + REST pagination: per-room gapless `seq`, push after commit, client dedupe + gap-fill, tests (REST pagination complete)
 
-### M9: Web UI
-- [ ] Token file (`globals.css`), Tailwind v4 theme, UI primitives
-- [ ] Home (create/join), join gate
-- [ ] Workspace layout: desktop resizable split + small screen barrier (`<ScreenTooSmallGate />`)
-- [ ] Editor (lazy), remote cursors, highlights, language picker
-- [ ] Roster, ActivityFeed (virtualized, infinite), StatusPill, LatencyHud, HostMenu
-- [ ] Network Lab (demo mode)
-- [ ] Follow / jump-to-user, off-screen cursor chips, invite link, export menu
-- [ ] SyncBadge (P1), KickedScreen with Copy my version, reauth flow keeping local edits
-- [ ] P2 bot storm: server spawner (demo mode) + StormPanel
-- [ ] RTL tests for non-trivial components
-- [ ] Verify small screen lockout (< 1024px) & desktop workspace (≥ 1024px); performance profile (no long task > 50 ms)
+### M9: Web UI — [COMPLETE]
+- [x] Token file (`globals.css`), Tailwind v4 theme, UI primitives
+- [x] Home (create/join), join gate
+- [x] Workspace layout: desktop resizable split + small screen barrier (`<ScreenTooSmallGate />`)
+- [x] Editor (lazy), remote cursors, highlights, language picker
+- [x] Roster, ActivityFeed (virtualized, infinite), StatusPill, LatencyHud, HostMenu
+- [x] Network Lab (demo mode)
+- [x] Follow / jump-to-user, off-screen cursor chips, invite link, export menu
+- [x] SyncBadge (P1), KickedScreen with Copy my version, reauth flow keeping local edits
+- [x] P2 bot storm: server spawner (demo mode) + StormPanel
+- [x] RTL tests for non-trivial components
+- [x] Verify small screen lockout (< 1024px) & desktop workspace (≥ 1024px); performance profile (no long task > 50 ms)
 
-### M10: Ship
-- [ ] Bench numbers + perf screenshot in README
-- [ ] README: pitch, architecture diagram, env, install, run, test, chaos, guarantees + honest limits
-- [ ] `docker compose up` full-stack path verified from clean clone
-- [ ] Docs re-synced with code
+### M10: Ship — [COMPLETE]
+- [x] Bench numbers + perf metrics recorded in README and testing doc
+- [x] README: pitch, architecture diagram, env, install, run, test, chaos, guarantees + honest limits
+- [x] `docker compose up` full-stack path verified from clean clone
+- [x] Docs re-synced with code
 
 ### M11: Text chat (after M10, [ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015))
 - [x] Protocol: `chat.send` / `chat.msg`, `welcome.chatSeq`, chat limits in constants

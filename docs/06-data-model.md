@@ -2,7 +2,7 @@
 
 ## Strategy: SQLite for POC, PostgreSQL for Production Scale
 
-To minimize setup complexity and eliminate external service dependencies during prototyping, local development, and single-instance deployments, the **active implementation uses SQLite** (via `better-sqlite3` with Write-Ahead Logging `WAL` mode).
+To minimize setup complexity and eliminate external service dependencies during prototyping, local development, and single-instance deployments, the **active implementation uses SQLite** (via Node 22 built-in `node:sqlite` with Write-Ahead Logging `WAL` mode).
 
 For enterprise multi-node deployments requiring horizontal scaling, shared instances, or cloud-managed high availability (e.g. AWS RDS), the system defines a 1:1 mapped **PostgreSQL** schema. The repository layer (`apps/server/src/repo/`) strictly abstracts all queries so switching to PostgreSQL requires zero business-logic changes.
 

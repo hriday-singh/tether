@@ -7,28 +7,32 @@ refuses to start on invalid config).
 
 | Var | App | Default | Notes |
 |-----|-----|---------|-------|
-| `DATABASE_PATH` | server | `./data/collab.db` | SQLite database file location (or `:memory:` for tests) |
-| `DATABASE_URL` | server | — | Optional PostgreSQL connection string (when running in Postgres mode) |
-| `JWT_SECRET` | server | — | required, ≥ 32 bytes |
 | `PORT` | server | `4000` | REST + WS on the same port |
-| `ALLOWED_ORIGINS` | server | `http://localhost:3000` | comma-separated, checked on upgrade + CORS |
+| `HOST` | server | `0.0.0.0` | Listening host |
+| `JWT_SECRET` | server | — | required, ≥ 32 bytes |
+| `ALLOWED_ORIGINS` | server | `http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001` | comma-separated, checked on upgrade + CORS |
+| `DATABASE_DRIVER` | server | `sqlite` | `sqlite` (embedded via `node:sqlite`) or `postgres` |
+| `SQLITE_PATH` | server | `./data/tether.db` | SQLite database file location (or `:memory:` for tests) |
+| `DATABASE_URL` | server | `postgres://postgres:postgres@localhost:5432/tether` | PostgreSQL connection string (when running in Postgres mode) |
 | `HOST_GRACE_MS` | server | `5000` | host handover grace |
-| `LOG_LEVEL` | server | `info` | pino |
-| `TRUST_PROXY` | server | `false` | set `true` behind a load balancer (real client IP for rate limits) |
-| `NEXT_PUBLIC_API_URL` | web | `http://localhost:4000` | |
-| `NEXT_PUBLIC_WS_URL` | web | `ws://localhost:4000` | |
-| `NEXT_PUBLIC_DEMO_MODE` | web | `false` | enables Network Lab panel |
-| `TEST_DATABASE_PATH` | tests | `:memory:` | SQLite in-memory DB for instant integration/chaos test runs |
+| `PERSIST_FLUSH_MS` | server | `250` | persistence flush interval |
+| `ROOM_UNLOAD_IDLE_MS`| server | `30000` | idle delay before room memory unload |
+| `DEMO_MODE` | server | `false` | enables server-side bot storm spawner (`demo.storm`) |
+| `NEXT_PUBLIC_SYNC_MODE`| web | `server` | `server` (real Fastify + WS) or `fake` (in-memory) |
+| `NEXT_PUBLIC_API_URL` | web | `http://localhost:4000` | backend REST API URL |
+| `NEXT_PUBLIC_WS_URL` | web | `ws://localhost:4000` | backend WebSocket URL |
+| `NEXT_PUBLIC_DEMO_MODE`| web | `false` | enables Network Lab panel and StormPanel |
 
 ## Local run (Target flow — Zero external services needed)
 
 ```bash
 pnpm install
 cp .env.example .env                 # fill JWT_SECRET
-pnpm dev                              # web :3000, server :4000 (SQLite created automatically in data/)
-pnpm test                             # unit + integration (runs against in-memory SQLite)
-pnpm chaos                            # chaos:ci profile
-pnpm bench                            # latency numbers
+pnpm build:pkg                        # build @tether/shared and @tether/sync-client
+pnpm dev                              # web :3001, server :4000 (SQLite created automatically in data/)
+pnpm test                             # all 275+ unit, integration, and chaos tests (60 suites)
+pnpm chaos:ci                         # chaos:ci resilience suite
+pnpm bench                            # latency benchmark harness
 ```
 
 ### Docker Compose deployment (EC2 / VM)

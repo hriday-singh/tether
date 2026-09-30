@@ -34,7 +34,7 @@
 - Consumes: `useSearchParams()` from Next.js.
 - Produces: `roomId` state initialized lazily.
 
-- [ ] **Step 1: Update `useState` call to pass a lazy initializer**
+- [x] **Step 1: Update `useState` call to pass a lazy initializer**
   Change:
   ```tsx
   const [roomId, setRoomId] = useState(params.get('room') ?? '');
@@ -44,7 +44,7 @@
   const [roomId, setRoomId] = useState(() => params.get('room') ?? '');
   ```
 
-- [ ] **Step 2: Verify with vitest**
+- [x] **Step 2: Verify with vitest**
   Run: `pnpm --filter @tether/web test`
   Expected: PASS
 
@@ -68,27 +68,27 @@
 - Modify: `apps/web/components/workspace/room-screen.tsx`
 - Modify: `apps/web/components/landing/start-panel.tsx`
 
-- [ ] **Step 2A: Button component non-component export**
+- [x] **Step 2A: Button component non-component export**
   - Extract `buttonVariants` definition into `components/ui/button-variants.ts`.
   - Re-export `buttonVariants` or import in `button.tsx` and `ui.test.tsx`.
   - Note: `button.tsx` only exports `Button` and types `ButtonProps`.
 
-- [ ] **Step 2B: Avatar non-component exports**
+- [x] **Step 2B: Avatar non-component exports**
   - Create `apps/web/lib/presence.ts` with `PRESENCE_CLASSES` and `presenceClass(colorIndex: number)`.
   - Update imports in `mini-editor.tsx`, `editor/collab.ts`, `presence-overlays.tsx`, and `avatar.tsx`.
   - Keep `initials()` unexported in `avatar.tsx`.
   - `avatar.tsx` only exports `Avatar`.
 
-- [ ] **Step 2C: SyncStatus non-component exports**
+- [x] **Step 2C: SyncStatus non-component exports**
   - Create `apps/web/components/workspace/sync-status-model.ts` containing `StatusView` interface and `describeStatus` function.
   - Update `sync-status.tsx` and `sync-status.test.tsx` to import from `./sync-status-model`.
   - `sync-status.tsx` only exports `StatusPill`, `LatencyHud`, `Metric`.
 
-- [ ] **Step 2D: RoomScreen non-component export**
+- [x] **Step 2D: RoomScreen non-component export**
   - Move `seedKey(roomId: string)` from `room-screen.tsx` to `lib/session.ts`.
   - Update imports in `room-screen.tsx` and `start-panel.tsx`.
 
-- [ ] **Step 2E: Run tests and typecheck**
+- [x] **Step 2E: Run tests and typecheck**
   Run: `pnpm --filter @tether/web test && pnpm --filter @tether/web typecheck`
   Expected: PASS
 
@@ -104,26 +104,26 @@
 - Modify: `apps/web/components/workspace/view-menu.tsx`
 - Modify: `apps/web/components/workspace/workspace.tsx`
 
-- [ ] **Step 3A: `start-panel.tsx` (`StartPanel`)**
+- [x] **Step 3A: `start-panel.tsx` (`StartPanel`)**
   - Extract `CreateRoomSection` and `JoinRoomSection` subcomponents.
   - Keep state handling clean and pass props.
 
-- [ ] **Step 3B: `room-screen.tsx` (`JoinGate`)**
+- [x] **Step 3B: `room-screen.tsx` (`JoinGate`)**
   - Extract `JoinHeader` (logo, language indicator, title, room ID, user count).
   - Extract `JoinPasscodeField` (handling `otpMode`, OTP slots vs password input).
 
-- [ ] **Step 3C: `drawer.tsx` (`ChaosLab`)**
+- [x] **Step 3C: `drawer.tsx` (`ChaosLab`)**
   - Extract `StormControls` (`<fieldset>` with bot count, duration, fault injection slider/switches).
   - Extract `StormStatusDisplay` (running orb, gauge/converged badge, or idle explanation).
 
-- [ ] **Step 3D: `sidebar.tsx` (`RosterRow`)**
+- [x] **Step 3D: `sidebar.tsx` (`RosterRow`)**
   - Extract `RosterMemberInfo` (avatar, name, host/bot badge, typing/status text).
   - Extract `FollowButton` (follow button tooltip, button, and icons).
 
-- [ ] **Step 3E: `view-menu.tsx` (`ViewMenu`)**
+- [x] **Step 3E: `view-menu.tsx` (`ViewMenu`)**
   - Extract `WorkspacePanelsItems` and `DiagnosticsViewsItems` subcomponents for the dropdown items.
 
-- [ ] **Step 3F: `workspace.tsx` (`Shell`)**
+- [x] **Step 3F: `workspace.tsx` (`Shell`)**
   - Extract `MaximizedPanelView` (rendering maximized editor, preview, sidebar, or drawer).
   - Extract `DesktopResizableLayout` (rendering normal resizable multi-panel layout).
 
@@ -131,12 +131,12 @@
 
 ### Task 4: Verification & Educational Report
 
-- [ ] **Step 4A: Run `react-doctor`**
+- [x] **Step 4A: Run `react-doctor`**
   Run: `pnpm --filter @tether/web exec npx --yes react-doctor@latest --verbose`
   Confirm that all warnings for `no-high-complexity-react-function`, `rerender-lazy-state-init`, and `only-export-components` have disappeared (0 remaining).
 
-- [ ] **Step 4B: Run all verification suites**
+- [x] **Step 4B: Run all verification suites**
   Run `test`, `typecheck`, and `lint` to ensure complete code health.
 
-- [ ] **Step 4C: Generate educational report**
+- [x] **Step 4C: Generate educational report**
   Explain each issue in plain language with concrete real-world impact and severity. Summarize remaining findings for follow-up.

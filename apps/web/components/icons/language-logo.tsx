@@ -6,6 +6,7 @@ import Go from '@thesvg/react/go';
 import Html5 from '@thesvg/react/html5';
 import Java from '@thesvg/react/java';
 import Javascript from '@thesvg/react/javascript';
+import Json from '@thesvg/react/json';
 import Markdown from '@thesvg/react/markdown';
 import Postgresql from '@thesvg/react/postgresql';
 import Python from '@thesvg/react/python';
@@ -37,6 +38,7 @@ const LOGOS = {
   csharp: Csharp,
   java: Java,
   markdown: Markdown,
+  json: Json,
   sql: Postgresql,
 } satisfies Record<LanguageId, unknown>;
 

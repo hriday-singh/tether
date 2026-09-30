@@ -122,7 +122,7 @@ describe('SyncClient', () => {
 
   it('tracks sync state and clears pending acks upon receiving server ack', () => {
     const doc = new Y.Doc();
-    let now = 1000;
+    const now = 1000;
     let lastSyncState = '';
 
     const client = new SyncClient({
@@ -628,7 +628,6 @@ describe('SyncClient', () => {
       })
     );
     await expect(errPromise).rejects.toThrow('forbidden');
-
     client.destroy();
   });
 });

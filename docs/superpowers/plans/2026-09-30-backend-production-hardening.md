@@ -41,7 +41,7 @@
   - `PERSIST_MAX_BUFFERED_UPDATES`: `number` (value `10000`)
   - `vitest.config.ts`: `test.testTimeout = 15000`
 
-- [ ] **Step 1: Write the failing test for shared persistence constants**
+- [x] **Step 1: Write the failing test for shared persistence constants**
 
 Create `packages/shared/src/constants.test.ts`:
 ```typescript
@@ -59,12 +59,12 @@ describe('Shared Persistence Constants', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @tether/shared test`
 Expected: FAIL with missing exports `PERSIST_MAX_QUEUED_PER_ROOM` and `PERSIST_MAX_BUFFERED_UPDATES`.
 
-- [ ] **Step 3: Implement minimal constants and vitest configuration**
+- [x] **Step 3: Implement minimal constants and vitest configuration**
 
 Update `packages/shared/src/constants.ts`:
 ```typescript
@@ -89,7 +89,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 4: Build shared package and run test to verify it passes**
+- [x] **Step 4: Build shared package and run test to verify it passes**
 
 Run: `pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/shared test`
 Expected: PASS
@@ -112,7 +112,7 @@ Expected: PASS
   - `PersistenceService.prototype.isBufferFull(): boolean`
   - `PersistenceService.prototype.getTotalBufferedUpdates(): number`
 
-- [ ] **Step 1: Write the failing tests for bounded persistence buffer**
+- [x] **Step 1: Write the failing tests for bounded persistence buffer**
 
 Create `apps/server/src/services/persistenceService.test.ts`:
 ```typescript
@@ -202,12 +202,12 @@ describe('PersistenceService Bounded Buffer & Eager Flush', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @tether/server test src/services/persistenceService.test.ts`
 Expected: FAIL with `BufferFullError is not defined` and `service.getTotalBufferedUpdates is not a function`.
 
-- [ ] **Step 3: Implement bounded buffer in `PersistenceService`**
+- [x] **Step 3: Implement bounded buffer in `PersistenceService`**
 
 Modify `apps/server/src/services/persistenceService.ts`:
 ```typescript
@@ -371,7 +371,7 @@ export class PersistenceService {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @tether/server test src/services/persistenceService.test.ts`
 Expected: PASS
@@ -403,7 +403,7 @@ Expected: PASS
   - `GET /api/rooms/:id/admission`: returns 200 `{ status: 'draining' }` if `isDraining` OR `deps.persistenceService?.isBufferFull()`
   - `Room.prototype.handleInboundUpdate` & `Room.prototype.handleInboundSyncStep2`: terminates socket with code 1012 and records `'security.buffer_full'` audit event if `persistenceService.isBufferFull()`
 
-- [ ] **Step 1: Write integration tests for buffer full admission and health behavior**
+- [x] **Step 1: Write integration tests for buffer full admission and health behavior**
 
 Create `apps/server/tests/integration/bufferFullAdmission.test.ts`:
 ```typescript
@@ -575,12 +575,12 @@ describe('Admission Check 8 & Buffer Full Protection', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @tether/server test tests/integration/bufferFullAdmission.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: Update `UpgradeGateDependencies`, `AppDependencies`, `upgradeGate.ts`, `app.ts`, and `room.ts`**
+- [x] **Step 3: Update `UpgradeGateDependencies`, `AppDependencies`, `upgradeGate.ts`, `app.ts`, and `room.ts`**
 
 In `apps/server/src/ws/upgradeGate.ts`:
 ```typescript
@@ -676,7 +676,7 @@ In `handleInboundUpdate`:
 
 Update `apps/server/src/index.ts`, `apps/server/tests/integration/restAndWs.test.ts`, `apps/server/tests/integration/handoverRace.test.ts`, `apps/server/tests/integration/serverSyncIntegration.test.ts`, `tests/chaos/src/chaosRunner.ts`, `tests/chaos/src/bench.ts`, and `tests/chaos/src/memBench.ts` to pass `persistenceService` into `deps`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter @tether/server test tests/integration/bufferFullAdmission.test.ts`
 Expected: PASS
@@ -703,7 +703,7 @@ Expected: PASS
   - `export function createRateLimitHook(options: RateLimitOptions): preHandlerHookHandler`
   - `export function clearAllRateLimiters(): void` (for tests)
 
-- [ ] **Step 1: Write failing unit tests for rate limiter hook**
+- [x] **Step 1: Write failing unit tests for rate limiter hook**
 
 Create `apps/server/src/http/rateLimiter.test.ts`:
 ```typescript
@@ -822,12 +822,12 @@ describe('createRateLimitHook', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @tether/server test src/http/rateLimiter.test.ts`
 Expected: FAIL with module `./rateLimiter.js` not found.
 
-- [ ] **Step 3: Implement `apps/server/src/http/rateLimiter.ts`**
+- [x] **Step 3: Implement `apps/server/src/http/rateLimiter.ts`**
 
 Create `apps/server/src/http/rateLimiter.ts`:
 ```typescript
@@ -927,7 +927,7 @@ export function createRateLimitHook(options: RateLimitOptions): preHandlerHookHa
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @tether/server test src/http/rateLimiter.test.ts`
 Expected: PASS
@@ -952,7 +952,7 @@ Expected: PASS
     - `GET /api/rooms/:id/events` -> 60/min/Token (`ratePerSec: 1`, `burst: 60`)
     - `GET /api/rooms/:id/chat` -> 60/min/Token (`ratePerSec: 1`, `burst: 60`)
 
-- [ ] **Step 1: Write integration tests for rate limited endpoints**
+- [x] **Step 1: Write integration tests for rate limited endpoints**
 
 Create `apps/server/tests/integration/rateLimitIntegration.test.ts`:
 ```typescript
@@ -1083,12 +1083,12 @@ describe('HTTP REST Rate Limiting Integration', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @tether/server test tests/integration/rateLimitIntegration.test.ts`
 Expected: FAIL because rate limiting is not yet applied to the routes.
 
-- [ ] **Step 3: Apply rate limiting hooks in `apps/server/src/http/app.ts`**
+- [x] **Step 3: Apply rate limiting hooks in `apps/server/src/http/app.ts`**
 
 In `apps/server/src/http/app.ts`, import `createRateLimitHook` and `defaultIpKeyExtractor`, and configure rate limiters:
 ```typescript
@@ -1140,7 +1140,7 @@ Attach `preHandler` to each route:
 - `app.get('/api/rooms/:id/chat', { preHandler: tokenLimiter }, ...)`
 - `app.get('/api/rooms/:id/events', { preHandler: tokenLimiter }, ...)`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @tether/server test tests/integration/rateLimitIntegration.test.ts`
 Expected: PASS
@@ -1162,7 +1162,7 @@ Expected: PASS
   - Endpoint `GET /docs/openapi.json` returning JSON with `application/json`
   - File `docs/openapi.json` containing matching formatted JSON
 
-- [ ] **Step 1: Write failing unit test for OpenAPI spec & endpoint**
+- [x] **Step 1: Write failing unit test for OpenAPI spec & endpoint**
 
 Create `apps/server/src/http/openapi.test.ts`:
 ```typescript
@@ -1266,12 +1266,12 @@ describe('OpenAPI 3.1.0 Specification', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @tether/server test src/http/openapi.test.ts`
 Expected: FAIL with module `./openapi.js` not found.
 
-- [ ] **Step 3: Create `apps/server/src/http/openapi.ts` and `docs/openapi.json` and register route in `app.ts`**
+- [x] **Step 3: Create `apps/server/src/http/openapi.ts` and `docs/openapi.json` and register route in `app.ts`**
 
 Create `apps/server/src/http/openapi.ts` defining OpenAPI 3.1.0 specification covering:
 - `/api/rooms` (POST)
@@ -1292,7 +1292,7 @@ In `apps/server/src/http/app.ts`, add route:
   });
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @tether/server test src/http/openapi.test.ts`
 Expected: PASS
@@ -1307,27 +1307,27 @@ Expected: PASS
 **Interfaces:**
 - Consumes: All packages and applications
 
-- [ ] **Step 1: Re-build shared package**
+- [x] **Step 1: Re-build shared package**
 
 Run: `pnpm --filter @tether/shared build:pkg`
 Expected: Exits with code 0
 
-- [ ] **Step 2: Run all unit & integration tests**
+- [x] **Step 2: Run all unit & integration tests**
 
 Run: `pnpm test`
 Expected: All test files pass across `@tether/shared`, `@tether/sync-client`, `@tether/server`, `@tether/web`, and `@tether/chaos`.
 
-- [ ] **Step 3: Run full TypeScript typecheck**
+- [x] **Step 3: Run full TypeScript typecheck**
 
 Run: `pnpm typecheck`
 Expected: 0 errors across all workspaces.
 
-- [ ] **Step 4: Run linter**
+- [x] **Step 4: Run linter**
 
 Run: `pnpm lint`
 Expected: 0 warnings and 0 errors.
 
-- [ ] **Step 5: Run chaos CI suite**
+- [x] **Step 5: Run chaos CI suite**
 
 Run: `pnpm chaos:ci`
 Expected: 100% invariant convergence.

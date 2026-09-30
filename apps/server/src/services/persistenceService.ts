@@ -28,6 +28,7 @@ export class PersistenceService {
   private flushWindowMs: number;
   private totalBufferedUpdates = 0;
   private maxBufferedUpdates: number;
+  private isDestroyed = false;
 
   /** Live doc for a room, so timer flushes can compact while the room stays active (set by RoomRegistry). */
   public resolveDoc?: (roomId: string) => Y.Doc | undefined;
@@ -55,6 +56,10 @@ export class PersistenceService {
     update: Uint8Array,
     ackRecipient?: AckRecipient
   ): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
     if (this.isBufferFull()) {
       throw new BufferFullError();
     }
@@ -84,13 +89,20 @@ export class PersistenceService {
     if (!this.flushTimers.has(roomId)) {
       const timer = setTimeout(() => {
         this.flushTimers.delete(roomId);
-        this.flush(roomId, this.resolveDoc?.(roomId));
+        try {
+          this.flush(roomId, this.resolveDoc?.(roomId));
+        } catch {
+          // Handled or suppressed: flush() already logs / re-schedules retry timer
+        }
       }, this.flushWindowMs);
       this.flushTimers.set(roomId, timer);
     }
   }
 
   public flush(roomId: string, docForCompaction?: Y.Doc): number {
+    if (this.isDestroyed) {
+      return 0;
+    }
     const timer = this.flushTimers.get(roomId);
     if (timer) {
       clearTimeout(timer);
@@ -149,6 +161,7 @@ export class PersistenceService {
   }
 
   public destroy(): void {
+    this.isDestroyed = true;
     for (const timer of this.flushTimers.values()) {
       clearTimeout(timer);
     }

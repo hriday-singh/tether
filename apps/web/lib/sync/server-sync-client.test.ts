@@ -24,6 +24,8 @@ vi.mock('@tether/sync-client', () => {
         destroy: vi.fn(),
         command: vi.fn().mockResolvedValue(undefined),
         queueAwarenessUpdate: vi.fn(),
+        killSocket: vi.fn(),
+        setOffline: vi.fn(),
         wakeManagerInstance: { destroy: vi.fn() },
       };
     }),
@@ -180,6 +182,22 @@ describe('ServerSyncClient', () => {
       ops: 1,
       converged: true,
     });
+
+    client.destroy();
+  });
+
+  it('lab methods forward to protocol client', () => {
+    const client = new ServerSyncClient(options);
+    const mockProtocol = (client as unknown as { protocolClient: { killSocket: ReturnType<typeof vi.fn>; setOffline: ReturnType<typeof vi.fn> } }).protocolClient;
+
+    client.lab.killSocket();
+    expect(mockProtocol.killSocket).toHaveBeenCalledTimes(1);
+
+    client.lab.setOffline(true);
+    expect(mockProtocol.setOffline).toHaveBeenCalledWith(true);
+
+    client.lab.setOffline(false);
+    expect(mockProtocol.setOffline).toHaveBeenCalledWith(false);
 
     client.destroy();
   });

@@ -74,18 +74,18 @@ apps/server/
   - `GET /api/rooms/:id/events`: `{ items: AuditEvent[], nextBefore: number | null, nextAfter: number | null }`
   - `GET /api/rooms/:id/admission`: validates `pv`, `ep`, room capacity, and returns `{ status: AdmissionStatus }`
 
-- [ ] **Step 1: Write integration tests for `events` pagination and `admission` checks**
+- [x] **Step 1: Write integration tests for `events` pagination and `admission` checks**
   Add tests in `apps/server/tests/integration/restAndWs.test.ts`:
   1. `GET /api/rooms/:id/events` validates returned item properties are camelCase (`roomId`, `createdAt`, etc.) and matches `AuditEventSchema`.
   2. `GET /api/rooms/:id/events` checks `nextBefore` and `nextAfter` cursor values.
   3. `GET /api/rooms/:id/admission` returns `reauth` if passcode version in token is stale (`claims.pv !== room.passcode_version`).
   4. `GET /api/rooms/:id/admission` returns `reauth` if room epoch is stale (`claims.ep !== room.epoch`).
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/server test`
   Expected: FAIL on cursor/casing and admission checks.
 
-- [ ] **Step 3: Implement fixes in `app.ts` and `auditRepo.ts`**
+- [x] **Step 3: Implement fixes in `app.ts` and `auditRepo.ts`**
   - In `auditRepo.ts`: map database rows to camelCase interface:
     ```typescript
     export interface FormattedAuditEvent {
@@ -107,7 +107,7 @@ apps/server/
     - Verify `room.passcode_hash === null || claims.pv === room.passcode_version`, return `{ status: 'reauth' }` if mismatched.
     - Check if room member count >= `MAX_MEMBERS_PER_ROOM` and member not already admitted, return `{ status: 'full' }`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/server test`
   Expected: PASS
 

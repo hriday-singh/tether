@@ -6,6 +6,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
 import { ThinkingOrb } from './thinking-orb';
 import { FormattedTime } from './formatted-time';
 import { Popover, PopoverContent, PopoverTrigger, Select, SelectItem } from './menus';
+import { Toaster } from './toaster';
 
 describe('Button', () => {
   it('includes touch-target hit expansion class for icon-xs size', () => {
@@ -109,5 +110,12 @@ describe('Menus and Popovers', () => {
     const trigger = screen.getByRole('combobox', { name: 'Language selection' });
     expect(trigger).toBeInTheDocument();
     expect(trigger).toHaveTextContent('HTML');
+  });
+});
+
+describe('Toaster', () => {
+  it('renders Toaster component successfully', () => {
+    const { container } = render(<Toaster />);
+    expect(container).toBeInTheDocument();
   });
 });

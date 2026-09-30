@@ -11,8 +11,6 @@ import {
   ServerControlMessageSchema,
   Member,
   RoomMetadata,
-  AuditEvent,
-  ChatMessage,
 } from '@tether/shared/protocol/schemas';
 import {
   CLIENT_BATCH_WINDOW_MS,
@@ -26,65 +24,27 @@ import {
 import { calculateBackoff } from '@tether/shared/backoff';
 import { areStateVectorsEqual, hashString } from '@tether/shared/checksum';
 import { StatsStore, ClientStats } from './statsStore.js';
-import { WakeManager, WakeTarget, WakeDocumentTarget } from './wakeManager.js';
+import { WakeManager } from './wakeManager.js';
 import { probeAdmission } from './admissionProbe.js';
 import {
   restoreFromStorage,
   persistToStorage,
   clearStorage,
-  StorageIDBFactory,
 } from './indexedDbStorage.js';
 
-export type ClientConnectionStatus =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting'
-  | 'kicked'
-  | 'offline';
+import type {
+  ClientConnectionStatus,
+  SyncState,
+  SyncStorageOptions,
+  SyncClientOptions,
+} from './types.js';
 
-export type SyncState = 'synced' | 'saving' | 'saved' | 'mismatch';
-
-export interface SyncStorageOptions {
-  roomId: string;
-  roomEpoch: string;
-  idbFactory?: StorageIDBFactory;
-  debounceMs?: number;
-}
-
-export interface SyncClientOptions {
-  url: string;
-  token: string;
-  doc: Y.Doc;
-  apiUrl?: string;
-  roomId?: string;
-  fetchFn?: typeof fetch;
-  storage?: SyncStorageOptions;
-  webSocketFactory?: (url: string, protocols?: string | string[]) => WebSocket;
-  batchWindowMs?: number;
-  onStatusChange?: (status: ClientConnectionStatus) => void;
-  onSyncStateChange?: (state: SyncState) => void;
-  onRosterChange?: (members: Member[]) => void;
-  onHostChange?: (hostId: string | null) => void;
-  onWelcome?: (welcome: { self: Member; room: RoomMetadata; chatSeq: number; eventSeq: number }) => void;
-  onStatsChange?: (stats: ClientStats) => void;
-  onReauthRequired?: (reason?: string) => void;
-  onBanned?: () => void;
-  onRoomNotFound?: () => void;
-  onRoomLocked?: () => void;
-  onError?: (err: Error) => void;
-  onAwarenessUpdate?: (update: Uint8Array) => void;
-  onRoomUpdate?: (settings: { locked?: boolean; hasPasscode?: boolean; language?: string }) => void;
-  onEvent?: (event: AuditEvent) => void;
-  onChat?: (message: ChatMessage) => void;
-  clock?: () => number;
-  statsWindowSize?: number;
-  wakeProbeTimeoutMs?: number;
-  wakeTarget?: {
-    window?: WakeTarget;
-    document?: WakeDocumentTarget;
-  };
-}
+export type {
+  ClientConnectionStatus,
+  SyncState,
+  SyncStorageOptions,
+  SyncClientOptions,
+};
 
 export class SyncClient {
   public readonly doc: Y.Doc;
@@ -100,6 +60,7 @@ export class SyncClient {
   private syncState: SyncState = 'synced';
   private seq = 1;
   private reconnectAttempts = 0;
+  private isOffline = false;
   private isDestroyed = false;
 
   private pendingDocUpdates: Uint8Array[] = [];
@@ -164,7 +125,11 @@ export class SyncClient {
       },
       onWakeTimeout: () => {
         if (this.status === 'connected') {
-          this.ws?.terminate?.() ?? this.ws?.close();
+          if (this.ws?.terminate) {
+            this.ws.terminate();
+          } else {
+            this.ws?.close();
+          }
           this.reconnectAttempts = 0;
           this.connect();
         }
@@ -199,7 +164,7 @@ export class SyncClient {
   }
 
   public async connect(): Promise<void> {
-    if (this.isDestroyed || this.status === 'connected' || this.status === 'connecting') {
+    if (this.isDestroyed || this.isOffline || this.status === 'connected' || this.status === 'connecting') {
       return;
     }
 
@@ -588,6 +553,11 @@ export class SyncClient {
 
     this.pendingAcks.clear();
 
+    if (this.isOffline) {
+      this.setStatus('offline');
+      return;
+    }
+
     if (this.isDestroyed || event.code === WS_CLOSE_CODES.NORMAL) {
       this.setStatus('disconnected');
       return;
@@ -649,6 +619,46 @@ export class SyncClient {
       this.pendingCommands.set(cmd.rid, { resolve, reject, timer });
       this.sendControl(cmd);
     });
+  }
+
+  public killSocket(): void {
+    if (this.ws) {
+      const wsAny = this.ws as unknown as { terminate?: () => void; close: () => void };
+      if (typeof wsAny.terminate === 'function') {
+        wsAny.terminate();
+      } else {
+        wsAny.close();
+      }
+    }
+  }
+
+  public setOffline(offline: boolean): void {
+    if (this.isOffline === offline) return;
+    this.isOffline = offline;
+
+    if (offline) {
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+      this.stopPingTimer();
+      if (this.deadTimer) {
+        clearTimeout(this.deadTimer);
+        this.deadTimer = null;
+      }
+      if (this.ws) {
+        const wsAny = this.ws as unknown as { terminate?: () => void; close: () => void };
+        if (typeof wsAny.terminate === 'function') {
+          wsAny.terminate();
+        } else {
+          wsAny.close();
+        }
+      }
+      this.setStatus('offline');
+    } else {
+      this.reconnectAttempts = 0;
+      void this.connect();
+    }
   }
 
   public destroy(): void {

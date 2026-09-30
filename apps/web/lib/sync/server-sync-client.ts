@@ -150,12 +150,10 @@ export class ServerSyncClient implements SyncClient {
     this.lab = {
       setLatency: () => {},
       setOffline: (offline: boolean) => {
-        if (offline) {
-          this.protocolClient.wakeManagerInstance?.destroy();
-        }
+        this.protocolClient.setOffline(offline);
       },
       killSocket: () => {
-        this.status.set({ ...this.status.get(), connection: 'offline' });
+        this.protocolClient.killSocket();
       },
     };
     const wsBase = options.wsUrl || process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4000';

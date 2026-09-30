@@ -13,7 +13,7 @@ describe('Sync Guards & Protocol Protection', () => {
     });
 
     it('detects frame rate flooding and returns 4029', () => {
-      let now = 1000;
+      const now = 1000;
       // 30 frames/s over 3s = 90 frames max
       const guard = new FloodGuard({
         framesPerSec: 10,

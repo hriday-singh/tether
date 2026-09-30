@@ -30,6 +30,7 @@ powershell -ExecutionPolicy Bypass -File .\setup.ps1 -NonInteractive
 
 **POSIX Shell (Linux / macOS / WSL / Git Bash):**
 ```bash
+chmod +x ./setup.sh ./launch.sh
 ./setup.sh --non-interactive
 ```
 
@@ -44,8 +45,8 @@ mkdir -p data
 # 3. Install dependencies
 pnpm install
 
-# 4. Build shared package (required before web/server can compile)
-pnpm --filter @tether/shared build:pkg
+# 4. Build shared packages (required before web/server can compile)
+pnpm build:pkg
 ```
 
 ---
@@ -115,7 +116,7 @@ Environment configuration is read from `.env` in the repository root.
 
 Always execute verification before claiming completion:
 
-1. **Unit & Integration Tests**:
+1. **Unit & Integration Tests (275+ tests across 60 suites)**:
    ```bash
    pnpm test
    ```
@@ -131,7 +132,11 @@ Always execute verification before claiming completion:
    ```bash
    pnpm chaos:ci
    ```
-5. **Live Health Check Endpoints**:
+5. **Latency Benchmarks**:
+   ```bash
+   pnpm bench
+   ```
+6. **Live Health Check Endpoints**:
    - Liveness: `GET http://localhost:4000/health/live`
    - Readiness: `GET http://localhost:4000/health/ready`
 
@@ -142,4 +147,4 @@ Always execute verification before claiming completion:
 - **No Unsolicited Migrations**: Never auto-apply database migrations. Generate migration files and instruct the human operator.
 - **Never Commit Directly**: Code modifications only; leave git staging and commits to the human operator.
 - **File Length Limit**: Ensure modularization such that no single file exceeds 700 lines.
-- **Dependency Awareness**: When modifying `@tether/shared`, always re-run `pnpm --filter @tether/shared build:pkg` so other packages resolve the updated type definitions and exports.
+- **Dependency Awareness**: When modifying `@tether/shared` or `@tether/sync-client`, always re-run `pnpm build:pkg` (or `pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg`) so other packages resolve updated type definitions and exports.

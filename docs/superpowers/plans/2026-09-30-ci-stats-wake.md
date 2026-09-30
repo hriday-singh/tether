@@ -31,9 +31,9 @@
 **Files:**
 - Create: `.github/workflows/ci.yml`
 
-- [ ] **Step 1:** Create `.github/workflows/ci.yml` with triggers for `push` and `pull_request` on `main`, running Node 22 with pnpm caching.
-- [ ] **Step 2:** Configure jobs: `lint`, `typecheck`, `test` (with `NODE_ENV: test` and `JWT_SECRET`), and `chaos`.
-- [ ] **Step 3:** Verify YAML formatting and ensure all step commands match repository package scripts.
+- [x] **Step 1:** Create `.github/workflows/ci.yml` with triggers for `push` and `pull_request` on `main`, running Node 22 with pnpm caching.
+- [x] **Step 2:** Configure jobs: `lint`, `typecheck`, `test` (with `NODE_ENV: test` and `JWT_SECRET`), and `chaos`.
+- [x] **Step 3:** Verify YAML formatting and ensure all step commands match repository package scripts.
 
 ---
 
@@ -62,25 +62,25 @@ export interface ClientStats {
 }
 ```
 
-- [ ] **Step 1: Write failing unit tests for StatsStore**
+- [x] **Step 1: Write failing unit tests for StatsStore**
   Create `packages/sync-client/src/statsStore.test.ts` covering:
   - Empty store returns all zeros.
   - Correct nearest-rank `p50Ms` and `p95Ms` percentiles.
   - Sliding window capping at 60 samples.
   - Subscriptions and reset behavior.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/sync-client test statsStore.test.ts`
   Expected: FAIL with module not found.
-- [ ] **Step 3: Implement minimal StatsStore**
+- [x] **Step 3: Implement minimal StatsStore**
   Create `packages/sync-client/src/statsStore.ts` and export from `packages/sync-client/src/index.ts`.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   Run: `pnpm --filter @tether/sync-client test statsStore.test.ts`
   Expected: PASS.
-- [ ] **Step 5: Wire StatsStore into SyncClient**
+- [x] **Step 5: Wire StatsStore into SyncClient**
   - Record RTT on `pong`.
   - Record Ack latency on `ack`.
   - Expose `client.stats` and notify via `onStatsChange`.
-- [ ] **Step 6: Update syncClient.test.ts to verify stats integration**
+- [x] **Step 6: Update syncClient.test.ts to verify stats integration**
   Add unit tests for `pong` RTT and `ack` latency tracking.
 
 ---
@@ -108,7 +108,7 @@ export interface WakeManagerOptions {
 }
 ```
 
-- [ ] **Step 1: Write failing unit tests for WakeManager**
+- [x] **Step 1: Write failing unit tests for WakeManager**
   Create `packages/sync-client/src/wakeManager.test.ts` simulating:
   - `visibilitychange` (visible vs hidden).
   - `focus`, `pageshow`, and `online` triggering `onWakePing` and probe timer.
@@ -116,29 +116,29 @@ export interface WakeManagerOptions {
   - `clearProbe` preventing timeout.
   - `offline` event triggering `onOffline`.
   - `destroy()` detaching all event listeners.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/sync-client test wakeManager.test.ts`
   Expected: FAIL with module not found.
-- [ ] **Step 3: Implement minimal WakeManager**
+- [x] **Step 3: Implement minimal WakeManager**
   Create `packages/sync-client/src/wakeManager.ts` and export from `packages/sync-client/src/index.ts`.
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   Run: `pnpm --filter @tether/sync-client test wakeManager.test.ts`
   Expected: PASS.
-- [ ] **Step 5: Integrate WakeManager into SyncClient**
+- [x] **Step 5: Integrate WakeManager into SyncClient**
   - Attach in browser environments or with injected targets.
   - Send immediate ping on wake and start probe.
   - Clear probe on `pong`.
   - Force close and reconnect with 0 backoff on wake probe timeout.
   - Set status to `'offline'` and pause reconnect timer on offline event.
-- [ ] **Step 6: Update syncClient.test.ts to verify wake integration**
+- [x] **Step 6: Update syncClient.test.ts to verify wake integration**
   Add unit tests for wake ping, probe timeout reconnect, and offline status.
 
 ---
 
 ### Task 5: Verification & Documentation
 
-- [ ] **Step 1:** Run full test suite: `pnpm test`.
-- [ ] **Step 2:** Run chaos fuzzer: `pnpm run chaos:ci`.
-- [ ] **Step 3:** Run typecheck: `pnpm typecheck`.
-- [ ] **Step 4:** Run linter: `pnpm lint`.
-- [ ] **Step 5:** Update `docs/week1-completion-plan.md` marking Tasks 2, 3, and 4 complete.
+- [x] **Step 1:** Run full test suite: `pnpm test`.
+- [x] **Step 2:** Run chaos fuzzer: `pnpm run chaos:ci`.
+- [x] **Step 3:** Run typecheck: `pnpm typecheck`.
+- [x] **Step 4:** Run linter: `pnpm lint`.
+- [x] **Step 5:** Update `docs/week1-completion-plan.md` marking Tasks 2, 3, and 4 complete.

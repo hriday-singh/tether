@@ -47,7 +47,7 @@ flowchart LR
 | CRDT | `yjs` **v13** + `y-protocols` + `lib0` | v14 (`@y/y`) binding is unstable per upstream README, so we pin v13 |
 | Server | Node 24 LTS, Fastify (REST) + `ws` (`noServer: true`) on the same HTTP server | Manual `upgrade` handling lets us authenticate **before** the handshake completes |
 | Validation | Zod schemas in `packages/shared` | One schema for REST bodies, control messages and env |
-| DB | SQLite (`better-sqlite3`, WAL mode) for POC; PostgreSQL 16+ for production scale | Zero external dependencies for dev/testing, in-memory option for sub-second test runs; clean repo abstraction maps to PostgreSQL/RDS for production multi-node scale |
+| DB | SQLite (`node:sqlite`, WAL mode) for POC; PostgreSQL 16+ for production scale | Zero external dependencies for dev/testing, in-memory option for sub-second test runs; clean repo abstraction maps to PostgreSQL/RDS for production multi-node scale |
 | Auth | HS256 JWT room session token (`jose`) | Stateless verification at upgrade; see [05](05-rooms-security-roles.md) |
 | Passcode hashing | Node `crypto.scrypt` + `timingSafeEqual` | Stdlib, no native dependency |
 | Client state | TanStack Query (REST) + React Context (session/provider) | User default. Yjs owns editor/presence state, React only subscribes |

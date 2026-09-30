@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { usePrefs } from '@/components/providers';
 import { Segmented, Slider, Switch, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/controls';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,12 +12,23 @@ export function SettingsDialog({
   open,
   onOpenChange,
   onLatencyChange,
+  section,
+  onSectionChange,
+  defaultSection = 'appearance',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLatencyChange?: (ms: number) => void;
+  section?: 'appearance' | 'editor' | 'collab' | 'network';
+  onSectionChange?: (section: 'appearance' | 'editor' | 'collab' | 'network') => void;
+  defaultSection?: 'appearance' | 'editor' | 'collab' | 'network';
 }) {
   const { prefs, setPrefs } = usePrefs();
+  const [uncontrolledSection, setUncontrolledSection] = useState<'appearance' | 'editor' | 'collab' | 'network'>(defaultSection);
+
+  const activeSection = section ?? uncontrolledSection;
+  const setActiveSection = onSectionChange ?? setUncontrolledSection;
+
   const set = <K extends keyof UserPreferences>(k: K) => (v: UserPreferences[K]) => setPrefs({ [k]: v } as Partial<UserPreferences>);
 
   return (
@@ -27,7 +38,7 @@ export function SettingsDialog({
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>Saved on this device.</DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="appearance" className="flex min-h-0 flex-col gap-3">
+        <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)} className="flex min-h-0 flex-col gap-3">
           <TabsList aria-label="Settings sections" className="self-start">
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="editor">Editor</TabsTrigger>

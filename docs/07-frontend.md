@@ -83,7 +83,7 @@ Workspace components in `components/workspace/`:
 
 ## Design tokens
 
-Single file `apps/web/styles/globals.css` (Tailwind v4 `@theme` referencing CSS variables). No component
+Single file `apps/web/app/globals.css` (Tailwind v4 `@theme` referencing CSS variables). No component
 hardcodes a color, size, radius, or duration.
 
 - **Semantic colors:** `background`, `foreground`, `muted`, `muted-foreground`, `border`, `primary`,
@@ -93,8 +93,8 @@ hardcodes a color, size, radius, or duration.
 - **Status colors:** `status-saved`, `status-saving`, `status-offline` map onto semantic tokens.
 - **Scales:** type (xs–2xl), spacing (4 px base), radius (`sm`, `md`, `lg`, `full`, rounded by default),
   shadow (`sm`, `md`), motion (`duration-fast` 120 ms, `duration-base` 200 ms, `ease-standard`).
-- Light mode only, semantic names so dark mode drops in later.
-- Motion: CSS transitions on `opacity`/`transform` only. `prefers-reduced-motion` disables them.
+- **Multi-theme engine:** Quiet Dark (default), Quiet Light, and High-Contrast modes, switchable via VS Code-style `⌘K` QuickPick with live keyboard arrow preview (see [ADR-016](11-decisions.md#adr-016-client-side-sandboxed-preview-devtools-console-multi-theme-engine-and-dual-morphing)).
+- **Motion:** CSS transitions on `opacity`/`transform` only. `prefers-reduced-motion` disables them.
 
 ## Accessibility
 

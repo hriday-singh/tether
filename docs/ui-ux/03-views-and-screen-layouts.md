@@ -10,8 +10,8 @@ The application comprises five primary screen states and four interactive overla
 
 1. **Landing Page (`/`)**: Product showcase, live animated mini-editor, quick room creator, and join-by-ID form with Lenis smooth scrolling.
 2. **Join Gate (`/r/[id]`)**: Passcode & display name entry with live avatar presence stack and `thinking-orbs` connecting state.
-3. **Desktop Workspace (`/r/[id]`)**: The "Quiet IDE" three-pane resizable workspace with collaborative CodeMirror editor, live sandboxed preview, sidebar, and diagnostics console.
-4. **Small Screen Viewport Barrier (`<ScreenTooSmallGate />`)**: Protective gate screen when accessed on viewports < 1024px, informing users: *"Please try on a bigger screen or refresh"* with dynamic resize auto-unblocking.
+3. **Desktop Workspace (`/r/[id]`)**: The "Quiet IDE" three-pane resizable workspace with collaborative CodeMirror editor, live sandboxed preview, sidebar, and diagnostics console (for viewports ≥ 1024px).
+4. **Small Screen Viewport Barrier (`<ScreenTooSmallGate />`)**: Protective gate screen when accessed on viewports < 1024px, informing users that the collaborative engineering environment works on bigger screens only with dynamic resize auto-unblocking.
 5. **Terminal / Edge States**: Kicked view (with instant "Copy My Version" button), Room Locked, Offline Reconnecting banner, and 404 Not Found.
 6. **Modal Overlays**: `⌘K` Command Palette, VS Code-Style Settings Dialog, Host Controls Sheet, Keyboard Shortcuts Modal (`?`).
 
@@ -89,41 +89,38 @@ The desktop workspace uses an **Inset Floating Card Layout** with `react-resizab
 To prevent code view cramping on laptops and smaller desktop displays:
 * **Large Desktop Viewports (≥ 1280px / `xl`)**: Full 3-pane split (CodeMirror Editor + Live Sandboxed Preview + Sidebar) mounted simultaneously using `react-resizable-panels`.
 * **Medium Desktop & Laptops (1024px – 1279px / `lg`)**: 2-pane priority layout (CodeMirror Editor taking ≥ 65% width + Sidebar). The Live Preview pane transforms into a collapsible side-drawer or segmented toggle inside the editor pane, guaranteeing CodeMirror maintains a minimum width of at least `600px` without horizontal line crowding.
-* **Small Screens & Mobile Viewports (< 1024px)**: Viewing or editing the collaborative workspace is **strictly prohibited**. The app mounts `<ScreenTooSmallGate />` displaying: *"Please try on a bigger screen or refresh"*.
+* **Small Screens & Mobile Viewports (< 1024px)**: The collaborative IDE experience requires a larger display to prevent UI collisions and cursor disorientation. The app mounts `<ScreenTooSmallGate />` informing the user that Tether's workspace works on bigger screens only (auto-unblocks upon resizing window).
 
 ---
 
 ## 3. Small Screen Viewport Barrier (`<ScreenTooSmallGate />`)
 
-To prevent fragmented code layouts, cursor disorientation, accidental mobile keystrokes, and poor collaborative typing ergonomics, Tether locks out small screens (< 1024px) from entering the collaborative workspace:
+To prevent fragmented code layouts, cursor disorientation, accidental mobile keystrokes, and poor collaborative typing ergonomics, Tether presents a focused display barrier for screens under 1024px:
 
 ```
 ┌────────────────────────────────────────────────────────────┐
 │                                                            │
 │                     [ Monitor01Icon ]                      │
 │                                                            │
-│               Please try on a bigger screen                │
-│                        or refresh                          │
+│                 Desktop display required                   │
 │                                                            │
-│   Tether is an engineering-grade collaborative workspace   │
-│   designed for desktop screens (≥ 1024px). Real-time       │
-│   split code editing, presence tracking, and diagnostics   │
-│   require a larger display to prevent UI collisions.       │
+│   Tether's multi-pane workspace requires a screen at least │
+│   1024 px wide to host editor, presence, and diagnostics   │
+│   panels without collisions.                               │
 │                                                            │
 │             ╭──────────────────╮  ╭────────────────╮       │
-│             │ ⟳ Refresh Screen │  │ Return to Home │       │
+│             │ ⟳ Recheck Display│  │ Return to Home │       │
 │             ╰──────────────────╯  ╰────────────────╯       │
 │                                                            │
-│           (Auto-unlocks when window is expanded)           │
+│           (Expands automatically when resized)             │
 │                                                            │
 └────────────────────────────────────────────────────────────┘
 ```
 
 ### Technical Implementation & UX Safeguards
-* **Mounting Hook**: `useViewportGate({ minWidth: 1024 })` actively evaluates `window.innerWidth` via `window.matchMedia('(min-width: 1024px)')`.
-* **Socket Protection**: When `<ScreenTooSmallGate />` is mounted, the underlying `SyncClient` halts WebSocket connection attempts so small screen sessions do not consume room slots or generate presence noise.
-* **Dynamic Auto-Unlock**: If a user resizes their desktop browser window or connects an external monitor ($\ge 1024\text{px}$), the barrier unmounts and automatically restores the full 3-pane workspace with zero state loss.
-* **Manual Refresh Trigger**: The `"Refresh Screen"` button executes `window.location.reload()`, giving users on rotating tablets an instant re-check affordance.
+* **Mounting Hook**: Evaluates `window.matchMedia('(min-width: 1024px)')`.
+* **Sync Client Lifecycle**: When `<ScreenTooSmallGate />` is mounted, `ws.client.pause()` pauses WebSocket traffic while retaining local document state.
+* **Dynamic Auto-Unlock**: Expanding the window or rotating to a display ($\ge 1024\text{px}$) unmounts the barrier, calls `ws.client.resume()`, and immediately restores the 3-pane workspace without state loss.
 
 ---
 

@@ -174,7 +174,7 @@ async function runBenchmark(): Promise<void> {
       token,
       doc: clientDoc,
       batchWindowMs: 10, // low batch window for reactive benchmark
-      webSocketFactory: (url, protocols) => new WebSocket(url, protocols),
+      webSocketFactory: (url: string, protocols?: string | string[]) => new WebSocket(url, protocols),
     });
 
     const state: ClientState = { id: i, client, doc: clientDoc, yText };

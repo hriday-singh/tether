@@ -92,7 +92,7 @@ apps/server/
   - `export class FaultyWebSocket`: standard WebSocket-compatible interface wrapping `ws.WebSocket` with inbound & outbound `FaultyTransport`.
   - Re-exported from `@tether/sync-client/testing`.
 
-- [ ] **Step 1: Write failing unit test for `FaultyWebSocket`**
+- [x] **Step 1: Write failing unit test for `FaultyWebSocket`**
   Create `packages/sync-client/src/testing/faultyWebSocket.test.ts`:
   ```typescript
   import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -142,11 +142,11 @@ apps/server/
   });
   ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/sync-client test src/testing/faultyWebSocket.test.ts`
   Expected: FAIL (`FaultyWebSocket` not found).
 
-- [ ] **Step 3: Implement `FaultyWebSocket` and barrel export in `packages/sync-client`**
+- [x] **Step 3: Implement `FaultyWebSocket` and barrel export in `packages/sync-client`**
   1. Move/implement `FaultyWebSocket` in `packages/sync-client/src/testing/faultyWebSocket.ts`.
   2. Create `packages/sync-client/src/testing/index.ts` exporting `FaultyTransport` and `FaultyWebSocket`.
   3. In `packages/sync-client/package.json`, update `./testing` export:
@@ -159,7 +159,7 @@ apps/server/
      ```
   4. In `tests/chaos/src/faultyWebSocket.ts`, re-export `FaultyWebSocket` from `@tether/sync-client/testing`.
 
-- [ ] **Step 4: Build package and verify tests pass**
+- [x] **Step 4: Build package and verify tests pass**
   Run: `pnpm --filter @tether/sync-client build:pkg && pnpm --filter @tether/sync-client test`
   Expected: PASS
 
@@ -182,14 +182,14 @@ apps/server/
   - `Room.prototype.addConnection(ws, member, isBot?: boolean)`
   - `allMembers` in `welcome` and `member.joined` control messages correctly report `isBot: true` for bot members.
 
-- [ ] **Step 1: Write test in `apps/server/src/rooms/rooms.test.ts` for bot member flag**
+- [x] **Step 1: Write test in `apps/server/src/rooms/rooms.test.ts` for bot member flag**
   Verify that adding a connection with `isBot: true` preserves `isBot` on `room.isBot(memberId)` and exports `isBot: true` in members.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/server test src/rooms/rooms.test.ts`
   Expected: FAIL (missing `isBot` method on `Room`).
 
-- [ ] **Step 3: Implement `isBot` tracking on `Room` and connection handler**
+- [x] **Step 3: Implement `isBot` tracking on `Room` and connection handler**
   1. In `apps/server/package.json`, move `@tether/sync-client: "workspace:*"` from `devDependencies` to `dependencies`.
   2. In `apps/server/src/rooms/room.ts`:
      - Add `private botMemberIds = new Set<string>();`
@@ -199,7 +199,7 @@ apps/server/
   3. In `apps/server/src/ws/connectionHandler.ts`:
      - Populate `isBot: room.isBot(m.member_id)` when building `rawMembers` and `selfMember`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/server test src/rooms/rooms.test.ts`
   Expected: PASS
 
@@ -223,18 +223,18 @@ apps/server/
     - `isStormActive(roomId: string): boolean`
     - `destroyAll(): Promise<void>`
 
-- [ ] **Step 1: Write failing unit tests for `BotStormManager`**
+- [x] **Step 1: Write failing unit tests for `BotStormManager`**
   Create `apps/server/src/rooms/botStormManager.test.ts`:
   1. Test starting a storm creates the requested number of bot clients.
   2. Test preventing concurrent storms in the same room (`isStormActive` returns true and throws or rejects).
   3. Test stopping/undoing the storm removes bot text and leaves the room.
   4. Test `destroyAll()` terminates all active storms gracefully.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/server test src/rooms/botStormManager.test.ts`
   Expected: FAIL (`botStormManager.ts` not found).
 
-- [ ] **Step 3: Implement `BotStormManager`**
+- [x] **Step 3: Implement `BotStormManager`**
   Create `apps/server/src/rooms/botStormManager.ts`:
   - `BOT_NAMES = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta']`
   - `SNIPPETS = ['const ', 'let x = 1;', '\n', '// bot\n', 'fn()', ' + ', 'return ', '{}', '[]', 'await ', 'if (ok) ']`
@@ -253,7 +253,7 @@ apps/server/
     - Log audit event `demo.storm_completed`.
     - Remove from `activeStorms`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/server test src/rooms/botStormManager.test.ts`
   Expected: PASS
 
@@ -275,7 +275,7 @@ apps/server/
   - `connectionHandler.ts`: On `case 'demo.storm'`, validates `DEMO_MODE`, host permission, room capacity, and absence of active storm, then delegates to `botStormManager.startStorm(...)`.
   - Graceful shutdown in `index.ts` calls `await botStormManager.destroyAll()`.
 
-- [ ] **Step 1: Write integration test for `demo.storm` via WebSocket**
+- [x] **Step 1: Write integration test for `demo.storm` via WebSocket**
   Create `apps/server/tests/integration/botStormIntegration.test.ts`:
   - Launch Fastify server with `DEMO_MODE: true`.
   - Connect host client over WebSocket.
@@ -286,11 +286,11 @@ apps/server/
   - Verify after 2 seconds, bot text is undone and bots leave with `member.left`.
   - Verify audit event `demo.storm_completed` is emitted and logged.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/server test tests/integration/botStormIntegration.test.ts`
   Expected: FAIL.
 
-- [ ] **Step 3: Wire `BotStormManager` into server and connection handler**
+- [x] **Step 3: Wire `BotStormManager` into server and connection handler**
   1. In `apps/server/src/ws/upgradeGate.ts`: add `botStormManager?: BotStormManager` to `UpgradeGateDependencies`.
   2. In `apps/server/src/http/app.ts`: add `botStormManager?: BotStormManager` to `AppDependencies`.
   3. In `apps/server/src/ws/connectionHandler.ts`:
@@ -326,7 +326,7 @@ apps/server/
      - Provide dynamic port getter `() => serverPort`.
      - In shutdown hook, call `await botStormManager.destroyAll()`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/server test tests/integration/botStormIntegration.test.ts`
   Expected: PASS
 
@@ -344,19 +344,19 @@ apps/server/
 - Produces:
   - Updates `client.storm` store with `{ running: true, bots, endsAt, ops }` on `demo.storm` and `{ running: false, result: ... }` on completion.
 
-- [ ] **Step 1: Write unit test in `apps/web/lib/sync/server-sync-client.test.ts`**
+- [x] **Step 1: Write unit test in `apps/web/lib/sync/server-sync-client.test.ts`**
   Verify that when an audit event `{ type: 'demo.storm', payload: { bots: 3, seconds: 20 } }` arrives, `client.storm.get()` updates to `running: true`. When `demo.storm_completed` arrives, `running` updates to `false`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   Run: `pnpm --filter @tether/web test lib/sync/server-sync-client.test.ts`
   Expected: FAIL.
 
-- [ ] **Step 3: Implement event listener in `ServerSyncClient`**
+- [x] **Step 3: Implement event listener in `ServerSyncClient`**
   In `apps/web/lib/sync/server-sync-client.ts`, add event listener in constructor:
   - On `event.type === 'demo.storm'`: update `this.storm.set({ running: true, bots: payload.bots, endsAt: Date.now() + payload.seconds * 1000, ops: 0, result: null })`.
   - On `event.type === 'demo.storm_completed'`: update `this.storm.set({ running: false, bots: 0, endsAt: null, ops: payload.ops, result: { ... } })`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
   Run: `pnpm --filter @tether/web test lib/sync/server-sync-client.test.ts`
   Expected: PASS
 
@@ -367,23 +367,23 @@ apps/server/
 **Files:**
 - None (verification across monorepo)
 
-- [ ] **Step 1: Recompile shared packages**
+- [x] **Step 1: Recompile shared packages**
   Run: `pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg`
   Expected: Code 0.
 
-- [ ] **Step 2: Run full unit & integration tests**
+- [x] **Step 2: Run full unit & integration tests**
   Run: `pnpm test`
   Expected: All tests pass across `@tether/shared`, `@tether/sync-client`, `@tether/server`, `@tether/web`, and `@tether/chaos`.
 
-- [ ] **Step 3: Run TypeScript typecheck**
+- [x] **Step 3: Run TypeScript typecheck**
   Run: `pnpm typecheck`
   Expected: 0 errors across all workspaces.
 
-- [ ] **Step 4: Run ESLint**
+- [x] **Step 4: Run ESLint**
   Run: `pnpm lint`
   Expected: 0 warnings and 0 errors.
 
-- [ ] **Step 5: Run Chaos CI**
+- [x] **Step 5: Run Chaos CI**
   Run: `pnpm chaos:ci`
   Expected: 100% convergence.
 

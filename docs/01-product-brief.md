@@ -65,13 +65,13 @@ Text chat was added later as a sidebar tab ([ADR-017](11-decisions.md#adr-017-te
 
 - User accounts, login, OAuth. Identity is a guest display name.
 - Multiple files per room / file tree.
-- Running code, terminals, or language servers.
+- Running code on the server, server-side terminals, or language servers (client-side sandboxed iframe execution and watchdog Web Worker added in ADR-016).
 - Voice and video. Dropped because of the cost to build and run them (TURN relay, SFU beyond about
   4 people, audio paths the chaos harness cannot test), not money. See
   [ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015). Text chat is in scope,
   and the audit feed is still not a chat.
 - Multi-instance horizontal scaling. Designed for it in [09](09-operations.md#scale-path), not built.
-- Dark mode (tokens are semantic so it can be added later).
+- Server-side user accounts and OAuth (guest identity with signed JWT tokens).
 - Playwright E2E (off until explicitly requested).
 
 ## Success criteria (definition of "pakka")
