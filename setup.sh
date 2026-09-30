@@ -47,6 +47,7 @@ DATABASE=""
 DATABASE_URL=""
 BACKEND_PORT=""
 FRONTEND_PORT=""
+BACKEND_URL=""
 NON_INTERACTIVE=false
 SKIP_LAUNCH=false
 
@@ -67,6 +68,9 @@ for arg in "$@"; do
     --frontend-port=*|--web-port=*)
       FRONTEND_PORT="${arg#*=}"
       ;;
+    --backend-url=*)
+      BACKEND_URL="${arg#*=}"
+      ;;
     --non-interactive)
       NON_INTERACTIVE=true
       ;;
@@ -82,6 +86,7 @@ for arg in "$@"; do
       echo "  --database-url=URL           Postgres connection string"
       echo "  --backend-port=PORT          Backend API port (default: 4000)"
       echo "  --frontend-port=PORT         Frontend web client port (default: 3001)"
+      echo "  --backend-url=URL            Public backend URL the browser calls (default: http://localhost:<backend-port>)"
       echo "  --non-interactive            Run silently with defaults"
       echo "  --skip-launch                Do not prompt to launch after setup"
       exit 0
@@ -230,6 +235,18 @@ if ! [[ "$FRONTEND_PORT" =~ ^[0-9]+$ ]]; then
 fi
 write_ok "Frontend port selected: $FRONTEND_PORT"
 
+# Public backend URL the browser calls (e.g. https://api.example.com behind a reverse proxy)
+if [ -z "$BACKEND_URL" ]; then
+  BACKEND_URL=$(prompt_text "Public backend URL (browser-facing)" "http://localhost:${BACKEND_PORT}")
+fi
+BACKEND_URL="${BACKEND_URL%/}"
+if ! [[ "$BACKEND_URL" =~ ^https?:// ]]; then
+  write_warn "Invalid backend URL '$BACKEND_URL'. Falling back to http://localhost:${BACKEND_PORT}."
+  BACKEND_URL="http://localhost:${BACKEND_PORT}"
+fi
+BACKEND_WS_URL="ws${BACKEND_URL#http}"
+write_ok "Backend URL selected: $BACKEND_URL (WebSocket: $BACKEND_WS_URL)"
+
 # 3b. Allowed Origins Configuration
 # Build deduplicated base origins list
 declare -a BASE_ORIGINS=("http://localhost:3000" "http://127.0.0.1:3000" "http://localhost:${FRONTEND_PORT}" "http://127.0.0.1:${FRONTEND_PORT}")
@@ -315,8 +332,8 @@ if grep -q "^WEB_PORT=" .env; then
 else
   echo "WEB_PORT=${FRONTEND_PORT}" >> .env
 fi
-sed -i.bak -e "s|^NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=http://localhost:${BACKEND_PORT}|" .env && rm -f .env.bak
-sed -i.bak -e "s|^NEXT_PUBLIC_WS_URL=.*|NEXT_PUBLIC_WS_URL=ws://localhost:${BACKEND_PORT}|" .env && rm -f .env.bak
+sed -i.bak -e "s|^NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=${BACKEND_URL}|" .env && rm -f .env.bak
+sed -i.bak -e "s|^NEXT_PUBLIC_WS_URL=.*|NEXT_PUBLIC_WS_URL=${BACKEND_WS_URL}|" .env && rm -f .env.bak
 
 # Update ALLOWED_ORIGINS with base origins + any user-supplied extras
 FINAL_ORIGINS=$(IFS=','; echo "${BASE_ORIGINS[*]}")

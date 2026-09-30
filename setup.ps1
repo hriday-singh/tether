@@ -17,6 +17,9 @@
 .PARAMETER DatabaseUrl
     PostgreSQL connection string (when Database is postgres).
 
+.PARAMETER BackendUrl
+    Public backend URL the browser calls (default: http://localhost:<BackendPort>). WebSocket URL is derived (http->ws, https->wss).
+
 .PARAMETER NonInteractive
     Runs with defaults without prompting. Ideal for CI and autonomous AI agents.
 
@@ -41,6 +44,8 @@ param(
     [string]$Port = '',
 
     [string]$WebPort = '',
+
+    [string]$BackendUrl = '',
 
     [switch]$NonInteractive,
 
@@ -217,6 +222,18 @@ if ($FrontendPort -notmatch '^\d+$') {
 }
 Write-Success "Frontend port selected: $FrontendPort"
 
+# Public backend URL the browser calls (e.g. https://api.example.com behind a reverse proxy)
+if ([string]::IsNullOrEmpty($BackendUrl)) {
+    $BackendUrl = Prompt-Text -PromptText "Public backend URL (browser-facing)" -DefaultValue "http://localhost:$BackendPort"
+}
+$BackendUrl = $BackendUrl.TrimEnd('/')
+if ($BackendUrl -notmatch '^https?://') {
+    Write-Warn "Invalid backend URL '$BackendUrl'. Falling back to http://localhost:$BackendPort."
+    $BackendUrl = "http://localhost:$BackendPort"
+}
+$BackendWsUrl = $BackendUrl -replace '^http', 'ws'
+Write-Success "Backend URL selected: $BackendUrl (WebSocket: $BackendWsUrl)"
+
 # 3b. Allowed Origins Configuration
 $baseOrigins = @("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:$FrontendPort", "http://127.0.0.1:$FrontendPort")
 $baseOrigins = $baseOrigins | Select-Object -Unique
@@ -297,8 +314,8 @@ if ($envContent -match "(?m)^WEB_PORT=") {
 } else {
     $envContent += "`nWEB_PORT=$FrontendPort"
 }
-$envContent = $envContent -replace "(?m)^NEXT_PUBLIC_API_URL=.*", "NEXT_PUBLIC_API_URL=http://localhost:$BackendPort"
-$envContent = $envContent -replace "(?m)^NEXT_PUBLIC_WS_URL=.*", "NEXT_PUBLIC_WS_URL=ws://localhost:$BackendPort"
+$envContent = $envContent -replace "(?m)^NEXT_PUBLIC_API_URL=.*", "NEXT_PUBLIC_API_URL=$BackendUrl"
+$envContent = $envContent -replace "(?m)^NEXT_PUBLIC_WS_URL=.*", "NEXT_PUBLIC_WS_URL=$BackendWsUrl"
 
 # Update ALLOWED_ORIGINS with base origins + any user-supplied extras
 $finalOrigins = ($baseOrigins -join ',')
