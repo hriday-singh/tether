@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_AWARENESS_STATE_BYTES, STORM_MAX_BOTS, STORM_MAX_SECONDS } from '../constants.js';
+import { CHAT_MAX_CHARS, MAX_AWARENESS_STATE_BYTES, STORM_MAX_BOTS, STORM_MAX_SECONDS } from '../constants.js';
 
 // --- Shared Primitive Schemas ---
 
@@ -37,6 +37,19 @@ export const AuditEventSchema = z.object({
   createdAt: z.string(),
 });
 export type AuditEvent = z.infer<typeof AuditEventSchema>;
+
+export const ChatMessageSchema = z.object({
+  id: z.number().int().positive(),
+  roomId: z.string(),
+  seq: z.number().int().positive(),
+  clientMsgId: z.string().uuid(),
+  memberId: z.string(),
+  name: z.string(),
+  colorIndex: z.number().int().min(0),
+  text: z.string().min(1).max(CHAT_MAX_CHARS),
+  createdAt: z.string(),
+});
+export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
 // Relative Position schema matching Yjs RelativePosition JSON
 export const RelPosSchema = z.object({
@@ -128,6 +141,13 @@ export const ClientDemoStormSchema = z.object({
   faults: z.boolean(),
 });
 
+// rid doubles as the message's idempotency key: a resend after reconnect returns the stored message.
+export const ClientChatSendSchema = z.object({
+  t: z.literal('chat.send'),
+  rid: z.string().uuid(),
+  text: z.string().trim().min(1).max(CHAT_MAX_CHARS),
+});
+
 export const ClientControlMessageSchema = z.discriminatedUnion('t', [
   ClientPingSchema,
   ClientLeaveSchema,
@@ -138,6 +158,7 @@ export const ClientControlMessageSchema = z.discriminatedUnion('t', [
   ClientRoomLanguageSchema,
   ClientVerifyMismatchSchema,
   ClientDemoStormSchema,
+  ClientChatSendSchema,
 ]);
 export type ClientControlMessage = z.infer<typeof ClientControlMessageSchema>;
 
@@ -151,6 +172,7 @@ export const ServerWelcomeSchema = z.object({
   room: RoomMetadataSchema,
   token: z.string(),
   eventSeq: z.number().int().nonnegative(),
+  chatSeq: z.number().int().nonnegative().default(0),
 });
 
 export const ServerPongSchema = z.object({
@@ -230,6 +252,11 @@ export const ServerChecksumSchema = z.object({
   hash: z.string(),
 });
 
+export const ServerChatMsgSchema = z.object({
+  t: z.literal('chat.msg'),
+  message: ChatMessageSchema,
+});
+
 export const ServerControlMessageSchema = z.discriminatedUnion('t', [
   ServerWelcomeSchema,
   ServerPongSchema,
@@ -245,6 +272,7 @@ export const ServerControlMessageSchema = z.discriminatedUnion('t', [
   ServerErrorSchema,
   ServerOkSchema,
   ServerChecksumSchema,
+  ServerChatMsgSchema,
 ]);
 export type ServerControlMessage = z.infer<typeof ServerControlMessageSchema>;
 

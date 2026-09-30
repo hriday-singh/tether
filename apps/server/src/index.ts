@@ -8,6 +8,8 @@ import { AuditRepo } from './repo/auditRepo.js';
 import { JoinService } from './services/joinService.js';
 import { RoomService } from './services/roomService.js';
 import { AuditService } from './services/auditService.js';
+import { ChatRepo } from './repo/chatRepo.js';
+import { ChatService } from './services/chatService.js';
 import { PersistenceService } from './services/persistenceService.js';
 import { RoomRegistry } from './rooms/roomRegistry.js';
 import { buildApp } from './http/app.js';
@@ -24,9 +26,17 @@ async function main() {
 
   const joinService = new JoinService(config.JWT_SECRET);
   const auditService = new AuditService(auditRepo);
+  const chatService = new ChatService(new ChatRepo(db));
   const roomService = new RoomService(roomRepo, memberRepo, joinService, auditService);
   const persistenceService = new PersistenceService(updateRepo, roomRepo, config.PERSIST_FLUSH_MS);
-  const roomRegistry = new RoomRegistry(roomRepo, updateRepo, persistenceService, auditService, config.ROOM_UNLOAD_IDLE_MS);
+  const roomRegistry = new RoomRegistry(
+    roomRepo,
+    updateRepo,
+    persistenceService,
+    auditService,
+    config.ROOM_UNLOAD_IDLE_MS,
+    config.HOST_GRACE_MS
+  );
 
   const deps = {
     config,
@@ -37,6 +47,7 @@ async function main() {
     roomRepo,
     memberRepo,
     auditRepo,
+    chatService,
   };
 
   const app = buildApp(deps);

@@ -3,7 +3,7 @@
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { bracketMatching, indentOnInput, indentUnit } from '@codemirror/language';
-import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
+import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
 import { Compartment, EditorState } from '@codemirror/state';
 import {
   drawSelection,
@@ -69,6 +69,7 @@ export default function Editor({ readOnly = false }: { readOnly?: boolean }) {
           bracketMatching(),
           closeBrackets(),
           highlightSelectionMatches(),
+          search({ top: true }),
           quietTheme,
           quietHighlight,
           c.brackets.of(prefs.bracketColors ? bracketColors : []),

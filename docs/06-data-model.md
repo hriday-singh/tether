@@ -123,6 +123,14 @@ CREATE UNIQUE INDEX audit_events_room_id_seq_idx ON audit_events (room_id, seq);
 | Timestamps | `TEXT` (ISO 8601 UTC) | `timestamptz` |
 | Auto-increment ID | `INTEGER PRIMARY KEY AUTOINCREMENT` | `bigserial PRIMARY KEY` |
 
+## Chat messages ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015))
+
+Migration `migrations/0002_chat.{sqlite,postgres}.sql` (generated, apply manually). Table `chat_messages`:
+`id`, `room_id` (FK, cascade), `seq` (per-room gapless, own counter), `client_msg_id` (the `chat.send`
+`rid`), `member_id`, `display_name` + `color_index` (denormalized snapshot), `body` (1–2000 chars),
+`created_at`. Indexes: unique `(room_id, seq)` for paging, unique `(room_id, client_msg_id)` for
+idempotent resends. No retention job yet. Messages go when the room is deleted.
+
 ## Audit event types
 
 | type | payload | Emitted when |

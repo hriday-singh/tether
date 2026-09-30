@@ -1,4 +1,4 @@
-import type { AuditEvent } from '@tether/shared';
+import type { AuditEvent, ChatMessage } from '@tether/shared';
 import { randomId } from '../utils';
 
 /**
@@ -26,11 +26,14 @@ export interface FakeRoom {
   banned: string[];
   nextColor: number;
   eventSeq: number;
+  /** Absent on rooms created before chat existed. */
+  chatSeq?: number;
   idempotencyKey: string | null;
 }
 
 const ROOMS_KEY = 'tether:fake:rooms';
 const eventsKey = (roomId: string) => `tether:fake:events:${roomId}`;
+const chatKey = (roomId: string) => `tether:fake:chat:${roomId}`;
 const MAX_EVENTS = 2000;
 
 function readRooms(): Record<string, FakeRoom> {
@@ -93,6 +96,30 @@ export const registry = {
     localStorage.setItem(eventsKey(roomId), JSON.stringify(all.slice(-MAX_EVENTS)));
     return event;
   },
+  chat(roomId: string): ChatMessage[] {
+    try {
+      return JSON.parse(localStorage.getItem(chatKey(roomId)) ?? '[]') as ChatMessage[];
+    } catch {
+      return [];
+    }
+  },
+  /** Gapless per-room chat seq. Same clientMsgId twice returns the stored message (resend is a no-op). */
+  appendChat(
+    roomId: string,
+    msg: Omit<ChatMessage, 'id' | 'roomId' | 'seq' | 'createdAt'>,
+  ): { message: ChatMessage; created: boolean } | null {
+    const all = registry.chat(roomId);
+    const existing = all.find((m) => m.clientMsgId === msg.clientMsgId);
+    if (existing) return { message: existing, created: false };
+    const room = registry.mutate(roomId, (r) => {
+      r.chatSeq = (r.chatSeq ?? 0) + 1;
+    });
+    if (!room?.chatSeq) return null;
+    const message: ChatMessage = { ...msg, id: room.chatSeq, roomId, seq: room.chatSeq, createdAt: new Date().toISOString() };
+    all.push(message);
+    localStorage.setItem(chatKey(roomId), JSON.stringify(all.slice(-MAX_EVENTS)));
+    return { message, created: true };
+  },
   newRoom(id: string, language: string, passcodeHash: string | null, idempotencyKey: string | null): FakeRoom {
     return {
       id,
@@ -107,6 +134,7 @@ export const registry = {
       banned: [],
       nextColor: 0,
       eventSeq: 0,
+      chatSeq: 0,
       idempotencyKey,
     };
   },

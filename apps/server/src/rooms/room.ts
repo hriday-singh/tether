@@ -5,6 +5,7 @@ import { HostElector } from './hostElector.js';
 import { OutboundThrottle } from '../sync/outboundThrottle.js';
 import { FloodGuard } from '../sync/floodGuard.js';
 import { AwarenessBinding } from '../sync/awarenessBinding.js';
+import { EditSummaryCoalescer } from '../sync/editCoalescer.js';
 import { PersistenceService } from '../services/persistenceService.js';
 import { AuditService } from '../services/auditService.js';
 import { encodeFrame, BinaryFrame } from '@tether/shared/protocol/codec';
@@ -39,6 +40,9 @@ export class Room {
   private connContexts = new Map<WebSocket, RoomConnectionContext>();
   private claimedClientIDs = new Map<number, string>();
   private checksumQuietTimer: NodeJS.Timeout | null = null;
+  private editCoalescer: EditSummaryCoalescer;
+  // Upper-bound estimate of the encoded doc size; Infinity forces an exact measure on the first update.
+  private sizeEstimate = Infinity;
   public lastActiveAt: number;
 
   constructor(
@@ -48,7 +52,8 @@ export class Room {
     tailUpdates: Uint8Array[],
     private persistenceService: PersistenceService,
     private auditService: AuditService,
-    private onBroadcast?: (sourceMemberId: string, timestamp: number) => void
+    private onBroadcast?: (sourceMemberId: string, timestamp: number) => void,
+    hostGraceMs?: number
   ) {
     this.id = id;
     this.epoch = epoch;
@@ -66,7 +71,23 @@ export class Room {
 
     this.awareness = new awarenessProtocol.Awareness(this.doc);
 
+    this.editCoalescer = new EditSummaryCoalescer(this.doc, {
+      onEmitSummary: (memberId, memberName, summary) => {
+        this.auditService.logEvent(this.id, {
+          type: 'edit.summary',
+          actorMemberId: memberId,
+          actorName: memberName,
+          payload: {
+            inserted: summary.inserted,
+            deleted: summary.deleted,
+            lines: summary.lines,
+          },
+        });
+      },
+    });
+
     this.hostElector = new HostElector({
+      graceMs: hostGraceMs,
       onHostChanged: (newHostId, reason) => {
         this.broadcastControl({
           t: 'host.changed',
@@ -76,6 +97,18 @@ export class Room {
         this.auditService.logEvent(this.id, {
           type: 'host.changed',
           payload: { hostId: newHostId, reason },
+        });
+      },
+      onMemberRemoved: (memberId, reason) => {
+        this.broadcastControl({
+          t: 'member.left',
+          memberId,
+          reason,
+        });
+        this.auditService.logEvent(this.id, {
+          type: 'member.left',
+          actorMemberId: memberId,
+          payload: { reason },
         });
       },
     });
@@ -110,7 +143,7 @@ export class Room {
     });
   }
 
-  public addConnection(ws: WebSocket, member: { id: string; name: string; colorIndex: number }): RoomConnectionContext {
+  public addConnection(ws: WebSocket, member: { id: string; name: string; colorIndex: number }): { ctx: RoomConnectionContext; isNew: boolean } {
     this.lastActiveAt = Date.now();
     this.connections.add(ws);
 
@@ -142,6 +175,12 @@ export class Room {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ t: 'throttled', windowMs }));
         }
+        this.auditService.logEvent(this.id, {
+          type: 'throttle.applied',
+          actorMemberId: member.id,
+          actorName: member.name,
+          payload: { windowMs },
+        });
       },
     });
 
@@ -156,9 +195,9 @@ export class Room {
     };
 
     this.connContexts.set(ws, ctx);
-    this.hostElector.addMember(member.id);
+    const { isNew } = this.hostElector.addMember(member.id);
 
-    return ctx;
+    return { ctx, isNew };
   }
 
   public terminateMemberSockets(memberId: string, closeCode: number = WS_CLOSE_CODES.KICKED): void {
@@ -201,24 +240,40 @@ export class Room {
 
     ctx.throttle.destroy();
     ctx.awarenessBinding.cleanup();
+    this.editCoalescer.flushMember(ctx.memberId);
 
     this.hostElector.disconnectConnection(ctx.memberId, isCleanLeave);
+  }
+
+  /**
+   * Doc-size guard without a full-doc encode per update (that was ~460us + a doc-sized
+   * allocation per keystroke at 100 KB). Merging an update grows the encoded doc by at most
+   * ~2x its bytes in measurements (struct splits); 16x is the margin. Exact encode only when
+   * the estimate crosses the cap.
+   * ponytail: margin is empirical — if it's ever exceeded, the doc overshoots the cap slightly
+   * until the next crossing triggers an exact measure.
+   */
+  private exceedsMaxDocSize(updateBytes: number): boolean {
+    this.sizeEstimate += updateBytes * 16;
+    if (this.sizeEstimate <= MAX_DOC_BYTES) return false;
+    this.sizeEstimate = Y.encodeStateAsUpdate(this.doc).byteLength;
+    return this.sizeEstimate > MAX_DOC_BYTES;
   }
 
   public handleInboundSyncStep2(ws: WebSocket, update: Uint8Array): void {
     if (update.byteLength === 0) return;
     this.lastActiveAt = Date.now();
-    Y.applyUpdate(this.doc, update, this);
+    const ctx = this.connContexts.get(ws);
+    const origin = ctx ? { memberId: ctx.memberId, name: ctx.displayName } : this;
+    Y.applyUpdate(this.doc, update, origin);
 
-    const docSize = Y.encodeStateAsUpdate(this.doc).byteLength;
-    if (docSize > MAX_DOC_BYTES) {
+    if (this.exceedsMaxDocSize(update.byteLength)) {
       ws.close(WS_CLOSE_CODES.DOC_TOO_LARGE);
       return;
     }
 
     this.persistenceService.enqueueUpdate(this.id, update);
 
-    const ctx = this.connContexts.get(ws);
     if (ctx) {
       ctx.throttle.enqueue(update, new Uint8Array(0));
     }
@@ -238,10 +293,9 @@ export class Room {
 
     // Apply doc update to in-memory doc immediately (Invariant I5)
     if (docUpdate.byteLength > 0) {
-      Y.applyUpdate(this.doc, docUpdate, this);
+      Y.applyUpdate(this.doc, docUpdate, { memberId: ctx.memberId, name: ctx.displayName });
 
-      const docSize = Y.encodeStateAsUpdate(this.doc).byteLength;
-      if (docSize > MAX_DOC_BYTES) {
+      if (this.exceedsMaxDocSize(docUpdate.byteLength)) {
         ws.close(WS_CLOSE_CODES.DOC_TOO_LARGE);
         return;
       }
@@ -297,6 +351,7 @@ export class Room {
       clearTimeout(this.checksumQuietTimer);
       this.checksumQuietTimer = null;
     }
+    this.editCoalescer.destroy();
     this.hostElector.destroy();
     for (const [conn, ctx] of this.connContexts.entries()) {
       ctx.throttle.destroy();

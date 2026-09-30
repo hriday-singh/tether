@@ -13,6 +13,8 @@ export class PersistenceService {
   private pendingAcks = new Map<string, AckRecipient[]>();
   private flushTimers = new Map<string, NodeJS.Timeout>();
   private flushWindowMs: number;
+  /** Live doc for a room, so timer flushes can compact while the room stays active (set by RoomRegistry). */
+  public resolveDoc?: (roomId: string) => Y.Doc | undefined;
 
   constructor(
     private updateRepo: UpdateRepo,
@@ -46,7 +48,7 @@ export class PersistenceService {
     if (!this.flushTimers.has(roomId)) {
       const timer = setTimeout(() => {
         this.flushTimers.delete(roomId);
-        this.flush(roomId);
+        this.flush(roomId, this.resolveDoc?.(roomId));
       }, this.flushWindowMs);
       this.flushTimers.set(roomId, timer);
     }

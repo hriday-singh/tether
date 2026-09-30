@@ -1,4 +1,4 @@
-import type { AuditEvent, RoomMetadata } from '@tether/shared';
+import type { AuditEvent, ChatMessage, RoomMetadata } from '@tether/shared';
 import { z } from 'zod';
 import { LANGUAGE_IDS } from '../languages';
 
@@ -53,6 +53,12 @@ export interface EventsPage {
   nextBefore: number | null;
   nextAfter: number | null;
 }
+/** GET /api/rooms/:id/chat, same paging as events (ADR-017). */
+export interface ChatPage {
+  items: ChatMessage[];
+  nextBefore: number | null;
+  nextAfter: number | null;
+}
 
 export type ApiErrorCode =
   | 'not_found'
@@ -83,5 +89,6 @@ export interface Api {
   getRoom(roomId: string): Promise<RoomInfo>;
   joinRoom(roomId: string, input: JoinRoomInput): Promise<JoinResult>;
   events(roomId: string, token: string, query: EventsQuery): Promise<EventsPage>;
+  chat(roomId: string, token: string, query: EventsQuery): Promise<ChatPage>;
   admission(roomId: string, token: string): Promise<AdmissionStatus>;
 }

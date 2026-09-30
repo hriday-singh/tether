@@ -6,6 +6,7 @@ import {
   type AdmissionStatus,
   type Api,
   type CreateRoomInput,
+  type ChatPage,
   type EventsPage,
   type EventsQuery,
   type JoinRoomInput,
@@ -14,6 +15,24 @@ import {
 } from '../api/types';
 import { randomId } from '../utils';
 import { hashPasscode, registry, uniqueName, type FakeRoom } from './registry';
+
+/** Seq paging shared by the feed and chat (docs/04): `after` is oldest first, `before` is newest first. */
+function page<T extends { seq: number }>(all: readonly T[], q: EventsQuery): { items: T[]; nextBefore: number | null; nextAfter: number | null } {
+  const limit = Math.min(q.limit ?? 50, 100);
+  if (q.after !== undefined) {
+    const after = q.after;
+    const items = all.filter((e) => e.seq > after).slice(0, limit);
+    const last = items.at(-1);
+    return { items, nextBefore: null, nextAfter: items.length === limit && last ? last.seq : null };
+  }
+  const before = q.before ?? Number.POSITIVE_INFINITY;
+  const items = all
+    .filter((e) => e.seq < before)
+    .slice(-limit)
+    .reverse();
+  const oldest = items.at(-1);
+  return { items, nextBefore: oldest && oldest.seq > 1 ? oldest.seq : null, nextAfter: null };
+}
 
 const networkDelay = () => new Promise((r) => setTimeout(r, 120 + Math.random() * 180));
 
@@ -128,21 +147,16 @@ export const fakeApi: Api = {
     if (!Object.values(room.members).some((m) => m.token === token)) {
       throw new ApiError(401, 'unauthorized', 'Session expired');
     }
-    const limit = Math.min(q.limit ?? 50, 100);
-    const all = registry.events(roomId);
-    if (q.after !== undefined) {
-      const after = q.after;
-      const items = all.filter((e) => e.seq > after).slice(0, limit);
-      const last = items.at(-1);
-      return { items, nextBefore: null, nextAfter: items.length === limit && last ? last.seq : null };
+    return page(registry.events(roomId), q);
+  },
+
+  async chat(roomId: string, token: string, q: EventsQuery): Promise<ChatPage> {
+    await networkDelay();
+    const room = requireRoom(roomId);
+    if (!Object.values(room.members).some((m) => m.token === token)) {
+      throw new ApiError(401, 'unauthorized', 'Session expired');
     }
-    const before = q.before ?? Number.POSITIVE_INFINITY;
-    const items = all
-      .filter((e) => e.seq < before)
-      .slice(-limit)
-      .reverse();
-    const oldest = items.at(-1);
-    return { items, nextBefore: oldest && oldest.seq > 1 ? oldest.seq : null, nextAfter: null };
+    return page(registry.chat(roomId), q);
   },
 
   async admission(roomId: string, token: string): Promise<AdmissionStatus> {

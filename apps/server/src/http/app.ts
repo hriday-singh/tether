@@ -5,6 +5,7 @@ import { ServerConfig } from '../config.js';
 import { RoomService } from '../services/roomService.js';
 import { JoinService } from '../services/joinService.js';
 import { AuditService } from '../services/auditService.js';
+import { ChatService } from '../services/chatService.js';
 import { RoomRegistry } from '../rooms/roomRegistry.js';
 import { MemberRepo } from '../repo/memberRepo.js';
 import { RoomRepo } from '../repo/roomRepo.js';
@@ -16,6 +17,7 @@ export interface AppDependencies {
   roomService: RoomService;
   joinService: JoinService;
   auditService: AuditService;
+  chatService: ChatService;
   roomRegistry: RoomRegistry;
   roomRepo: RoomRepo;
   memberRepo: MemberRepo;
@@ -211,6 +213,57 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     });
   });
 
+  /** Bearer room token check shared by the feed and chat routes. Sends the 401 itself. */
+  async function authorizeRoom(request: FastifyRequest, reply: FastifyReply, roomId: string): Promise<boolean> {
+    const auth = request.headers['authorization'];
+    if (!auth || !auth.startsWith('Bearer ')) {
+      reply.status(401).send({ error: { code: 'unauthorized', message: 'Bearer token required' } });
+      return false;
+    }
+    try {
+      await deps.joinService.verifyRoomToken(auth.slice('Bearer '.length), roomId);
+      return true;
+    } catch {
+      reply.status(401).send({ error: { code: 'unauthorized', message: 'Invalid or expired room token' } });
+      return false;
+    }
+  }
+
+  const PageQuerySchema = z.object({
+    before: z.coerce.number().int().positive().optional(),
+    after: z.coerce.number().int().nonnegative().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  });
+
+  // GET /api/rooms/:id/chat (ADR-017). Same page shape as /events.
+  app.get('/api/rooms/:id/chat', async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+    const roomId = request.params.id.toLowerCase();
+    if (!(await authorizeRoom(request, reply, roomId))) return reply;
+
+    const query = PageQuerySchema.safeParse(request.query);
+    if (!query.success) {
+      return reply.status(400).send({
+        error: { code: 'invalid', message: 'Invalid pagination query', details: query.error.flatten() },
+      });
+    }
+    const { before, after, limit } = query.data;
+
+    if (after !== undefined) {
+      const items = deps.chatService.getAfter(roomId, after, limit);
+      return reply.send({
+        items,
+        nextBefore: null,
+        nextAfter: items.length === limit ? items[items.length - 1]!.seq : null,
+      });
+    }
+    const items = deps.chatService.getBefore(roomId, before, limit);
+    return reply.send({
+      items,
+      nextBefore: items.length === limit ? items[items.length - 1]!.seq : null,
+      nextAfter: null,
+    });
+  });
+
   // GET /api/rooms/:id/events
   app.get(
     '/api/rooms/:id/events',
@@ -222,21 +275,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
       reply
     ) => {
       const roomId = request.params.id.toLowerCase();
-      const auth = request.headers['authorization'];
-      if (!auth || !auth.startsWith('Bearer ')) {
-        return reply.status(401).send({
-          error: { code: 'unauthorized', message: 'Bearer token required' },
-        });
-      }
-
-      const token = auth.slice('Bearer '.length);
-      try {
-        await deps.joinService.verifyRoomToken(token, roomId);
-      } catch {
-        return reply.status(401).send({
-          error: { code: 'unauthorized', message: 'Invalid or expired room token' },
-        });
-      }
+      if (!(await authorizeRoom(request, reply, roomId))) return reply;
 
       const limit = Math.min(100, Math.max(1, request.query.limit ? parseInt(request.query.limit, 10) : 50));
 

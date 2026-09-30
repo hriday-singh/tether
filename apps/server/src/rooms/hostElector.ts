@@ -16,22 +16,25 @@ export class HostElector {
   private clock: () => number;
   private pendingGraceTimers = new Map<string, NodeJS.Timeout>();
   private onHostChanged?: (newHostId: string | null, reason: HandoverReason) => void;
+  private onMemberRemoved?: (memberId: string, reason: 'leave' | 'timeout') => void;
 
   constructor(options: {
     graceMs?: number;
     clock?: () => number;
     onHostChanged?: (newHostId: string | null, reason: HandoverReason) => void;
+    onMemberRemoved?: (memberId: string, reason: 'leave' | 'timeout') => void;
   } = {}) {
     this.graceMs = options.graceMs ?? HOST_GRACE_MS;
     this.clock = options.clock ?? (() => Date.now());
     this.onHostChanged = options.onHostChanged;
+    this.onMemberRemoved = options.onMemberRemoved;
   }
 
   public get hostId(): string | null {
     return this.currentHostId;
   }
 
-  public addMember(memberId: string, joinedAt?: number): void {
+  public addMember(memberId: string, joinedAt?: number): { isNew: boolean; isReconnecting: boolean } {
     const existing = this.members.get(memberId);
     if (existing) {
       existing.activeConnections++;
@@ -43,8 +46,9 @@ export class HostElector {
           clearTimeout(timer);
           this.pendingGraceTimers.delete(memberId);
         }
+        return { isNew: false, isReconnecting: true };
       }
-      return;
+      return { isNew: false, isReconnecting: false };
     }
 
     const member: ElectorMember = {
@@ -58,6 +62,8 @@ export class HostElector {
     if (this.currentHostId === null) {
       this.elect('creator');
     }
+
+    return { isNew: true, isReconnecting: false };
   }
 
   public disconnectConnection(memberId: string, isCleanLeave = false): void {
@@ -92,6 +98,8 @@ export class HostElector {
       clearTimeout(timer);
       this.pendingGraceTimers.delete(memberId);
     }
+
+    this.onMemberRemoved?.(memberId, reason === 'handover-leave' ? 'leave' : 'timeout');
 
     if (this.currentHostId === memberId) {
       this.currentHostId = null;

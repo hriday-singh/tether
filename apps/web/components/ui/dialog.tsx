@@ -11,7 +11,7 @@ export const DialogTrigger = D.Trigger;
 export const DialogClose = D.Close;
 
 const overlay =
-  'fixed inset-0 z-50 bg-overlay data-[state=open]:animate-fade-in motion-reduce:animate-none';
+  'fixed inset-0 z-[1000] bg-overlay data-[state=open]:animate-fade-in motion-reduce:animate-none';
 
 export function DialogContent({
   className,
@@ -24,7 +24,7 @@ export function DialogContent({
       <D.Overlay className={overlay} />
       <D.Content
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-popover p-5 text-popover-foreground shadow-overlay outline-none',
+          'fixed top-1/2 left-1/2 z-[1001] flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-popover p-5 text-popover-foreground shadow-overlay outline-none',
           'data-[state=open]:animate-fade-in motion-reduce:animate-none',
           className,
         )}
@@ -63,7 +63,7 @@ export function SheetContent({ className, children, ...props }: ComponentProps<t
       <D.Overlay className={overlay} />
       <D.Content
         className={cn(
-          'fixed inset-y-2.5 right-2.5 z-50 flex w-[min(24rem,calc(100vw-1.25rem))] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-popover p-5 text-popover-foreground shadow-overlay outline-none',
+          'fixed inset-y-2.5 right-2.5 z-[1001] flex w-[min(24rem,calc(100vw-1.25rem))] flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-popover p-5 text-popover-foreground shadow-overlay outline-none',
           'transition-transform duration-(--duration-base) ease-standard data-[state=open]:animate-fade-in motion-reduce:animate-none',
           className,
         )}

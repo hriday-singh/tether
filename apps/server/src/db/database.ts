@@ -95,6 +95,21 @@ CREATE TABLE IF NOT EXISTS audit_events (
   created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS audit_events_room_id_seq_idx ON audit_events (room_id, seq);
+
+-- Mirrors migrations/0002_chat.sqlite.sql (ADR-017)
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id       TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  seq           INTEGER NOT NULL,
+  client_msg_id TEXT NOT NULL,
+  member_id     TEXT NOT NULL,
+  display_name  TEXT NOT NULL,
+  color_index   INTEGER NOT NULL,
+  body          TEXT NOT NULL,
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS chat_messages_room_id_seq_idx ON chat_messages (room_id, seq);
+CREATE UNIQUE INDEX IF NOT EXISTS chat_messages_room_id_client_msg_id_idx ON chat_messages (room_id, client_msg_id);
 `;
 
 export function createDatabase(filePath = ':memory:'): DatabaseSession {

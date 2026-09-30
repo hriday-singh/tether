@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as Y from 'yjs';
 import WebSocket from 'ws';
 import * as encoding from 'lib0/encoding';
-import { WS_CLOSE_CODES, FRAME_KINDS, SLOW_CONSUMER_BYTES } from '@tether/shared/constants';
+import { WS_CLOSE_CODES, FRAME_KINDS, SLOW_CONSUMER_BYTES, COMPACT_AFTER_ROWS } from '@tether/shared/constants';
 import { decodeFrame } from '@tether/shared/protocol/codec';
 import { createDatabase, DatabaseSession } from '../db/database.js';
 import { RoomRepo } from '../repo/roomRepo.js';
@@ -253,6 +253,34 @@ describe('Rooms & RoomRegistry', () => {
       room.destroy();
     });
 
+    it('size guard stays open across many small updates under the cap, then closes on crossing it', () => {
+      roomRepo.create({ id: 'test-cap-est', epoch: 'epoch-1', createdBy: 'u1' });
+      const initialDoc = new Y.Doc();
+      initialDoc.getText('codemirror').insert(0, 'x'.repeat(1_950_000));
+      const room = new Room('test-cap-est', 'epoch-1', Y.encodeStateAsUpdate(initialDoc), [], persistenceService, auditService);
+      const aliceWs = new MockSocket();
+      room.addConnection(aliceWs as unknown as WebSocket, { id: 'u1', name: 'Alice', colorIndex: 0 });
+
+      // Mirror doc so each keystroke is a real incremental update.
+      const client = new Y.Doc();
+      Y.applyUpdate(client, Y.encodeStateAsUpdate(room.doc));
+      const text = client.getText('codemirror');
+      for (let i = 0; i < 300; i++) {
+        const sv = Y.encodeStateVector(client);
+        text.insert(i * 7, 'k');
+        room.handleInboundUpdate(aliceWs as unknown as WebSocket, i + 1, Y.encodeStateAsUpdate(client, sv), new Uint8Array(0));
+        vi.advanceTimersByTime(100); // stay under the flood guard
+      }
+      expect(aliceWs.closedCode).toBeNull();
+
+      const sv = Y.encodeStateVector(client);
+      text.insert(0, 'z'.repeat(200_000));
+      room.handleInboundUpdate(aliceWs as unknown as WebSocket, 301, Y.encodeStateAsUpdate(client, sv), new Uint8Array(0));
+      expect(aliceWs.closedCode).toBe(WS_CLOSE_CODES.DOC_TOO_LARGE);
+
+      room.destroy();
+    });
+
     it('closes active sockets with WS_CLOSE_CODES.RESTART (1012) on destroy', () => {
       roomRepo.create({ id: 'test-destroy-room', epoch: 'epoch-1', createdBy: 'u1' });
 
@@ -310,6 +338,46 @@ describe('Rooms & RoomRegistry', () => {
       expect(unloaded).toBe(1);
       expect(registry.activeRoomCount).toBe(0);
 
+      registry.destroy();
+    });
+
+    it('drops the audit seq cache on unload and continues the sequence from the DB', () => {
+      roomRepo.create({ id: 'r-seq', epoch: 'e1', createdBy: 'u1' });
+      const registry = new RoomRegistry(roomRepo, updateRepo, persistenceService, auditService, 5000);
+      auditService.logEvent('r-seq', { type: 'room.created' });
+      registry.getOrCreate('r-seq');
+      auditService.logEvent('r-seq', { type: 'member.joined' });
+
+      registry.unloadIdleRooms(Date.now() + 10000);
+      const cache = (auditService as unknown as { seqCounters: Map<string, number> }).seqCounters;
+      expect(cache.has('r-seq')).toBe(false);
+      expect(auditService.logEvent('r-seq', { type: 'member.left' }).seq).toBe(3);
+
+      registry.destroy();
+    });
+
+    it('compacts an active room on timer flush once the update log hits COMPACT_AFTER_ROWS', () => {
+      roomRepo.create({ id: 'r-compact', epoch: 'e1', createdBy: 'u1' });
+      const registry = new RoomRegistry(roomRepo, updateRepo, persistenceService, auditService, 5000);
+      const room = registry.getOrCreate('r-compact')!;
+      const aliceWs = new MockSocket();
+      room.addConnection(aliceWs as unknown as WebSocket, { id: 'u1', name: 'Alice', colorIndex: 0 });
+
+      const client = new Y.Doc();
+      const text = client.getText('codemirror');
+      for (let i = 0; i < COMPACT_AFTER_ROWS; i++) {
+        const sv = Y.encodeStateVector(client);
+        text.insert(text.length, 'a');
+        room.handleInboundUpdate(aliceWs as unknown as WebSocket, i + 1, Y.encodeStateAsUpdate(client, sv), new Uint8Array(0));
+        vi.advanceTimersByTime(100); // one timer flush (one row) per update
+      }
+
+      expect(updateRepo.countUpdates('r-compact')).toBeLessThan(COMPACT_AFTER_ROWS);
+      // Crash-style reload (no unload flush) must still restore the full text.
+      const fresh = new RoomRegistry(roomRepo, updateRepo, new PersistenceService(updateRepo, roomRepo, 100), auditService);
+      expect(fresh.getOrCreate('r-compact')!.doc.getText('codemirror').toString()).toBe('a'.repeat(COMPACT_AFTER_ROWS));
+
+      fresh.destroy();
       registry.destroy();
     });
   });

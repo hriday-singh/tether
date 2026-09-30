@@ -8,6 +8,8 @@ import { AuditRepo } from '@tether/server/repo/auditRepo';
 import { JoinService } from '@tether/server/services/joinService';
 import { RoomService } from '@tether/server/services/roomService';
 import { AuditService } from '@tether/server/services/auditService';
+import { ChatRepo } from '@tether/server/repo/chatRepo';
+import { ChatService } from '@tether/server/services/chatService';
 import { PersistenceService } from '@tether/server/services/persistenceService';
 import { RoomRegistry } from '@tether/server/rooms/roomRegistry';
 import { buildApp } from '@tether/server/http/app';
@@ -60,6 +62,7 @@ export async function runChaosSession(options: ChaosRunOptions = {}): Promise<Ch
 
   const joinService = new JoinService(config.JWT_SECRET);
   const auditService = new AuditService(auditRepo);
+  const chatService = new ChatService(new ChatRepo(db));
   const roomService = new RoomService(roomRepo, memberRepo, joinService, auditService);
   const persistenceService = new PersistenceService(updateRepo, roomRepo, config.PERSIST_FLUSH_MS);
   const roomRegistry = new RoomRegistry(roomRepo, updateRepo, persistenceService, auditService, config.ROOM_UNLOAD_IDLE_MS);
@@ -73,6 +76,7 @@ export async function runChaosSession(options: ChaosRunOptions = {}): Promise<Ch
     roomRepo,
     memberRepo,
     auditRepo,
+    chatService,
   };
 
   const app = buildApp(deps);

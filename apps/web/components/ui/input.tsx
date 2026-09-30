@@ -16,6 +16,21 @@ export function Input({ className, ...props }: ComponentProps<'input'>) {
   );
 }
 
+/** Same look as Input. Grows with its content natively (`field-sizing: content`) up to max-h, then scrolls. */
+export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
+  return (
+    <textarea
+      className={cn(
+        'field-sizing-content max-h-40 min-h-9 w-full min-w-0 resize-none rounded-xl border border-input bg-background px-3 py-2 text-body text-foreground transition-ui placeholder:text-muted-foreground/70',
+        'outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30',
+        'disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 export function Label({ className, ...props }: ComponentProps<typeof LabelPrimitive.Root>) {
   return (
     <LabelPrimitive.Root

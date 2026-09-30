@@ -72,6 +72,7 @@ Every message has a `t` discriminator. Unknown `t` or failed Zod parse closes wi
 | `room.language` | `language: LanguageId` | host | Change syntax mode for everyone |
 | `verify.mismatch` | `sv, hash` | anyone | Client saw equal state vectors but a different hash (P1). Metric + log, then client resets from server |
 | `demo.storm` | `bots: 1–8, seconds: 10–60, faults: boolean` | host, `DEMO_MODE` only | Start a bot storm (P2, see [08](08-testing-and-verification.md#bot-storm-p2-demo-mode)) |
+| `chat.send` | `rid: uuid, text: string` (trimmed, 1–`CHAT_MAX_CHARS`) | anyone | Store and broadcast `chat.msg`, then `ok {rid}`. `rid` is the idempotency key: a resend returns the stored message to the sender only. Own bucket per connection (`CHAT_RATE_PER_SEC`/`CHAT_BURST`); over it gets `error {rid, code:"rate_limited"}`, no disconnect ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015)) |
 
 Host-only messages from non-hosts get `error {code:"forbidden"}` (no disconnect: a race with host
 handover is legit) plus an audit entry.
@@ -87,7 +88,7 @@ effect.
 
 | `t` | Fields | When |
 |-----|--------|------|
-| `welcome` | `self: Member, members: Member[], hostId, room: {id, language, locked, hasPasscode, epoch}, token, eventSeq` | After handshake. `eventSeq` = latest committed feed seq |
+| `welcome` | `self: Member, members: Member[], hostId, room: {id, language, locked, hasPasscode, epoch}, token, eventSeq, chatSeq` | After handshake. `eventSeq` / `chatSeq` = latest committed feed / chat seq |
 | `pong` | `id, ts, serverQueueMs` | Reply to ping |
 | `ack` | `seq` | After the update containing `seq` is committed to the database (SQLite / PostgreSQL) |
 | `member.joined` / `member.left` / `member.status` | `member` / `memberId, reason` / `memberId, status` | Roster changes. `reason`: `leave \| timeout \| kicked` |
@@ -99,6 +100,7 @@ effect.
 | `error` | `code, message, rid?` | Non-fatal error. `rid` set when answering a command |
 | `ok` | `rid` | Command applied, or already in that state |
 | `checksum` | `sv, hash` | Room quiet after a change (P1, see [03](03-sync-engine.md#47-verified-in-sync-p1)) |
+| `chat.msg` | `message: {id, roomId, seq, clientMsgId, memberId, name, colorIndex, text, createdAt}` | Chat message committed. Sent to everyone, sender included |
 
 `Member = { id, name, colorIndex, joinedAt, status: "active" | "idle" | "away" | "reconnecting", isHost, isBot }`
 
@@ -115,6 +117,10 @@ Feed events are control messages, not CRDT updates, so they need their own exact
    the fetch go into the same map. A gap larger than `FEED_GAP_FILL_MAX` drops the local feed and loads
    the newest page. Older history stays reachable by scrolling.
 4. A live event with `seq > highest + 1` also triggers the same gap-fill.
+
+Chat uses the same rules with its own `seq` counter: `welcome.chatSeq`, live `chat.msg`, and
+`GET /api/rooms/:id/chat?before|after&limit` (same page shape as `/events`, bearer room token).
+Chat is never written into the Yjs doc and never creates audit events.
 
 ## Awareness state shape (per Yjs client)
 

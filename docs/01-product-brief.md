@@ -57,15 +57,19 @@ presence data only, so none of them can put text sync at risk.
 | Invite link + copy | CodeShare, all of them | `/r/<roomId>`. Never contains the passcode |
 | Download / copy file | CoderPad, CodeShare | File extension from the room language. Also the recovery path for a kicked user |
 
-Considered and left out: running code (big security scope, not in spec), chat, per-author text
+Considered and left out: running code (big security scope, not in spec), voice chat, per-author text
 colors, multiple files, accounts. Read-only viewers and history playback stay on the stretch list.
+Text chat was added later as a sidebar tab ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015)).
 
 ## Non-goals (v1)
 
 - User accounts, login, OAuth. Identity is a guest display name.
 - Multiple files per room / file tree.
 - Running code, terminals, or language servers.
-- Voice, video, chat (the audit feed is not a chat).
+- Voice and video. Dropped because of the cost to build and run them (TURN relay, SFU beyond about
+  4 people, audio paths the chaos harness cannot test), not money. See
+  [ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015). Text chat is in scope,
+  and the audit feed is still not a chat.
 - Multi-instance horizontal scaling. Designed for it in [09](09-operations.md#scale-path), not built.
 - Dark mode (tokens are semantic so it can be added later).
 - Playwright E2E (off until explicitly requested).

@@ -8,7 +8,7 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-primary-foreground dark:text-neutral-950 font-medium hover:bg-primary/90',
+        primary: 'bg-primary text-primary-foreground font-medium hover:bg-primary/90',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         outline: 'border border-border bg-transparent hover:bg-accent hover:text-accent-foreground',
         ghost: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
@@ -16,13 +16,13 @@ export const buttonVariants = cva(
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
-        xs: 'relative h-6 rounded-md px-2 text-micro after:absolute after:-inset-1.5 after:content-[""]',
-        sm: 'h-7 rounded-lg px-2.5 text-caption',
+        xs: 'relative h-6 rounded-md px-2 text-micro after:absolute after:-inset-2.5 after:content-[""]',
+        sm: 'relative h-7 rounded-lg px-2.5 text-caption after:absolute after:-inset-2 after:content-[""]',
         md: 'h-9 rounded-xl px-3.5 text-body',
         lg: 'h-11 rounded-xl px-5 text-body',
         icon: 'size-9 rounded-xl',
-        'icon-sm': 'size-7 rounded-lg',
-        'icon-xs': 'relative size-6 rounded-md after:absolute after:-inset-1.5 after:content-[""]',
+        'icon-sm': 'relative size-7 rounded-lg after:absolute after:-inset-2 after:content-[""]',
+        'icon-xs': 'relative size-6 rounded-md after:absolute after:-inset-2.5 after:content-[""]',
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },

@@ -1,4 +1,4 @@
-import type { AuditEvent, ClientControlMessage, Member, RoomMetadata } from '@tether/shared';
+import type { AuditEvent, ChatMessage, ClientControlMessage, Member, RoomMetadata } from '@tether/shared';
 import type { Awareness } from 'y-protocols/awareness';
 import type * as Y from 'yjs';
 import type { ReadableStore } from '../store';
@@ -57,6 +57,8 @@ export interface RoomState {
   selfId: string;
   /** Latest committed feed seq (welcome.eventSeq). */
   eventSeq: number;
+  /** Latest committed chat seq (welcome.chatSeq, then each chat.msg). Drives chat gap-fill. */
+  chatSeq: number;
 }
 
 export interface PresenceEntry {
@@ -86,7 +88,8 @@ export interface StormSnapshot {
   result: StormResult | null;
 }
 
-type CommandMessage = Extract<ClientControlMessage, { rid: string }>;
+// chat.send carries a rid but is not a host command: it goes through sendChat().
+type CommandMessage = Exclude<Extract<ClientControlMessage, { rid: string }>, { t: 'chat.send' }>;
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 export type SyncCommand = DistributiveOmit<CommandMessage, 'rid'>;
 
@@ -116,6 +119,13 @@ export interface SyncClient {
   readonly storm: ReadableStore<StormSnapshot>;
   readonly lab: NetworkLab;
   onEvent(listener: (event: AuditEvent) => void): () => void;
+  /** Live chat pushes (ADR-017), including your own confirmed messages. */
+  onChat(listener: (message: ChatMessage) => void): () => void;
+  /**
+   * Send a chat message. `clientMsgId` (a UUID) makes resends idempotent.
+   * Resolves once the server stored it. Rejects with CommandError ('offline', 'rate_limited', ...).
+   */
+  sendChat(clientMsgId: string, text: string): Promise<void>;
   /** Restore the local copy (IndexedDB) first, then connect. */
   start(): Promise<void>;
   /** Stop connecting without losing state (small-screen gate). */

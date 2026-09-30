@@ -47,7 +47,7 @@ Right column on desktop is resizable (persisted in localStorage). If a user open
 
 Shared primitives in `components/ui/` (Radix + tokens, built once): `Button`, `IconButton`, `Input`,
 `Dialog`, `Sheet`, `Popover`, `DropdownMenu`, `Select`, `Tabs`, `Tooltip`, `Toast`, `Badge`,
-`Avatar`, `Switch`, `Skeleton`.
+`Avatar`, `Switch`, `Skeleton`, `Textarea` (auto-grows via `field-sizing: content`).
 
 Workspace components in `components/workspace/`:
 
@@ -58,6 +58,7 @@ Workspace components in `components/workspace/`:
 | `LatencyHud` | `SyncClient` stats | RTT p50/p95, ack p50/p95, popover with sparkline |
 | `Roster` | server roster + awareness (typing/status) | Host crown, typing dots, status badge, host actions menu per row. `reconnecting` rows dimmed, bot badge, duplicate names suffixed `(2)` |
 | `ActivityFeed` | TanStack `useInfiniteQuery` (history) + live `event` messages, merged into one store keyed by `seq` (dedupe + gap-fill, [04](04-protocol.md#activity-feed-delivery-no-duplicates-no-gaps)) | Virtualized, `aria-live="polite"` on a throttled announcer |
+| `ChatPanel` (sidebar **Chat** tab) | `api.chat` history + `SyncClient.onChat`, merged in `FeedStore<ChatMessage>` by chat `seq`, gap-filled from `room.chatSeq` | Bottom-anchored `flex-col-reverse` list (not virtualized), runs by one author within 5 min share a header, pending rows at 60% opacity, failed rows show Retry (same `rid`) / Discard. Enter sends, Shift+Enter adds a line, counter in the last 200 chars, sending disabled offline (draft kept). Unread count (`ws.chatUnread`) shows as a tab badge and a status-bar chip. Plain text only |
 | `HostMenu` | control messages | Lock, passcode, transfer; only rendered for host, still enforced server-side. Each action stays pending until `ok`/`error` with its `rid` |
 | `LineHighlight` | awareness `highlight` | `Alt+H` or gutter click to flag the current line range; colored gutter band per user |
 | `NetworkLab` | `SyncClient` test hooks | Demo mode only (`NEXT_PUBLIC_DEMO_MODE=true`): add latency, go offline, kill socket |

@@ -1,5 +1,8 @@
 import {
   calculateBackoff,
+  CHAT_BURST,
+  CHAT_MAX_CHARS,
+  CHAT_RATE_PER_SEC,
   CHECKSUM_QUIET_MS,
   CLIENT_BATCH_WINDOW_MS,
   CLIENT_PING_MS,
@@ -12,6 +15,7 @@ import {
   THROTTLE_RATE_PER_SEC,
   TokenBucket,
   type AuditEvent,
+  type ChatMessage,
   type Member,
 } from '@tether/shared';
 import { IndexeddbPersistence } from 'y-indexeddb';
@@ -65,7 +69,8 @@ type Wire =
   | { k: 'bye'; memberId: string }
   | { k: 'room' }
   | { k: 'kick'; memberId: string }
-  | { k: 'event'; event: AuditEvent };
+  | { k: 'event'; event: AuditEvent }
+  | { k: 'chat'; message: ChatMessage };
 
 interface Peer {
   member: Member;
@@ -122,6 +127,8 @@ export class FakeSyncClient implements SyncClient {
   private readonly channel: BroadcastChannel;
   private readonly idb: IndexeddbPersistence;
   private readonly eventListeners = new Set<(e: AuditEvent) => void>();
+  private readonly chatListeners = new Set<(m: ChatMessage) => void>();
+  private readonly chatBucket = new TokenBucket(CHAT_RATE_PER_SEC, CHAT_BURST);
   private readonly peers = new Map<string, Peer>();
   private readonly bucket = new TokenBucket(THROTTLE_RATE_PER_SEC, THROTTLE_BURST);
   private readonly timers = new Set<ReturnType<typeof setTimeout>>();
@@ -402,6 +409,9 @@ export class FakeSyncClient implements SyncClient {
         return;
       case 'event':
         this.dispatch(msg.event);
+        return;
+      case 'chat':
+        this.dispatchChat(msg.message);
         return;
     }
   }
@@ -705,6 +715,7 @@ export class FakeSyncClient implements SyncClient {
       hostId: room.hostId,
       selfId: this.opts.memberId,
       eventSeq: room.eventSeq,
+      chatSeq: room.chatSeq ?? 0,
     };
   }
 
@@ -722,6 +733,38 @@ export class FakeSyncClient implements SyncClient {
 
   private dispatch(event: AuditEvent): void {
     this.eventListeners.forEach((l) => l(event));
+  }
+
+  // ---------------------------------------------------------------- chat (ADR-017)
+
+  onChat(listener: (m: ChatMessage) => void): () => void {
+    this.chatListeners.add(listener);
+    return () => this.chatListeners.delete(listener);
+  }
+
+  /** Mirrors the server: own token bucket, trimmed 1..CHAT_MAX_CHARS, idempotent by clientMsgId. */
+  async sendChat(clientMsgId: string, text: string): Promise<void> {
+    if (!this.connected) throw new CommandError('offline');
+    const body = text.trim();
+    if (body.length === 0 || body.length > CHAT_MAX_CHARS) throw new CommandError('invalid');
+    if (!this.chatBucket.take()) throw new CommandError('rate_limited');
+    await new Promise((r) => this.later(() => r(undefined), this.latencyMs * 2 + 40));
+    const me = this.selfMember();
+    const res = registry.appendChat(this.opts.roomId, {
+      clientMsgId,
+      memberId: me.id,
+      name: me.name,
+      colorIndex: me.colorIndex,
+      text: body,
+    });
+    if (!res) throw new CommandError('not_found');
+    this.dispatchChat(res.message);
+    if (res.created) this.post({ k: 'chat', message: res.message });
+  }
+
+  private dispatchChat(message: ChatMessage): void {
+    this.room.update((r) => (message.seq > r.chatSeq ? { ...r, chatSeq: message.seq } : r));
+    this.chatListeners.forEach((l) => l(message));
   }
 
   // ---------------------------------------------------------------- commands

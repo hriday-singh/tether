@@ -20,6 +20,7 @@ RUN pnpm install --frozen-lockfile
 # Builder stage: build packages and Next.js standalone application
 FROM deps AS builder
 COPY packages/shared ./packages/shared
+COPY packages/sync-client ./packages/sync-client
 COPY apps/web ./apps/web
 
 ENV NODE_ENV=production
@@ -37,6 +38,7 @@ ENV NEXT_PUBLIC_SYNC_MODE=$NEXT_PUBLIC_SYNC_MODE
 ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE
 
 RUN pnpm --filter @tether/shared build:pkg
+RUN pnpm --filter @tether/sync-client build:pkg
 RUN pnpm --filter @tether/web build
 
 # Production runner stage

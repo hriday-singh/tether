@@ -40,10 +40,10 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] Leading-edge 200 ms batcher (doc merge + latest awareness)
 - [x] Seq + ack tracking, pending count
 - [x] Heartbeat, dead-connection detection, jittered backoff, close-code policy
-- [ ] y-indexeddb restore-before-connect, epoch-scoped keys, clear on leave/kick/reset
+- [x] y-indexeddb restore-before-connect, epoch-scoped keys, clear on leave/kick/reset
 - [x] Stats store: RTT, ack latency (p50/p95)
 - [x] Wake fast path (visibility / focus / pageshow / online probe, `WAKE_PROBE_MS`)
-- [ ] Classify pre-`welcome` failures via admission probe; `reauth` keeps local copy
+- [x] Classify pre-`welcome` failures via admission probe; `reauth` keeps local copy
 - [x] P1 client: `checksum` handling, reset-from-server on mismatch, verified state
 - [x] Injected WebSocket constructor (browser + Node)
 
@@ -72,14 +72,14 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 ### M7: Rooms & roles
 - [x] Member set with grace timers, pure `electHost` + tests
 - [x] Host commands: kick/ban, lock, passcode (version bump), transfer, language
-- [ ] Sliding token refresh
-- [ ] Handover timing + race tests
+- [x] Sliding token refresh
+- [x] Handover timing + race tests
 - [x] Command `rid` + `ok`/`error`; idempotent-by-state commands + tests
-- [ ] Duplicate display-name suffixing
+- [x] Duplicate display-name suffixing
 
 ### M8: Audit feed
 - [x] Event emission for all types in [06](06-data-model.md#audit-event-types) (AuditRepo + basic logging in place)
-- [ ] Edit-summary coalescer (5 s idle / 30 s max) + tests
+- [x] Edit-summary coalescer (5 s idle / 30 s max) + tests
 - [x] Live `event` push + REST pagination: per-room gapless `seq`, push after commit, client dedupe + gap-fill, tests (REST pagination complete)
 
 ### M9: Web UI
@@ -100,6 +100,15 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [ ] README: pitch, architecture diagram, env, install, run, test, chaos, guarantees + honest limits
 - [ ] `docker compose up` full-stack path verified from clean clone
 - [ ] Docs re-synced with code
+
+### M11: Text chat (after M10, [ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015))
+- [x] Protocol: `chat.send` / `chat.msg`, `welcome.chatSeq`, chat limits in constants
+- [x] Server: `chat_messages` table (migration 0002), ChatRepo/ChatService, per-connection chat bucket, REST `GET /api/rooms/:id/chat`
+- [x] Web: generic seq store, `Textarea` primitive, Chat sidebar tab (unread badge, pending/failed states), fake client support
+- [ ] Server sync client wiring (needs connect-frontend plan Tasks 1 + 3)
+- [x] Docs 04/06/07 synced
+
+Plan: [2026-09-30-text-chat.md](superpowers/plans/2026-09-30-text-chat.md). Voice chat is out, see ADR-017.
 
 ## Week 3: stretch (in priority order)
 

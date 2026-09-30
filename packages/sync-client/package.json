@@ -6,13 +6,13 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./src/index.ts",
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./testing": {
-      "import": "./src/testing/faultyTransport.ts",
       "types": "./dist/testing/faultyTransport.d.ts",
+      "import": "./dist/testing/faultyTransport.js",
       "default": "./dist/testing/faultyTransport.js"
     }
   },

@@ -2,6 +2,7 @@
 
 import {
   Activity01Icon,
+  BubbleChatIcon,
   BracketsIcon,
   BrowserIcon,
   CheckmarkCircle02Icon,
@@ -13,6 +14,7 @@ import {
   Link01Icon,
   PaintBoardIcon,
   PlayIcon,
+  Search01Icon,
   Settings01Icon,
   SidebarBottomIcon,
   SlidersHorizontalIcon,
@@ -20,6 +22,7 @@ import {
   ViewIcon,
   Wifi01Icon,
 } from '@hugeicons/core-free-icons';
+import { openSearchPanel } from '@codemirror/search';
 import { Dialog as D } from 'radix-ui';
 import { useEffect, useRef, useState } from 'react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -43,10 +46,10 @@ export function CommandPalette() {
   return (
     <D.Root open={mode !== false} onOpenChange={(v) => !v && close()}>
       <D.Portal>
-        <D.Overlay className="fixed inset-0 z-50 bg-overlay data-[state=open]:animate-fade-in motion-reduce:animate-none" />
+        <D.Overlay className="fixed inset-0 z-[1000] bg-overlay data-[state=open]:animate-fade-in motion-reduce:animate-none" />
         <D.Content
           aria-describedby={undefined}
-          className="fixed top-[15vh] left-1/2 z-50 w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-popover shadow-overlay outline-none data-[state=open]:animate-fade-in motion-reduce:animate-none"
+          className="fixed top-[15vh] left-1/2 z-[1001] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-popover shadow-overlay outline-none data-[state=open]:animate-fade-in motion-reduce:animate-none"
         >
           <D.Title className="sr-only">{mode === 'theme' ? 'Select color theme' : 'Command palette'}</D.Title>
           {mode === 'theme' ? <ThemePick onClose={close} /> : mode === 'commands' ? <Commands onClose={close} /> : null}
@@ -138,6 +141,15 @@ function Commands({ onClose }: { onClose: () => void }) {
 
         <CommandGroup heading="Editor">
           <Item
+            icon={Search01Icon}
+            label="Find in document"
+            shortcut={`${mod} F`}
+            keywords={['find', 'search', 'replace', 'editor']}
+            onSelect={act(() => {
+              if (ws.view.current) openSearchPanel(ws.view.current);
+            })}
+          />
+          <Item
             icon={CodeIcon}
             label="Format document"
             shortcut="Shift Alt F"
@@ -150,7 +162,7 @@ function Commands({ onClose }: { onClose: () => void }) {
               }
               const currentText = client.text.toString();
               if (!currentText.trim()) return;
-              void formatCode(currentText, room.room.language as any).then((formatted) => {
+              void formatCode(currentText, lang.id).then((formatted) => {
                 if (formatted === currentText) {
                   toast.info('Document is already formatted');
                   return;
@@ -378,6 +390,7 @@ function Commands({ onClose }: { onClose: () => void }) {
           <Item icon={Wifi01Icon} label="Open Sync & Latency Stats" keywords={['stats', 'sync', 'latency', 'ping', 'telemetry']} onSelect={act(() => ws.openDrawerTab('sync'))} />
           <Item icon={CodeIcon} label="Toggle Zen Mode" shortcut={`${mod} Shift F`} keywords={['zen', 'distraction free', 'fullscreen']} onSelect={act(() => ws.ui.update((s) => ({ ...s, zenMode: !s.zenMode })))} />
           <Item icon={UserGroupIcon} label="Show people" keywords={['sidebar', 'people', 'roster', 'users']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'people', sidebarOpen: true })))} />
+          <Item icon={BubbleChatIcon} label="Show chat" keywords={['sidebar', 'chat', 'message', 'talk']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'chat', sidebarOpen: true })))} />
           <Item icon={Activity01Icon} label="Show activity" keywords={['sidebar', 'activity', 'events', 'log']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'activity', sidebarOpen: true })))} />
           <Item icon={CodeIcon} label="Show scratchpad" keywords={['sidebar', 'scratchpad', 'notes', 'clipboard']} onSelect={act(() => ws.ui.update((s) => ({ ...s, sidebarTab: 'scratchpad', sidebarOpen: true })))} />
           {lang.preview && <Item icon={BrowserIcon} label="Toggle preview pane" keywords={['preview', 'browser', 'html', 'live']} onSelect={act(() => ws.togglePanel('preview'))} />}

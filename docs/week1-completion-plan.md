@@ -131,15 +131,15 @@ export type AdmissionProbeResult =
   | { status: 'network_error' };
 ```
 
-- [ ] **Step 1:** Write unit tests for `probeAdmission` in `packages/sync-client/src/admissionProbe.test.ts`.
-- [ ] **Step 2:** Implement `probeAdmission` in `packages/sync-client/src/admissionProbe.ts`.
-- [ ] **Step 3:** In `SyncClient.handleClose`, if connection drops before `welcome` while online, invoke `probeAdmission`:
+- [x] **Step 1:** Write unit tests for `probeAdmission` in `packages/sync-client/src/admissionProbe.test.ts`.
+- [x] **Step 2:** Implement `probeAdmission` in `packages/sync-client/src/admissionProbe.ts`.
+- [x] **Step 3:** In `SyncClient.handleClose`, if connection drops before `welcome` while online, invoke `probeAdmission`:
   - `reauth`: emit `onReauthRequired(reason)` and stop reconnect timer while preserving in-memory `Y.Doc`.
   - `banned`: emit `onBanned()` and clear persistence.
   - `not_found`: emit `onRoomNotFound()`.
   - `locked`: emit `onRoomLocked()`.
   - `ok` / `network_error`: proceed with normal exponential backoff.
-- [ ] **Step 4:** Run Vitest to verify all tests pass.
+- [x] **Step 4:** Run Vitest to verify all tests pass.
 
 ---
 
@@ -162,20 +162,20 @@ export function persistToStorage(doc: Y.Doc, roomId: string, roomEpoch: string):
 export function clearStorage(roomId: string, roomEpoch: string): Promise<void>;
 ```
 
-- [ ] **Step 1:** Write unit tests in `packages/sync-client/src/indexedDbStorage.test.ts` with mock IndexedDB (testing restore, update persistence, epoch scoping, and clearing).
-- [ ] **Step 2:** Implement `indexedDbStorage.ts` using native IndexedDB primitives (zero external dependency).
-- [ ] **Step 3:** Wire storage into `SyncClient` options:
+- [x] **Step 1:** Write unit tests in `packages/sync-client/src/indexedDbStorage.test.ts` with mock IndexedDB (testing restore, update persistence, epoch scoping, and clearing).
+- [x] **Step 2:** Implement `indexedDbStorage.ts` using native IndexedDB primitives (zero external dependency).
+- [x] **Step 3:** Wire storage into `SyncClient` options:
   - If `storage: { roomId, roomEpoch }` provided, restore before handshake or connect.
   - Persist on doc updates.
   - Clear on `kicked`, `4013` (doc reset), or explicit `clearPersistence()`.
-- [ ] **Step 4:** Run Vitest to verify all tests pass.
+- [x] **Step 4:** Run Vitest to verify all tests pass.
 
 ---
 
 ### Task 7: Full Verification & Roadmap Update
-- [ ] **Step 1:** Run `pnpm test` (all packages and apps).
-- [ ] **Step 2:** Run `pnpm run chaos:ci`.
-- [ ] **Step 3:** Run `pnpm run bench`.
-- [ ] **Step 4:** Run `pnpm typecheck`.
-- [ ] **Step 5:** Run `pnpm lint`.
-- [ ] **Step 6:** Update `docs/10-roadmap.md` marking all Week 1 checklist items complete.
+- [x] **Step 1:** Run `pnpm test` (all packages and apps).
+- [x] **Step 2:** Run `pnpm run chaos:ci`.
+- [x] **Step 3:** Run `pnpm run bench`.
+- [x] **Step 4:** Run `pnpm typecheck`.
+- [x] **Step 5:** Run `pnpm lint`.
+- [x] **Step 6:** Update `docs/10-roadmap.md` marking all Week 1 checklist items complete.

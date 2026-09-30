@@ -6,38 +6,38 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./src/index.ts",
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./constants": {
-      "import": "./src/constants.ts",
       "types": "./dist/constants.d.ts",
+      "import": "./dist/constants.js",
       "default": "./dist/constants.js"
     },
     "./protocol/codec": {
-      "import": "./src/protocol/codec.ts",
       "types": "./dist/protocol/codec.d.ts",
+      "import": "./dist/protocol/codec.js",
       "default": "./dist/protocol/codec.js"
     },
     "./protocol/schemas": {
-      "import": "./src/protocol/schemas.ts",
       "types": "./dist/protocol/schemas.d.ts",
+      "import": "./dist/protocol/schemas.js",
       "default": "./dist/protocol/schemas.js"
     },
     "./tokenBucket": {
-      "import": "./src/tokenBucket.ts",
       "types": "./dist/tokenBucket.d.ts",
+      "import": "./dist/tokenBucket.js",
       "default": "./dist/tokenBucket.js"
     },
     "./backoff": {
-      "import": "./src/backoff.ts",
       "types": "./dist/backoff.d.ts",
+      "import": "./dist/backoff.js",
       "default": "./dist/backoff.js"
     },
     "./checksum": {
-      "import": "./src/checksum.ts",
       "types": "./dist/checksum.d.ts",
+      "import": "./dist/checksum.js",
       "default": "./dist/checksum.js"
     }
   },

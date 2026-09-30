@@ -7,7 +7,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "chaos:ci": "vitest run --testTimeout 60000",
-    "bench": "tsx src/bench.ts"
+    "bench": "tsx src/bench.ts",
+    "mem-bench": "node --expose-gc --import tsx src/memBench.ts"
   },
   "dependencies": {
     "@tether/server": "workspace:*",

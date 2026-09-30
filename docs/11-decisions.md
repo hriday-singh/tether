@@ -96,7 +96,7 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
 ## ADR-015: Collaboration UX limited to presence-only features
 - **Context:** competitors offer many features. The pitch says features must not threaten sync.
 - **Decision:** v1 adds follow / jump, off-screen cursor chips, invite link, export. All read awareness only.
-  Chat, per-author colors and multi-file stay out. (Code preview and client-side execution boundaries amended in ADR-016).
+  Chat, per-author colors and multi-file stay out. (Code preview and client-side execution boundaries amended in ADR-016. Text chat amended in ADR-017).
 
 ## ADR-016: Client-Side Sandboxed Preview, DevTools Console, Multi-Theme Engine, and Dual Morphing
 - **Context:** Users require an impressive, responsive developer experience with live HTML/JS preview and execution feedback without introducing server-side remote code execution risks or ballooning infrastructure costs. In addition, theme accessibility requires equal dark and light mode support with seamless state transitions.
@@ -108,6 +108,27 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
   5. **Dual Morphing System:** `morphicons` for vector SVG path morphs (copy ➔ check, play ➔ stop) paired with `torph` (`<TextMorph />`) for character-level label text morphs.
   6. **Zero-Emoji Policy:** 100% vector SVG iconography using `Hugeicons stroke-rounded` and `theSVG` brand logos across all UI states and notifications.
 - **Consequences:** Extends frontend capability safely with zero server-side attack surface. Documented in full detail in `docs/ui-ux/`.
+
+## ADR-017: Text chat in, voice chat out (amends ADR-015)
+- **Context:** Pairing sessions need a side channel for quick talk ("check line 40") that does not go
+  into the shared code. We looked at WebRTC voice and plain text chat on 2026-09-30.
+- **Decision:**
+  1. **Voice (WebRTC): dropped because of its cost.** Cost here means the effort to build and run it,
+     not money. Signaling could reuse our WebSocket, but everything around it could not:
+     - a TURN relay (coturn on TCP/443), because campus networks often block UDP;
+     - a group-size limit of about 4 people for a P2P mesh; more than that needs an SFU (mediasoup or
+       LiveKit), which is a second backend;
+     - audio paths the chaos harness cannot test (mic permissions, echo, device switching, recovery
+       after a socket drop).
+     It also does nothing for the pitch, which is sync correctness under faults. We will revisit it
+     only as a mesh capped at 4 people with hosted TURN, after the week-3 stretch list.
+  2. **Text chat: adopted.** It runs over the existing control channel: `chat.send` / `chat.msg`, a
+     per-room gapless `seq`, and REST backfill. Messages live in a `chat_messages` table, never in the
+     Yjs doc, so checksum, convergence and chaos invariants are unchanged. Chat has its own
+     per-connection token bucket, so chat traffic never uses up the 5 frames/s edit budget.
+- **Consequences:** One new table, two control messages, one REST route and one sidebar tab. The audit
+  feed stays an audit feed, and chat messages do not create audit events. Plan:
+  `docs/superpowers/plans/2026-09-30-text-chat.md`.
 
 ## Research sources (fetched 2026-09-29)
 

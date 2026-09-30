@@ -1,22 +1,22 @@
 import { FEED_GAP_FILL_MAX, type AuditEvent } from '@tether/shared';
 import { createStore, type ReadableStore } from './store';
 
-export interface FeedSnapshot {
+export interface FeedSnapshot<T extends { seq: number } = AuditEvent> {
   /** Newest first. */
-  items: readonly AuditEvent[];
+  items: readonly T[];
   highest: number;
 }
 
 /**
- * Activity feed merged from REST pages + live pushes, keyed by per-room seq (docs/04 "no duplicates, no gaps").
+ * Activity feed (and chat, ADR-017) merged from REST pages + live pushes, keyed by per-room seq (docs/04 "no duplicates, no gaps").
  * The same seq from both paths is stored once. Holes are reported by `gapAfter()` for the caller to fill.
  */
-export class FeedStore {
-  private bySeq = new Map<number, AuditEvent>();
-  private readonly store = createStore<FeedSnapshot>({ items: [], highest: 0 });
-  readonly snapshot: ReadableStore<FeedSnapshot> = this.store;
+export class FeedStore<T extends { seq: number } = AuditEvent> {
+  private bySeq = new Map<number, T>();
+  private readonly store = createStore<FeedSnapshot<T>>({ items: [], highest: 0 });
+  readonly snapshot: ReadableStore<FeedSnapshot<T>> = this.store;
 
-  add(events: readonly AuditEvent[]): void {
+  add(events: readonly T[]): void {
     let changed = false;
     for (const e of events) {
       if (!this.bySeq.has(e.seq)) {

@@ -10,6 +10,8 @@ import { AuditRepo } from '../../src/repo/auditRepo.js';
 import { JoinService } from '../../src/services/joinService.js';
 import { RoomService } from '../../src/services/roomService.js';
 import { AuditService } from '../../src/services/auditService.js';
+import { ChatService } from '../../src/services/chatService.js';
+import { ChatRepo } from '../../src/repo/chatRepo.js';
 import { PersistenceService } from '../../src/services/persistenceService.js';
 import { RoomRegistry } from '../../src/rooms/roomRegistry.js';
 import { buildApp } from '../../src/http/app.js';
@@ -59,6 +61,7 @@ describe('Server HTTP REST & WebSocket Integration', () => {
 
     joinService = new JoinService(mockConfig.JWT_SECRET);
     auditService = new AuditService(auditRepo);
+    const chatService = new ChatService(new ChatRepo(db));
     roomService = new RoomService(roomRepo, memberRepo, joinService, auditService);
     persistenceService = new PersistenceService(updateRepo, roomRepo, 50);
     roomRegistry = new RoomRegistry(roomRepo, updateRepo, persistenceService, auditService, 30000);
@@ -72,6 +75,7 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       roomRepo,
       memberRepo,
       auditRepo,
+      chatService,
     };
 
     app = buildApp(deps);
@@ -349,6 +353,190 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       expect(lockedEvent).toBeDefined();
       expect(lockedEvent.roomId).toBe('event-room');
       expect(lockedEvent.actorMemberId).toBe(aliceData.memberId);
+
+      ws.close();
+    });
+
+    it('stores, broadcasts, rate-limits and serves chat messages (ADR-017)', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/rooms',
+        payload: { name: 'HostAlice', roomId: 'chat-room' },
+      });
+      const alice = JSON.parse(createRes.payload) as { token: string };
+      const ws = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/chat-room`, ['collab.v1', alice.token]);
+      const rid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+      let chatSeqAtWelcome = -1;
+      const oks: string[] = [];
+      const errors: Array<{ rid: string; code: string }> = [];
+      const chats: Array<{ seq: number; text: string; clientMsgId: string }> = [];
+
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timed out waiting for chat replies')), 3000);
+        ws.on('message', (data, isBinary) => {
+          if (isBinary) return;
+          const msg = JSON.parse(data.toString()) as { t: string; [k: string]: unknown };
+          if (msg.t === 'welcome') {
+            chatSeqAtWelcome = msg.chatSeq as number;
+            // Burst is 5: the 6th message inside one second must be rejected without closing the socket.
+            for (let i = 1; i <= 6; i++) ws.send(JSON.stringify({ t: 'chat.send', rid: rid(i), text: `  hi ${i}  ` }));
+          } else if (msg.t === 'ok') oks.push(msg.rid as string);
+          else if (msg.t === 'error') errors.push({ rid: msg.rid as string, code: msg.code as string });
+          else if (msg.t === 'chat.msg') chats.push(msg.message as (typeof chats)[number]);
+          if (oks.length + errors.length === 6 && chats.length === 5) {
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+        ws.on('error', reject);
+      });
+
+      expect(chatSeqAtWelcome).toBe(0);
+      expect(oks).toHaveLength(5);
+      expect(errors).toEqual([{ rid: rid(6), code: 'rate_limited' }]);
+      expect(chats.map((c) => c.seq)).toEqual([1, 2, 3, 4, 5]);
+      expect(chats[0]!.text).toBe('hi 1');
+      expect(ws.readyState).toBe(WebSocket.OPEN);
+
+      const page = await app.inject({
+        method: 'GET',
+        url: '/api/rooms/chat-room/chat?limit=2',
+        headers: { authorization: `Bearer ${alice.token}` },
+      });
+      expect(page.statusCode).toBe(200);
+      const body = JSON.parse(page.payload) as { items: Array<{ seq: number }>; nextBefore: number | null };
+      expect(body.items.map((m) => m.seq)).toEqual([5, 4]);
+      expect(body.nextBefore).toBe(4);
+
+      const after = await app.inject({
+        method: 'GET',
+        url: '/api/rooms/chat-room/chat?after=3',
+        headers: { authorization: `Bearer ${alice.token}` },
+      });
+      expect((JSON.parse(after.payload) as { items: Array<{ seq: number }> }).items.map((m) => m.seq)).toEqual([4, 5]);
+
+      const bad = await app.inject({
+        method: 'GET',
+        url: '/api/rooms/chat-room/chat?limit=abc',
+        headers: { authorization: `Bearer ${alice.token}` },
+      });
+      expect(bad.statusCode).toBe(400);
+
+      const anon = await app.inject({ method: 'GET', url: '/api/rooms/chat-room/chat' });
+      expect(anon.statusCode).toBe(401);
+
+      ws.close();
+    });
+
+    it('broadcasts member.joined when peer connects and member.left on clean leave', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/rooms',
+        payload: { name: 'Alice', roomId: 'roster-room' },
+      });
+      const aliceData = JSON.parse(createRes.payload) as { token: string };
+
+      const joinRes = await app.inject({
+        method: 'POST',
+        url: '/api/rooms/roster-room/join',
+        payload: { name: 'Bob' },
+      });
+      const bobData = JSON.parse(joinRes.payload) as { token: string; memberId: string };
+
+      const wsAlice = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/roster-room`, ['collab.v1', aliceData.token]);
+
+      let aliceSawBobJoin = false;
+      let aliceSawBobLeave = false;
+
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timed out waiting for Alice welcome')), 3000);
+        wsAlice.on('message', (data, isBinary) => {
+          if (!isBinary) {
+            const msg = JSON.parse(data.toString());
+            if (msg.t === 'welcome') {
+              clearTimeout(timeout);
+              resolve();
+            }
+          }
+        });
+        wsAlice.on('error', reject);
+      });
+
+      // Now Bob connects
+      const wsBob = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/roster-room`, ['collab.v1', bobData.token]);
+
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timed out waiting for Bob joined broadcast')), 3000);
+        wsAlice.on('message', (data, isBinary) => {
+          if (!isBinary) {
+            const msg = JSON.parse(data.toString());
+            if (msg.t === 'member.joined' && msg.member.name === 'Bob') {
+              aliceSawBobJoin = true;
+              clearTimeout(timeout);
+              resolve();
+            }
+          }
+        });
+        wsBob.on('error', reject);
+      });
+
+      expect(aliceSawBobJoin).toBe(true);
+
+      // Bob cleanly leaves
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timed out waiting for Bob left broadcast')), 3000);
+        wsAlice.on('message', (data, isBinary) => {
+          if (!isBinary) {
+            const msg = JSON.parse(data.toString());
+            if (msg.t === 'member.left' && msg.memberId === bobData.memberId) {
+              aliceSawBobLeave = true;
+              clearTimeout(timeout);
+              resolve();
+            }
+          }
+        });
+        wsBob.send(JSON.stringify({ t: 'leave' }));
+      });
+
+      expect(aliceSawBobLeave).toBe(true);
+
+      wsAlice.close();
+      wsBob.close();
+    });
+
+    it('rejects demo.storm when DEMO_MODE is false', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/rooms',
+        payload: { name: 'HostAlice', roomId: 'storm-room' },
+      });
+      const alice = JSON.parse(createRes.payload) as { token: string };
+      const ws = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/storm-room`, ['collab.v1', alice.token]);
+
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timed out waiting for storm reply')), 3000);
+        ws.on('message', (data, isBinary) => {
+          if (isBinary) return;
+          const msg = JSON.parse(data.toString());
+          if (msg.t === 'welcome') {
+            ws.send(
+              JSON.stringify({
+                t: 'demo.storm',
+                rid: '22222222-2222-2222-2222-222222222222',
+                bots: 3,
+                seconds: 15,
+                faults: true,
+              })
+            );
+          } else if (msg.t === 'error' && msg.rid === '22222222-2222-2222-2222-222222222222') {
+            expect(msg.code).toBe('forbidden');
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+        ws.on('error', reject);
+      });
 
       ws.close();
     });

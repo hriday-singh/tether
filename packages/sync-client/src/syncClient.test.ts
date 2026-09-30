@@ -406,4 +406,229 @@ describe('SyncClient', () => {
 
     client.destroy();
   });
+
+  it('probes admission on pre-welcome close and emits onReauthRequired without reconnecting', async () => {
+    const doc = new Y.Doc();
+    doc.getText('codemirror').insert(0, 'my local unsaved edits');
+    let reauthReason: string | undefined;
+    const mockFetch = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({ status: 'reauth', reason: 'passcode_changed' }),
+    });
+
+    const client = new SyncClient({
+      url: 'ws://localhost:3000/ws/rooms/demo',
+      apiUrl: 'http://localhost:3000',
+      roomId: 'demo',
+      token: 'jwt.token',
+      doc,
+      fetchFn: mockFetch as unknown as typeof fetch,
+      webSocketFactory: (url, p) => new MockWebSocket(url, p) as unknown as WebSocket,
+      onReauthRequired: (reason) => {
+        reauthReason = reason;
+      },
+    });
+
+    await client.connect();
+    vi.runOnlyPendingTimers();
+
+    const ws = MockWebSocket.instances[0]!;
+    // Socket closes abnormally before receiving welcome message
+    ws.onclose?.({ code: WS_CLOSE_CODES.ABNORMAL });
+    // Allow promise ticks for probeAdmission and callback
+    await vi.waitFor(() => {
+      expect(reauthReason).toBe('passcode_changed');
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/rooms/demo/admission',
+      expect.anything()
+    );
+    expect(client.connectionStatus).toBe('disconnected');
+    // In-memory doc edits must be preserved!
+    expect(doc.getText('codemirror').toString()).toBe('my local unsaved edits');
+
+    client.destroy();
+  });
+
+  it('restores snapshot from storage before connecting', async () => {
+    const initialDoc = new Y.Doc();
+    initialDoc.getText('codemirror').insert(0, 'restored from idb');
+    const update = Y.encodeStateAsUpdate(initialDoc);
+
+    const mockIdb: any = {
+      open: () => {
+        const req: any = {
+          onsuccess: null,
+          result: {
+            transaction: () => ({
+              objectStore: () => ({
+                get: () => {
+                  const getReq: any = {
+                    onsuccess: null,
+                    result: { snapshot: update },
+                  };
+                  queueMicrotask(() => getReq.onsuccess?.());
+                  return getReq;
+                },
+              }),
+            }),
+          },
+        };
+        queueMicrotask(() => req.onsuccess?.());
+        return req;
+      },
+    };
+
+    const doc = new Y.Doc();
+    const client = new SyncClient({
+      url: 'ws://localhost:3000/ws/rooms/demo',
+      token: 'jwt.token',
+      doc,
+      webSocketFactory: (url, p) => new MockWebSocket(url, p) as unknown as WebSocket,
+      storage: {
+        roomId: 'demo',
+        roomEpoch: 'epoch-1',
+        idbFactory: mockIdb,
+      },
+    });
+
+    await client.connect();
+    expect(doc.getText('codemirror').toString()).toBe('restored from idb');
+    client.destroy();
+  });
+
+  it('triggers onAwarenessUpdate, onRoomUpdate, onEvent, onChat and handles command promises', async () => {
+    let capturedAwareness: Uint8Array | null = null;
+    let capturedRoomUpdate: any = null;
+    let capturedEvent: any = null;
+    let capturedChat: any = null;
+
+    const doc = new Y.Doc();
+    const client = new SyncClient({
+      url: 'ws://localhost:3000/ws/rooms/demo',
+      token: 'jwt.token',
+      doc,
+      webSocketFactory: (url, p) => new MockWebSocket(url, p) as unknown as WebSocket,
+      onAwarenessUpdate: (aw) => {
+        capturedAwareness = aw;
+      },
+      onRoomUpdate: (settings) => {
+        capturedRoomUpdate = settings;
+      },
+      onEvent: (event) => {
+        capturedEvent = event;
+      },
+      onChat: (msg) => {
+        capturedChat = msg;
+      },
+    });
+
+    await client.connect();
+    const ws = MockWebSocket.instances[MockWebSocket.instances.length - 1]!;
+
+    // 1. Simulate welcome
+    ws.simulateServerMessage(
+      JSON.stringify({
+        t: 'welcome',
+        self: { id: 'm1', name: 'Alice', colorIndex: 0, joinedAt: '2026-01-01', status: 'active', isHost: true, isBot: false },
+        members: [{ id: 'm1', name: 'Alice', colorIndex: 0, joinedAt: '2026-01-01', status: 'active', isHost: true, isBot: false }],
+        hostId: 'm1',
+        room: { id: 'demo', language: 'javascript', locked: false, hasPasscode: false, epoch: '11111111-1111-1111-1111-111111111111' },
+        token: 'new-token',
+        eventSeq: 1,
+        chatSeq: 2,
+      })
+    );
+
+    expect(client.connectionStatus).toBe('connected');
+
+    // 2. Inbound UPDATE with awarenessUpdate
+    const dummyAwareness = new Uint8Array([1, 2, 3, 4]);
+    const { encodeFrame } = await import('@tether/shared/protocol/codec');
+    const updateFrame = encodeFrame({
+      kind: FRAME_KINDS.UPDATE,
+      seq: 0,
+      docUpdate: new Uint8Array(0),
+      awarenessUpdate: dummyAwareness,
+    });
+    ws.simulateServerMessage(updateFrame);
+    expect(capturedAwareness).toEqual(dummyAwareness);
+
+    // 3. Inbound room.updated
+    ws.simulateServerMessage(
+      JSON.stringify({
+        t: 'room.updated',
+        settings: { locked: true, language: 'python' },
+      })
+    );
+    expect(capturedRoomUpdate).toEqual({ locked: true, language: 'python' });
+    expect(client.room?.locked).toBe(true);
+    expect(client.room?.language).toBe('python');
+
+    // 4. Inbound event
+    ws.simulateServerMessage(
+      JSON.stringify({
+        t: 'event',
+        event: {
+          id: 10,
+          roomId: 'demo',
+          seq: 5,
+          type: 'member.joined',
+          actorMemberId: 'm2',
+          actorName: 'Bob',
+          payload: {},
+          createdAt: '2026-01-01',
+        },
+      })
+    );
+    expect(capturedEvent?.type).toBe('member.joined');
+
+    // 5. Inbound chat.msg
+    ws.simulateServerMessage(
+      JSON.stringify({
+        t: 'chat.msg',
+        message: {
+          id: 1,
+          roomId: 'demo',
+          seq: 3,
+          clientMsgId: '11111111-1111-1111-1111-111111111111',
+          memberId: 'm2',
+          name: 'Bob',
+          colorIndex: 1,
+          text: 'Hello world',
+          createdAt: '2026-01-01',
+        },
+      })
+    );
+    expect(capturedChat?.text).toBe('Hello world');
+
+    // 6. Command resolving on ok
+    const cmdPromise = client.command({
+      t: 'host.lock',
+      rid: '33333333-3333-3333-3333-333333333333',
+      locked: true,
+    });
+    ws.simulateServerMessage(JSON.stringify({ t: 'ok', rid: '33333333-3333-3333-3333-333333333333' }));
+    await expect(cmdPromise).resolves.toBeUndefined();
+
+    // 7. Command rejecting on error
+    const errPromise = client.command({
+      t: 'host.lock',
+      rid: '44444444-4444-4444-4444-444444444444',
+      locked: false,
+    });
+    ws.simulateServerMessage(
+      JSON.stringify({
+        t: 'error',
+        rid: '44444444-4444-4444-4444-444444444444',
+        code: 'forbidden',
+        message: 'Not host',
+      })
+    );
+    await expect(errPromise).rejects.toThrow('forbidden');
+
+    client.destroy();
+  });
 });

@@ -153,6 +153,9 @@ importers:
       '@tether/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@tether/sync-client':
+        specifier: workspace:*
+        version: link:../../packages/sync-client
       '@thesvg/react':
         specifier: ^3.3.9
         version: 3.3.9(react@19.3.0)

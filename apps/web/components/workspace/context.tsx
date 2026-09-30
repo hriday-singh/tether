@@ -12,6 +12,8 @@ import { SandboxedWorkerRunner, transpileForRun } from '@/lib/worker-runner';
 import { randomId } from '@/lib/utils';
 import { remoteHead, type OffscreenCursor } from './editor/collab';
 
+export type SidebarTab = 'people' | 'chat' | 'activity' | 'scratchpad';
+
 export interface UIState {
   palette: false | 'commands' | 'theme';
   settings: boolean;
@@ -20,10 +22,11 @@ export interface UIState {
   drawerOpen: boolean;
   drawerTab: 'console' | 'sync' | 'chaos';
   sidebarOpen: boolean;
-  sidebarTab: 'people' | 'activity' | 'scratchpad';
+  sidebarTab: SidebarTab;
   previewOpen: boolean;
   /** Laptop layout (lg): the editor card shows code or preview. */
   editorView: 'code' | 'preview';
+  mobileTab: 'editor' | 'chat' | 'activity' | 'diagnostics';
   maximizedPanel: 'editor' | 'preview' | 'sidebar' | 'drawer' | null;
   zenMode: boolean;
 }
@@ -41,6 +44,8 @@ export interface Workspace {
   cursorPos: WritableStore<{ line: number; col: number; selected: number }>;
   offscreen: WritableStore<readonly OffscreenCursor[]>;
   follow: WritableStore<string | null>;
+  /** Chat messages from others that arrived while the Chat tab was not visible. */
+  chatUnread: WritableStore<number>;
   running: WritableStore<boolean>;
   preview: WritableStore<PreviewRun>;
   ui: WritableStore<UIState>;
@@ -85,11 +90,19 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
       sidebarTab: 'people',
       previewOpen: true,
       editorView: 'code',
+      mobileTab: 'editor',
       maximizedPanel: null,
       zenMode: false,
     },
     shallowEqual,
   );
+
+  const chatUnread = createStore(0);
+  client.onChat((m) => {
+    const s = ui.get();
+    const visible = (s.sidebarOpen && s.sidebarTab === 'chat') || s.mobileTab === 'chat';
+    if (!visible && m.memberId !== client.room.get().selfId) chatUnread.update((n) => n + 1);
+  });
 
   const ws: Workspace = {
     client,
@@ -99,6 +112,7 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
     cursorPos: createStore({ line: 1, col: 1, selected: 0 }, shallowEqual),
     offscreen: createStore<readonly OffscreenCursor[]>([]),
     follow: createStore<string | null>(null),
+    chatUnread,
     running,
     preview,
     ui,

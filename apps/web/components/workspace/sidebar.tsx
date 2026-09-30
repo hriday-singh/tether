@@ -28,7 +28,8 @@ import { FeedStore } from '@/lib/feed-store';
 import { useStore } from '@/lib/hooks';
 import { CommandError, type PresenceEntry } from '@/lib/sync';
 import { cn } from '@/lib/utils';
-import { useWorkspace } from './context';
+import { ChatPanel } from './chat-panel';
+import { useWorkspace, type SidebarTab } from './context';
 import { describeEvent } from './events';
 import { Scratchpad } from './scratchpad';
 
@@ -37,21 +38,31 @@ export function Sidebar() {
   const ui = useStore(ws.ui);
   const tab = ui.sidebarTab;
   const count = useStore(ws.client.roster).length;
+  const unread = useStore(ws.chatUnread);
   return (
     <Tabs
       value={tab}
-      onValueChange={(v) => ws.ui.update((s) => ({ ...s, sidebarTab: v as 'people' | 'activity' | 'scratchpad' }))}
+      onValueChange={(v) => ws.ui.update((s) => ({ ...s, sidebarTab: v as SidebarTab }))}
       className="flex h-full min-h-0 flex-col"
     >
-      <div className="flex items-center justify-between border-b border-border/60 p-2">
-        <TabsList aria-label="Sidebar">
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 p-2">
+        {/* Four tabs overflow a narrow sidebar: scroll the list, keep the panel buttons pinned. */}
+        <TabsList aria-label="Sidebar" className="min-w-0 overflow-x-auto [scrollbar-width:none] [&>*]:shrink-0">
           <TabsTrigger value="people">
             People <span className="tabular text-muted-foreground">{count}</span>
+          </TabsTrigger>
+          <TabsTrigger value="chat" aria-label={unread > 0 ? `Chat, ${unread} unread` : undefined}>
+            Chat
+            {unread > 0 && (
+              <Badge tone="primary" className="tabular">
+                {unread > 99 ? '99+' : unread}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="scratchpad">Scratchpad</TabsTrigger>
         </TabsList>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <Tip label={ui.maximizedPanel === 'sidebar' ? 'Restore sidebar' : 'Maximize sidebar'}>
             <Button
               size="icon-xs"
@@ -76,6 +87,9 @@ export function Sidebar() {
       </div>
       <TabsContent value="people" className="min-h-0 flex-1 overflow-y-auto p-1.5" forceMount hidden={tab !== 'people'}>
         <Roster />
+      </TabsContent>
+      <TabsContent value="chat" className="min-h-0 flex-1" forceMount hidden={tab !== 'chat'}>
+        <ChatPanel active={ui.sidebarOpen && tab === 'chat'} />
       </TabsContent>
       <TabsContent value="activity" className="min-h-0 flex-1" forceMount hidden={tab !== 'activity'}>
         <ActivityFeed />

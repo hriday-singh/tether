@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @tether/shared build:pkg && next dev -p 3001",
-    "build": "pnpm --filter @tether/shared build:pkg && next build",
+    "dev": "pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg && next dev -p 3001",
+    "build": "pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg && next build",
     "start": "next start -p 3001",
     "lint": "eslint .",
-    "typecheck": "pnpm --filter @tether/shared build:pkg && tsc --noEmit",
+    "typecheck": "pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg && tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
@@ -35,6 +35,7 @@
     "@tanstack/react-query": "^5.104.0",
     "@tanstack/react-virtual": "^3.14.13",
     "@tether/shared": "workspace:*",
+    "@tether/sync-client": "workspace:*",
     "@thesvg/react": "^3.3.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

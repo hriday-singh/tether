@@ -106,6 +106,7 @@ describe('Protocol Schemas', () => {
         },
         token: 'signed.jwt.token',
         eventSeq: 0,
+        chatSeq: 0,
       };
       expect(ServerControlMessageSchema.parse(welcome)).toEqual(welcome);
     });
@@ -173,5 +174,50 @@ describe('Protocol Schemas', () => {
       };
       expect(StandardErrorResponseSchema.parse(err)).toEqual(err);
     });
+  });
+});
+
+describe('Chat schemas (ADR-017)', () => {
+  const rid = '11111111-1111-4111-8111-111111111111';
+
+  it('accepts chat.send and trims the text', () => {
+    const msg = ClientControlMessageSchema.parse({ t: 'chat.send', rid, text: '  hi  ' });
+    expect(msg).toEqual({ t: 'chat.send', rid, text: 'hi' });
+  });
+
+  it('rejects empty, whitespace-only and over-long text', () => {
+    expect(ClientControlMessageSchema.safeParse({ t: 'chat.send', rid, text: '' }).success).toBe(false);
+    expect(ClientControlMessageSchema.safeParse({ t: 'chat.send', rid, text: ' \n\t ' }).success).toBe(false);
+    expect(ClientControlMessageSchema.safeParse({ t: 'chat.send', rid, text: 'a'.repeat(2001) }).success).toBe(false);
+    expect(ClientControlMessageSchema.safeParse({ t: 'chat.send', rid, text: 'a'.repeat(2000) }).success).toBe(true);
+  });
+
+  it('parses chat.msg', () => {
+    const message = {
+      id: 1,
+      roomId: 'room',
+      seq: 1,
+      clientMsgId: rid,
+      memberId: 'm1',
+      name: 'Alice',
+      colorIndex: 2,
+      text: 'hello',
+      createdAt: new Date().toISOString(),
+    };
+    expect(ServerControlMessageSchema.parse({ t: 'chat.msg', message })).toEqual({ t: 'chat.msg', message });
+  });
+
+  it('defaults welcome.chatSeq to 0 for older servers', () => {
+    const member = { id: 'm1', name: 'A', colorIndex: 0, joinedAt: 'x', status: 'active', isHost: true, isBot: false };
+    const welcome = ServerControlMessageSchema.parse({
+      t: 'welcome',
+      self: member,
+      members: [member],
+      hostId: 'm1',
+      room: { id: 'room', language: 'javascript', locked: false, hasPasscode: false, epoch: rid },
+      token: 't',
+      eventSeq: 0,
+    });
+    expect(welcome.t === 'welcome' && welcome.chatSeq).toBe(0);
   });
 });

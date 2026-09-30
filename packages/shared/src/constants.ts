@@ -36,6 +36,11 @@ export const ROOM_UNLOAD_IDLE_MS = 30000;
 export const CHECKSUM_QUIET_MS = 500;
 export const FEED_GAP_FILL_MAX = 500;
 
+// Chat (ADR-017). Own bucket per connection, separate from the edit throttle.
+export const CHAT_MAX_CHARS = 2000;
+export const CHAT_RATE_PER_SEC = 1;
+export const CHAT_BURST = 5;
+
 // Storm Demo Mode
 export const STORM_MAX_BOTS = 8;
 export const STORM_MAX_SECONDS = 60;

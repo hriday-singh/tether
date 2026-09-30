@@ -56,7 +56,7 @@ export function TopBar() {
         <Logo className="size-5" />
         <span className="text-body font-semibold tracking-tight">Tether</span>
       </Link>
-      <span aria-hidden className="h-4 w-px bg-border" />
+      <span aria-hidden className="hidden sm:inline-block h-4 w-px bg-border" />
       <RoomIdPill roomId={ws.roomId} />
       {room.room.locked && (
         <Tip label="Room locked: no new members">
@@ -77,25 +77,35 @@ export function TopBar() {
           <TextMorph>{running ? 'Stop' : lang.preview === 'html' ? 'Run page' : 'Run'}</TextMorph>
         </Button>
       )}
-      <InviteButton roomId={ws.roomId} />
+      <div className="hidden sm:inline-flex">
+        <InviteButton roomId={ws.roomId} />
+      </div>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <AvatarStack />
+        <div className="hidden md:flex">
+          <AvatarStack />
+        </div>
         <StatusPill />
-        <LatencyHud />
+        <div className="hidden lg:inline-flex">
+          <LatencyHud />
+        </div>
         <Tip label="Command palette" shortcut={`${mod} K`}>
           <button
             type="button"
             onClick={() => ws.ui.update((s) => ({ ...s, palette: 'commands' }))}
-            className="inline-flex h-7 items-center gap-1 rounded-full border border-border bg-card px-2 text-caption text-muted-foreground transition-ui hover:text-foreground"
+            className="hidden sm:inline-flex h-7 items-center gap-1 rounded-full border border-border bg-card px-2 text-caption text-muted-foreground transition-ui hover:text-foreground"
             aria-label="Open command palette"
           >
             <Icon icon={CommandIcon} size={14} />
             <Kbd className="h-4 border-0 bg-transparent px-0">K</Kbd>
           </button>
         </Tip>
-        <FormatButton />
-        <ViewMenu />
+        <div className="hidden sm:inline-flex">
+          <FormatButton />
+        </div>
+        <div className="hidden lg:inline-flex">
+          <ViewMenu />
+        </div>
         {isHost && (
           <Tip label="Host controls">
             <Button
@@ -135,7 +145,7 @@ function FormatButton() {
     if (!currentText.trim()) return;
 
     try {
-      const formatted = await formatCode(currentText, room.room.language as any);
+      const formatted = await formatCode(currentText, languageInfo(room.room.language).id);
       if (formatted === currentText) {
         toast.info('Document is already formatted');
         return;
@@ -172,7 +182,7 @@ function RoomIdPill({ roomId }: { roomId: string }) {
       <button
         type="button"
         onClick={() => void navigator.clipboard.writeText(roomId).then(flash)}
-        className="inline-flex h-7 max-w-48 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 font-mono text-caption transition-ui hover:border-primary/40"
+        className="hidden sm:inline-flex h-7 max-w-48 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 font-mono text-caption transition-ui hover:border-primary/40"
         aria-label={copied ? 'Room ID copied' : `Copy room ID ${roomId}`}
       >
         <span className="truncate">{roomId}</span>

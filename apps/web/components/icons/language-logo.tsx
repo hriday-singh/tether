@@ -15,8 +15,16 @@ import type { ComponentType } from 'react';
 import { languageInfo, type LanguageId } from '@/lib/languages';
 import { cn } from '@/lib/utils';
 
+interface LogoProps {
+  width?: number;
+  height?: number;
+  'aria-hidden'?: boolean;
+  variant?: string;
+  className?: string;
+}
+
 // theSVG brand marks (ADR-016). Brand colors live inside the SVG data, which is the one sanctioned exception to tokens.
-const LOGOS: Record<LanguageId, ComponentType<any>> = {
+const LOGOS = {
   javascript: Javascript,
   typescript: Typescript,
   html: Html5,
@@ -30,14 +38,14 @@ const LOGOS: Record<LanguageId, ComponentType<any>> = {
   java: Java,
   markdown: Markdown,
   sql: Postgresql,
-};
+} satisfies Record<LanguageId, unknown>;
 
 /** Rust and Markdown marks are black. Mono keeps them visible on dark themes. */
 const MONO: ReadonlySet<LanguageId> = new Set(['rust', 'markdown']);
 
 export function LanguageLogo({ language, size = 14, className }: { language: string; size?: number; className?: string }) {
   const info = languageInfo(language);
-  const Logo = LOGOS[info.id];
+  const Logo = LOGOS[info.id] as unknown as ComponentType<LogoProps>;
   return (
     <Logo
       width={size}

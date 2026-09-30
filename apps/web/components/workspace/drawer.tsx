@@ -32,7 +32,7 @@ import { cn, formatAgo, formatClock } from '@/lib/utils';
 import { useWorkspace, type UIState } from './context';
 import { Metric } from './sync-status';
 
-export function DiagnosticsDrawer({ onCollapse }: { onCollapse: () => void }) {
+export function DiagnosticsDrawer({ onCollapse }: { onCollapse?: () => void }) {
   const ws = useWorkspace();
   const ui = useStore(ws.ui);
   const tab = ui.drawerTab;
@@ -58,7 +58,12 @@ export function DiagnosticsDrawer({ onCollapse }: { onCollapse: () => void }) {
             </Button>
           </Tip>
           <Tip label="Collapse (Ctrl `)">
-            <Button size="icon-xs" variant="ghost" aria-label="Collapse diagnostics" onClick={onCollapse}>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              aria-label="Collapse diagnostics"
+              onClick={onCollapse ?? (() => ws.ui.update((s) => ({ ...s, drawerOpen: false })))}
+            >
               <Icon icon={MinusSignIcon} size={14} />
             </Button>
           </Tip>
@@ -186,10 +191,11 @@ function ConsolePanel() {
           evaluate();
         }}
       >
-        <span aria-hidden className="text-primary">
+        <label htmlFor="console-repl-input" className="text-primary font-semibold select-none cursor-pointer" aria-hidden>
           &gt;
-        </span>
+        </label>
         <input
+          id="console-repl-input"
           value={expr}
           onChange={(e) => setExpr(e.target.value)}
           onKeyDown={(e) => {
@@ -197,7 +203,7 @@ function ConsolePanel() {
           }}
           placeholder="Evaluate an expression, e.g. 2 + 2"
           aria-label="Console input"
-          className="h-8 flex-1 bg-transparent outline-none placeholder:text-muted-foreground/60"
+          className="h-8 flex-1 bg-transparent px-1.5 text-foreground outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-md transition-ui"
         />
       </form>
     </div>

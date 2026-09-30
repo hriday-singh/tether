@@ -15,11 +15,14 @@ export class RoomRegistry {
     private updateRepo: UpdateRepo,
     private persistenceService: PersistenceService,
     private auditService: AuditService,
-    private idleMs: number = ROOM_UNLOAD_IDLE_MS
+    private idleMs: number = ROOM_UNLOAD_IDLE_MS,
+    private hostGraceMs?: number
   ) {
     this.sweepTimer = setInterval(() => {
       this.unloadIdleRooms();
     }, 10000);
+
+    this.persistenceService.resolveDoc = (roomId) => this.activeRooms.get(roomId)?.doc;
 
     this.auditService.onEventLogged = (roomId, event) => {
       const room = this.activeRooms.get(roomId);
@@ -56,7 +59,8 @@ export class RoomRegistry {
       tailUpdates,
       this.persistenceService,
       this.auditService,
-      this.onBroadcast
+      this.onBroadcast,
+      this.hostGraceMs
     );
 
     this.activeRooms.set(roomId, room);
@@ -70,6 +74,7 @@ export class RoomRegistry {
         this.persistenceService.flush(roomId, room.doc);
         room.destroy();
         this.activeRooms.delete(roomId);
+        this.auditService.forgetRoom(roomId);
         unloaded++;
       }
     }

@@ -26,6 +26,7 @@ export function StatusBar() {
   const room = useStore(client.room);
   const roster = useStore(client.roster);
   const stats = useStore(client.stats);
+  const unread = useStore(ws.chatUnread);
   const host = roster.find((m) => m.id === room.hostId);
   const label = status.connection === 'online' ? 'Online' : status.connection[0]!.toUpperCase() + status.connection.slice(1);
 
@@ -57,11 +58,25 @@ export function StatusBar() {
           <span className="text-warning">Batching (5/s)</span>
         </>
       )}
+      {unread > 0 && (
+        <Tip label="Open chat">
+          <button
+            type="button"
+            onClick={() => ws.ui.update((s) => ({ ...s, sidebarOpen: true, sidebarTab: 'chat' }))}
+            className="ml-auto inline-flex items-center gap-1 tabular text-primary transition-ui hover:text-foreground cursor-pointer"
+            aria-label={`Open chat, ${unread} unread`}
+          >
+            <span aria-hidden className="size-1.5 rounded-full bg-primary animate-pulse-soft" />
+            {unread > 99 ? '99+' : unread} new
+          </button>
+        </Tip>
+      )}
+      {unread > 0 && <Sep />}
       <Tip label="Click to view member roster">
         <button
           type="button"
           onClick={() => ws.ui.update((s) => ({ ...s, sidebarOpen: true, sidebarTab: 'people' }))}
-          className="ml-auto tabular transition-ui hover:text-foreground cursor-pointer"
+          className={cn('tabular transition-ui hover:text-foreground cursor-pointer', unread === 0 && 'ml-auto')}
           aria-label="Open member roster"
         >
           {roster.length} {roster.length === 1 ? 'Peer' : 'Peers'}

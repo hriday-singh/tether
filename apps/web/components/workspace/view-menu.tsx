@@ -10,9 +10,11 @@ import {
   MaximizeScreenIcon,
   MinimizeScreenIcon,
   Note01Icon,
+  Search01Icon,
   SidebarRightIcon,
   Tick02Icon,
 } from '@hugeicons/core-free-icons';
+import { openSearchPanel } from '@codemirror/search';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/controls';
 import { Icon } from '@/components/ui/icon';
@@ -51,6 +53,15 @@ export function ViewMenu() {
         <DropdownMenuItem onSelect={() => ws.maximizePanel('editor')}>
           <Icon icon={ui.maximizedPanel === 'editor' ? MinimizeScreenIcon : MaximizeScreenIcon} />
           <span>{ui.maximizedPanel === 'editor' ? 'Restore Editor' : 'Maximize Editor'}</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onSelect={() => {
+            if (ws.view.current) openSearchPanel(ws.view.current);
+          }}
+        >
+          <Icon icon={Search01Icon} />
+          <span>Find in Document</span>
         </DropdownMenuItem>
 
         <DropdownMenuItem onSelect={() => ws.togglePanel('sidebar')}>

@@ -10,19 +10,30 @@ import {
   Member,
 } from '@tether/shared/protocol/schemas';
 import {
+  CHAT_BURST,
+  CHAT_RATE_PER_SEC,
   FRAME_KINDS,
   SERVER_PING_MS,
   WS_CLOSE_CODES,
 } from '@tether/shared/constants';
+import { TokenBucket } from '@tether/shared/tokenBucket';
+import { disambiguateDisplayNames } from '../rooms/rosterUtils.js';
+
+export interface ConnectionHandlerOptions {
+  tokenRefreshIntervalMs?: number; // default: 3600000 (1 hour)
+}
 
 export async function attachConnectionHandler(
   ws: WebSocket,
   room: Room,
   member: { id: string; name: string; colorIndex: number },
-  deps: UpgradeGateDependencies
+  deps: UpgradeGateDependencies,
+  options: ConnectionHandlerOptions = {}
 ): Promise<void> {
-  room.addConnection(ws, member);
+  const { isNew } = room.addConnection(ws, member);
   const protocolGuard = new ProtocolGuard();
+  // Chat has its own budget so chatting never eats the 5 frames/s edit throttle (ADR-017).
+  const chatBucket = new TokenBucket(CHAT_RATE_PER_SEC, CHAT_BURST);
 
   let isAlive = true;
   ws.on('pong', () => {
@@ -39,9 +50,31 @@ export async function attachConnectionHandler(
     ws.ping();
   }, SERVER_PING_MS);
 
-  // Send Welcome message
+  // Sliding Token Refresh: push renewed JWT periodically (hourly by default)
+  const tokenRefreshIntervalMs = options.tokenRefreshIntervalMs ?? 3600000;
+  const tokenRefreshInterval = setInterval(async () => {
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        const currentRoomRow = deps.roomRepo.findById(room.id);
+        if (currentRoomRow) {
+          const freshToken = await deps.joinService.issueRoomToken({
+            memberId: member.id,
+            roomId: room.id,
+            displayName: member.name,
+            passcodeVersion: currentRoomRow.passcode_version,
+            roomEpoch: room.epoch,
+          });
+          ws.send(JSON.stringify({ t: 'token', token: freshToken }));
+        }
+      } catch {
+        // Keep connection alive even if refresh attempt fails
+      }
+    }
+  }, tokenRefreshIntervalMs);
+
+  // Send Welcome message with disambiguated names
   const roomRow = deps.roomRepo.findById(room.id)!;
-  const allMembers = deps.memberRepo.getMembers(room.id).map((m): Member => ({
+  const rawMembers = deps.memberRepo.getMembers(room.id).map((m): Member => ({
     id: m.member_id,
     name: m.display_name,
     colorIndex: m.color_index,
@@ -50,8 +83,9 @@ export async function attachConnectionHandler(
     isHost: room.hostElector.hostId === m.member_id,
     isBot: false,
   }));
+  const allMembers = disambiguateDisplayNames(rawMembers);
 
-  const selfMember: Member = {
+  const selfMember: Member = allMembers.find((m) => m.id === member.id) ?? {
     id: member.id,
     name: member.name,
     colorIndex: member.colorIndex,
@@ -84,8 +118,25 @@ export async function attachConnectionHandler(
     },
     token,
     eventSeq,
+    chatSeq: deps.chatService.getLatestSeq(room.id),
   };
   ws.send(JSON.stringify(welcomePayload));
+
+  if (isNew) {
+    room.broadcastControl(
+      {
+        t: 'member.joined',
+        member: selfMember,
+      },
+      ws
+    );
+    deps.auditService.logEvent(room.id, {
+      type: 'member.joined',
+      actorMemberId: member.id,
+      actorName: member.name,
+      payload: {},
+    });
+  }
 
   ws.on('message', async (data: WebSocket.RawData, isBinary: boolean) => {
     if (isBinary) {
@@ -257,6 +308,25 @@ export async function attachConnectionHandler(
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;
           }
+          case 'chat.send': {
+            if (!chatBucket.take()) {
+              ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'rate_limited', message: 'Sending too fast' }));
+              return;
+            }
+            const { message, created } = deps.chatService.post(room.id, {
+              clientMsgId: msg.rid,
+              memberId: member.id,
+              name: member.name,
+              colorIndex: member.colorIndex,
+              text: msg.text,
+            });
+            const out = JSON.stringify({ t: 'chat.msg', message });
+            // A resend (same rid) was already broadcast: only the sender needs it back.
+            if (created) room.broadcastControl({ t: 'chat.msg', message });
+            else ws.send(out);
+            ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
+            break;
+          }
           case 'verify.mismatch': {
             // Client detected mismatch; reply with current full doc state
             const fullUpdate = Y.encodeStateAsUpdate(room.doc);
@@ -268,6 +338,24 @@ export async function attachConnectionHandler(
             ws.send(encodeFrame(resyncFrame));
             break;
           }
+          case 'demo.storm': {
+            if (room.hostElector.hostId !== member.id) {
+              ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'forbidden', message: 'Not host' }));
+              return;
+            }
+            if (!deps.config.DEMO_MODE) {
+              ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'forbidden', message: 'Demo mode disabled' }));
+              return;
+            }
+            deps.auditService.logEvent(room.id, {
+              type: 'demo.storm',
+              actorMemberId: member.id,
+              actorName: member.name,
+              payload: { bots: msg.bots, seconds: msg.seconds, faults: msg.faults },
+            });
+            ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
+            break;
+          }
         }
       } catch {
         ws.close(WS_CLOSE_CODES.PROTOCOL_VIOLATION);
@@ -277,6 +365,7 @@ export async function attachConnectionHandler(
 
   ws.on('close', () => {
     clearInterval(pingInterval);
+    clearInterval(tokenRefreshInterval);
     room.removeConnection(ws, false);
   });
 }

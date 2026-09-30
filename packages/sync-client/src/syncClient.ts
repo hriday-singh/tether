@@ -11,6 +11,8 @@ import {
   ServerControlMessageSchema,
   Member,
   RoomMetadata,
+  AuditEvent,
+  ChatMessage,
 } from '@tether/shared/protocol/schemas';
 import {
   CLIENT_BATCH_WINDOW_MS,
@@ -25,6 +27,13 @@ import { calculateBackoff } from '@tether/shared/backoff';
 import { areStateVectorsEqual, hashString } from '@tether/shared/checksum';
 import { StatsStore, ClientStats } from './statsStore.js';
 import { WakeManager, WakeTarget, WakeDocumentTarget } from './wakeManager.js';
+import { probeAdmission } from './admissionProbe.js';
+import {
+  restoreFromStorage,
+  persistToStorage,
+  clearStorage,
+  StorageIDBFactory,
+} from './indexedDbStorage.js';
 
 export type ClientConnectionStatus =
   | 'disconnected'
@@ -36,19 +45,38 @@ export type ClientConnectionStatus =
 
 export type SyncState = 'synced' | 'saving' | 'saved' | 'mismatch';
 
+export interface SyncStorageOptions {
+  roomId: string;
+  roomEpoch: string;
+  idbFactory?: StorageIDBFactory;
+  debounceMs?: number;
+}
+
 export interface SyncClientOptions {
   url: string;
   token: string;
   doc: Y.Doc;
+  apiUrl?: string;
+  roomId?: string;
+  fetchFn?: typeof fetch;
+  storage?: SyncStorageOptions;
   webSocketFactory?: (url: string, protocols?: string | string[]) => WebSocket;
   batchWindowMs?: number;
   onStatusChange?: (status: ClientConnectionStatus) => void;
   onSyncStateChange?: (state: SyncState) => void;
   onRosterChange?: (members: Member[]) => void;
   onHostChange?: (hostId: string | null) => void;
-  onWelcome?: (welcome: { self: Member; room: RoomMetadata }) => void;
+  onWelcome?: (welcome: { self: Member; room: RoomMetadata; chatSeq: number; eventSeq: number }) => void;
   onStatsChange?: (stats: ClientStats) => void;
+  onReauthRequired?: (reason?: string) => void;
+  onBanned?: () => void;
+  onRoomNotFound?: () => void;
+  onRoomLocked?: () => void;
   onError?: (err: Error) => void;
+  onAwarenessUpdate?: (update: Uint8Array) => void;
+  onRoomUpdate?: (settings: { locked?: boolean; hasPasscode?: boolean; language?: string }) => void;
+  onEvent?: (event: AuditEvent) => void;
+  onChat?: (message: ChatMessage) => void;
   clock?: () => number;
   statsWindowSize?: number;
   wakeProbeTimeoutMs?: number;
@@ -60,6 +88,7 @@ export interface SyncClientOptions {
 
 export class SyncClient {
   public readonly doc: Y.Doc;
+  private options: SyncClientOptions;
   private url: string;
   private token: string;
   private ws: WebSocket | null = null;
@@ -76,9 +105,18 @@ export class SyncClient {
   private pendingDocUpdates: Uint8Array[] = [];
   private pendingAwarenessUpdate: Uint8Array = new Uint8Array(0);
   private pendingAcks = new Map<number, { docUpdate: Uint8Array; sentAt: number }>();
+  private pendingCommands = new Map<string, { resolve: () => void; reject: (err: Error) => void; timer: NodeJS.Timeout }>();
 
   private statsStore: StatsStore;
   private wakeManager: WakeManager | null = null;
+
+  private apiUrl?: string;
+  private roomId?: string;
+  private fetchFn?: typeof fetch;
+  private storage?: SyncStorageOptions;
+  private hasReceivedWelcome = false;
+  private hasRestoredStorage = false;
+  private storagePersistTimer: NodeJS.Timeout | null = null;
 
   private lastSentAt = 0;
   private batchTimer: NodeJS.Timeout | null = null;
@@ -91,31 +129,20 @@ export class SyncClient {
   public room: RoomMetadata | null = null;
   public self: Member | null = null;
 
-  private onStatusChange?: (status: ClientConnectionStatus) => void;
-  private onSyncStateChange?: (state: SyncState) => void;
-  private onRosterChange?: (members: Member[]) => void;
-  private onHostChange?: (hostId: string | null) => void;
-  private onWelcome?: (welcome: { self: Member; room: RoomMetadata }) => void;
-  private onStatsChange?: (stats: ClientStats) => void;
-  private onError?: (err: Error) => void;
-
   constructor(options: SyncClientOptions) {
+    this.options = options;
     this.url = options.url;
     this.token = options.token;
     this.doc = options.doc;
+    this.apiUrl = options.apiUrl;
+    this.roomId = options.roomId;
+    this.fetchFn = options.fetchFn;
+    this.storage = options.storage;
     this.webSocketFactory =
       options.webSocketFactory ??
       ((url, protocols) => new (globalThis.WebSocket as unknown as typeof WebSocket)(url, protocols));
     this.batchWindowMs = options.batchWindowMs ?? CLIENT_BATCH_WINDOW_MS;
     this.clock = options.clock ?? (() => Date.now());
-
-    this.onStatusChange = options.onStatusChange;
-    this.onSyncStateChange = options.onSyncStateChange;
-    this.onRosterChange = options.onRosterChange;
-    this.onHostChange = options.onHostChange;
-    this.onWelcome = options.onWelcome;
-    this.onStatsChange = options.onStatsChange;
-    this.onError = options.onError;
 
     this.statsStore = new StatsStore(options.statsWindowSize ?? 60);
 
@@ -160,18 +187,18 @@ export class SyncClient {
   private setStatus(status: ClientConnectionStatus): void {
     if (this.status !== status) {
       this.status = status;
-      this.onStatusChange?.(status);
+      this.options.onStatusChange?.(status);
     }
   }
 
   private setSyncState(state: SyncState): void {
     if (this.syncState !== state) {
       this.syncState = state;
-      this.onSyncStateChange?.(state);
+      this.options.onSyncStateChange?.(state);
     }
   }
 
-  public connect(): void {
+  public async connect(): Promise<void> {
     if (this.isDestroyed || this.status === 'connected' || this.status === 'connecting') {
       return;
     }
@@ -181,6 +208,21 @@ export class SyncClient {
       this.reconnectTimer = null;
     }
 
+    if (this.storage && !this.hasRestoredStorage) {
+      try {
+        await restoreFromStorage(
+          this.doc,
+          this.storage.roomId,
+          this.storage.roomEpoch,
+          this.storage.idbFactory
+        );
+      } catch (err) {
+        this.options.onError?.(err instanceof Error ? err : new Error('Storage restore failed'));
+      }
+      this.hasRestoredStorage = true;
+    }
+
+    this.hasReceivedWelcome = false;
     this.setStatus(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
     const protocols = [PROTOCOL_VERSION, this.token];
 
@@ -250,6 +292,9 @@ export class SyncClient {
         if (frame.docUpdate.byteLength > 0) {
           Y.applyUpdate(this.doc, frame.docUpdate, this);
         }
+        if (frame.awarenessUpdate.byteLength > 0) {
+          this.options.onAwarenessUpdate?.(frame.awarenessUpdate);
+        }
         break;
       }
     }
@@ -262,6 +307,7 @@ export class SyncClient {
 
       switch (parsed.t) {
         case 'welcome': {
+          this.hasReceivedWelcome = true;
           this.self = parsed.self;
           this.members = parsed.members;
           this.hostId = parsed.hostId;
@@ -269,9 +315,14 @@ export class SyncClient {
           this.setStatus('connected');
           this.pendingAcks.clear();
           this.setSyncState('synced');
-          this.onWelcome?.({ self: parsed.self, room: parsed.room });
-          this.onRosterChange?.(parsed.members);
-          this.onHostChange?.(parsed.hostId);
+          this.options.onWelcome?.({
+            self: parsed.self,
+            room: parsed.room,
+            chatSeq: parsed.chatSeq,
+            eventSeq: parsed.eventSeq,
+          });
+          this.options.onRosterChange?.(parsed.members);
+          this.options.onHostChange?.(parsed.hostId);
           break;
         }
         case 'pong': {
@@ -279,7 +330,7 @@ export class SyncClient {
           const rtt = Math.max(0, now - parsed.ts);
           this.statsStore.recordRtt(rtt);
           this.wakeManager?.clearProbe();
-          this.onStatsChange?.(this.statsStore.getStats());
+          this.options.onStatsChange?.(this.statsStore.getStats());
           break;
         }
         case 'ack': {
@@ -288,26 +339,66 @@ export class SyncClient {
             const ackLatency = Math.max(0, this.clock() - pending.sentAt);
             this.statsStore.recordAckLatency(ackLatency);
             this.pendingAcks.delete(parsed.seq);
-            this.onStatsChange?.(this.statsStore.getStats());
+            this.options.onStatsChange?.(this.statsStore.getStats());
           }
           if (this.pendingAcks.size === 0) {
             this.setSyncState('saved');
           }
           break;
         }
+        case 'ok': {
+          const pending = this.pendingCommands.get(parsed.rid);
+          if (pending) {
+            clearTimeout(pending.timer);
+            this.pendingCommands.delete(parsed.rid);
+            pending.resolve();
+          }
+          break;
+        }
+        case 'error': {
+          if (parsed.rid) {
+            const pending = this.pendingCommands.get(parsed.rid);
+            if (pending) {
+              clearTimeout(pending.timer);
+              this.pendingCommands.delete(parsed.rid);
+              pending.reject(new Error(parsed.code));
+            }
+          }
+          break;
+        }
+        case 'room.updated': {
+          if (this.room) {
+            this.room = {
+              ...this.room,
+              ...(parsed.settings.language ? { language: parsed.settings.language } : {}),
+              ...(parsed.settings.locked !== undefined ? { locked: parsed.settings.locked } : {}),
+              ...(parsed.settings.hasPasscode !== undefined ? { hasPasscode: parsed.settings.hasPasscode } : {}),
+            };
+          }
+          this.options.onRoomUpdate?.(parsed.settings);
+          break;
+        }
+        case 'event': {
+          this.options.onEvent?.(parsed.event);
+          break;
+        }
+        case 'chat.msg': {
+          this.options.onChat?.(parsed.message);
+          break;
+        }
         case 'member.joined': {
           this.members = [...this.members.filter((m) => m.id !== parsed.member.id), parsed.member];
-          this.onRosterChange?.(this.members);
+          this.options.onRosterChange?.(this.members);
           break;
         }
         case 'member.left': {
           this.members = this.members.filter((m) => m.id !== parsed.memberId);
-          this.onRosterChange?.(this.members);
+          this.options.onRosterChange?.(this.members);
           break;
         }
         case 'host.changed': {
           this.hostId = parsed.hostId;
-          this.onHostChange?.(parsed.hostId);
+          this.options.onHostChange?.(parsed.hostId);
           break;
         }
         case 'checksum': {
@@ -329,14 +420,18 @@ export class SyncClient {
         }
       }
     } catch (err) {
-      this.onError?.(new Error(`Failed to parse control message: ${String(err)}`));
+      this.options.onError?.(new Error(`Failed to parse control message: ${String(err)}`));
     }
   }
 
   private handleLocalDocUpdate = (update: Uint8Array, origin: unknown): void => {
-    // Ignore updates applied from remote peers
-    if (origin === this) {
+    // Ignore updates applied from remote peers or local storage restore
+    if (origin === this || origin === 'storage') {
       return;
+    }
+
+    if (this.storage) {
+      this.scheduleStoragePersist();
     }
 
     this.pendingDocUpdates.push(update);
@@ -355,6 +450,26 @@ export class SyncClient {
         this.flushBatch();
       }, waitMs);
     }
+  };
+
+  private scheduleStoragePersist(): void {
+    if (this.storagePersistTimer || !this.storage) return;
+    const debounceMs = this.storage.debounceMs ?? 1000;
+    this.storagePersistTimer = setTimeout(async () => {
+      this.storagePersistTimer = null;
+      if (this.storage && !this.isDestroyed) {
+        try {
+          await persistToStorage(
+            this.doc,
+            this.storage.roomId,
+            this.storage.roomEpoch,
+            this.storage.idbFactory
+          );
+        } catch (err) {
+          this.options.onError?.(err instanceof Error ? err : new Error('Storage persist failed'));
+        }
+      }
+    }, debounceMs);
   };
 
   public queueAwarenessUpdate(update: Uint8Array): void {
@@ -451,10 +566,10 @@ export class SyncClient {
   }
 
   private handleWsError = (err: unknown): void => {
-    this.onError?.(err instanceof Error ? err : new Error('WebSocket error'));
+    this.options.onError?.(err instanceof Error ? err : new Error('WebSocket error'));
   };
 
-  private handleClose = (event: { code: number }): void => {
+  private handleClose = async (event: { code: number }): Promise<void> => {
     this.stopPingTimer();
     if (this.deadTimer) {
       clearTimeout(this.deadTimer);
@@ -463,7 +578,12 @@ export class SyncClient {
 
     if (event.code === WS_CLOSE_CODES.KICKED) {
       this.setStatus('kicked');
+      if (this.storage) await clearStorage(this.storage.roomId, this.storage.roomEpoch, this.storage.idbFactory);
       return;
+    }
+
+    if (event.code === WS_CLOSE_CODES.DOC_TOO_LARGE && this.storage) {
+      await clearStorage(this.storage.roomId, this.storage.roomEpoch, this.storage.idbFactory);
     }
 
     this.pendingAcks.clear();
@@ -473,18 +593,63 @@ export class SyncClient {
       return;
     }
 
+    // Pre-welcome failure classification via Admission Probe
+    if (!this.hasReceivedWelcome && this.apiUrl && this.roomId) {
+      const isOnline = typeof navigator !== 'undefined' && 'onLine' in navigator ? navigator.onLine : true;
+      if (isOnline) {
+        const probe = await probeAdmission(this.apiUrl, this.roomId, this.token, this.fetchFn);
+        if (probe.status === 'reauth') {
+          this.setStatus('disconnected');
+          this.options.onReauthRequired?.(probe.reason);
+          return;
+        }
+        if (probe.status === 'banned') {
+          this.setStatus('kicked');
+          this.options.onBanned?.();
+          if (this.storage) await clearStorage(this.storage.roomId, this.storage.roomEpoch, this.storage.idbFactory);
+          return;
+        }
+        if (probe.status === 'not_found') {
+          this.setStatus('disconnected');
+          this.options.onRoomNotFound?.();
+          return;
+        }
+        if (probe.status === 'locked') {
+          this.setStatus('disconnected');
+          this.options.onRoomLocked?.();
+          return;
+        }
+      }
+    }
+
     // Attempt reconnect with backoff
     this.setStatus('reconnecting');
     this.reconnectAttempts++;
     const delay = calculateBackoff(this.reconnectAttempts);
 
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-    }
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = setTimeout(() => {
       this.connect();
     }, delay);
   };
+
+  public async clearPersistence(): Promise<void> {
+    if (this.storage) await clearStorage(this.storage.roomId, this.storage.roomEpoch, this.storage.idbFactory);
+  }
+
+  public command(cmd: ClientControlMessage & { rid: string }): Promise<void> {
+    if (this.status !== 'connected' || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return Promise.reject(new Error('offline'));
+    }
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pendingCommands.delete(cmd.rid);
+        reject(new Error('command_timeout'));
+      }, 5000);
+      this.pendingCommands.set(cmd.rid, { resolve, reject, timer });
+      this.sendControl(cmd);
+    });
+  }
 
   public destroy(): void {
     this.isDestroyed = true;
@@ -493,16 +658,21 @@ export class SyncClient {
     if (this.batchTimer) clearTimeout(this.batchTimer);
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.deadTimer) clearTimeout(this.deadTimer);
+    if (this.storagePersistTimer) clearTimeout(this.storagePersistTimer);
     this.stopPingTimer();
+
+    for (const [, pending] of this.pendingCommands) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error('destroyed'));
+    }
+    this.pendingCommands.clear();
 
     this.wakeManager?.destroy();
     this.wakeManager = null;
     this.statsStore.reset();
 
     if (this.ws) {
-      if (this.ws.readyState === WebSocket.OPEN) {
-        this.sendControl({ t: 'leave' });
-      }
+      if (this.ws.readyState === WebSocket.OPEN) this.sendControl({ t: 'leave' });
       this.ws.close();
       this.ws = null;
     }
@@ -510,27 +680,10 @@ export class SyncClient {
     this.setStatus('disconnected');
   }
 
-  public get connectionStatus(): ClientConnectionStatus {
-    return this.status;
-  }
-
-  public get currentSyncState(): SyncState {
-    return this.syncState;
-  }
-
-  public get unackedCount(): number {
-    return this.pendingAcks.size;
-  }
-
-  public get stats(): ClientStats {
-    return this.statsStore.getStats();
-  }
-
-  public get statsStoreInstance(): StatsStore {
-    return this.statsStore;
-  }
-
-  public get wakeManagerInstance(): WakeManager | null {
-    return this.wakeManager;
-  }
+  public get connectionStatus(): ClientConnectionStatus { return this.status; }
+  public get currentSyncState(): SyncState { return this.syncState; }
+  public get unackedCount(): number { return this.pendingAcks.size; }
+  public get stats(): ClientStats { return this.statsStore.getStats(); }
+  public get statsStoreInstance(): StatsStore { return this.statsStore; }
+  public get wakeManagerInstance(): WakeManager | null { return this.wakeManager; }
 }

@@ -16,6 +16,11 @@ export class AuditService {
     return next;
   }
 
+  /** Drop the cached seq for an unloaded room; getNextSeq re-reads it from the DB on next use. */
+  public forgetRoom(roomId: string): void {
+    this.seqCounters.delete(roomId);
+  }
+
   public logEvent(
     roomId: string,
     event: {

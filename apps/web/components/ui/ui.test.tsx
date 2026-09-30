@@ -7,7 +7,7 @@ describe('Button', () => {
   it('includes touch-target hit expansion class for icon-xs size', () => {
     const classes = buttonVariants({ size: 'icon-xs' });
     expect(classes).toContain('after:absolute');
-    expect(classes).toContain('after:-inset-1.5');
+    expect(classes).toContain('after:-inset-2.5');
   });
 
   it('renders a button with accessible type and text', () => {
@@ -16,11 +16,10 @@ describe('Button', () => {
     expect(button).toBeInTheDocument();
   });
 
-  it('applies dark high-contrast text color for primary button variant', () => {
+  it('applies semantic colors for primary button variant', () => {
     const classes = buttonVariants({ variant: 'primary' });
     expect(classes).toContain('bg-primary');
     expect(classes).toContain('text-primary-foreground');
-    expect(classes).toContain('dark:text-neutral-950');
   });
 });
 

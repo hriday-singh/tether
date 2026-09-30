@@ -13,11 +13,11 @@ import { Field, Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { ThinkingOrb } from '@/components/ui/thinking-orb';
 import { api, ApiError, DisplayNameSchema, type RoomInfo } from '@/lib/api';
-import { useMounted, useStore, useViewportGate } from '@/lib/hooks';
+import { useMounted, useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
 import { sessions, type RoomSession } from '@/lib/session';
 import { createSyncClient, type SyncClient } from '@/lib/sync';
-import { CenterCard, RoomNotFound, ScreenTooSmallGate } from './gates';
+import { CenterCard, RoomNotFound } from './gates';
 import { Workspace } from './workspace';
 
 export const seedKey = (roomId: string) => `tether:seed:${roomId}`;
@@ -64,7 +64,6 @@ function RoomScreenClient({ roomId }: { roomId: string }) {
 }
 
 function ConnectedRoom({ roomId, session, onReauth }: { roomId: string; session: RoomSession; onReauth: () => void }) {
-  const wide = useViewportGate({ minWidth: 1024 });
   const { prefs } = usePrefs();
   const [client, setClient] = useState<SyncClient | null>(null);
 
@@ -86,8 +85,6 @@ function ConnectedRoom({ roomId, session, onReauth }: { roomId: string; session:
       onReauth();
       return;
     }
-    // Small screens never connect: no room slot, no presence noise.
-    if (!window.matchMedia('(min-width: 1024px)').matches) c.pause();
     void c.start();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the client is an external resource created here
     setClient(c);
@@ -95,14 +92,7 @@ function ConnectedRoom({ roomId, session, onReauth }: { roomId: string; session:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, session]);
 
-  useEffect(() => {
-    if (!client || wide === null) return;
-    if (wide) client.resume();
-    else client.pause();
-  }, [client, wide]);
-
-  if (wide === false) return <ScreenTooSmallGate />;
-  if (!client || wide === null) return <div className="min-h-dvh bg-background" />;
+  if (!client) return <div className="min-h-dvh bg-background" />;
   return (
     <>
       <ReauthWatcher client={client} onReauth={onReauth} />

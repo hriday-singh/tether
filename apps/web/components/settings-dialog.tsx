@@ -57,11 +57,11 @@ export function SettingsDialog({
                   ]}
                 />
               </Row>
-              <Row label="Ambient animations" hint="Canvas orbs for connecting and storms">
-                <Switch checked={prefs.ambientAnimations} onCheckedChange={set('ambientAnimations')} aria-label="Ambient animations" />
+              <Row id="pref-ambient" label="Ambient animations" hint="Canvas orbs for connecting and storms">
+                <Switch id="pref-ambient" checked={prefs.ambientAnimations} onCheckedChange={set('ambientAnimations')} aria-label="Ambient animations" />
               </Row>
-              <Row label="Reduce motion" hint="Turns off transitions and morphs">
-                <Switch checked={prefs.reduceMotion} onCheckedChange={set('reduceMotion')} aria-label="Reduce motion" />
+              <Row id="pref-reduce-motion" label="Reduce motion" hint="Turns off transitions and morphs">
+                <Switch id="pref-reduce-motion" checked={prefs.reduceMotion} onCheckedChange={set('reduceMotion')} aria-label="Reduce motion" />
               </Row>
             </TabsContent>
 
@@ -80,32 +80,32 @@ export function SettingsDialog({
                   ]}
                 />
               </Row>
-              <Row label="Word wrap" hint="Wrap at the viewport instead of scrolling sideways">
-                <Switch checked={prefs.wordWrap} onCheckedChange={set('wordWrap')} aria-label="Word wrap" />
+              <Row id="pref-word-wrap" label="Word wrap" hint="Wrap at the viewport instead of scrolling sideways">
+                <Switch id="pref-word-wrap" checked={prefs.wordWrap} onCheckedChange={set('wordWrap')} aria-label="Word wrap" />
               </Row>
-              <Row label="Line numbers">
-                <Switch checked={prefs.lineNumbers} onCheckedChange={set('lineNumbers')} aria-label="Line numbers" />
+              <Row id="pref-line-numbers" label="Line numbers">
+                <Switch id="pref-line-numbers" checked={prefs.lineNumbers} onCheckedChange={set('lineNumbers')} aria-label="Line numbers" />
               </Row>
-              <Row label="Bracket pair colorization">
-                <Switch checked={prefs.bracketColors} onCheckedChange={set('bracketColors')} aria-label="Bracket pair colorization" />
+              <Row id="pref-bracket-colors" label="Bracket pair colorization">
+                <Switch id="pref-bracket-colors" checked={prefs.bracketColors} onCheckedChange={set('bracketColors')} aria-label="Bracket pair colorization" />
               </Row>
             </TabsContent>
 
             <TabsContent value="collab" className="flex flex-col gap-1">
-              <Row label="Unlock follow on own input" hint="Typing or scrolling stops following">
-                <Switch checked={prefs.followUnlockOnInput} onCheckedChange={set('followUnlockOnInput')} aria-label="Unlock follow on own input" />
+              <Row id="pref-follow-unlock" label="Unlock follow on own input" hint="Typing or scrolling stops following">
+                <Switch id="pref-follow-unlock" checked={prefs.followUnlockOnInput} onCheckedChange={set('followUnlockOnInput')} aria-label="Unlock follow on own input" />
               </Row>
               <Row label={`Cursor name fade (${prefs.cursorFlagFadeSeconds.toFixed(1)}s)`}>
                 <Slider className="w-52" min={1} max={5} step={0.5} value={[prefs.cursorFlagFadeSeconds]} onValueChange={([v]) => set('cursorFlagFadeSeconds')(v ?? 2)} aria-label="Cursor name fade seconds" />
               </Row>
-              <Row label="Off-screen cursor badges" hint="Pin collaborators above or below the viewport">
-                <Switch checked={prefs.offscreenCursorBadges} onCheckedChange={set('offscreenCursorBadges')} aria-label="Off-screen cursor badges" />
+              <Row id="pref-offscreen-badges" label="Off-screen cursor badges" hint="Pin collaborators above or below the viewport">
+                <Switch id="pref-offscreen-badges" checked={prefs.offscreenCursorBadges} onCheckedChange={set('offscreenCursorBadges')} aria-label="Off-screen cursor badges" />
               </Row>
             </TabsContent>
 
             <TabsContent value="network" className="flex flex-col gap-1">
-              <Row label="Live latency sampling" hint="Plot RTT in the diagnostics drawer">
-                <Switch checked={prefs.telemetrySampling} onCheckedChange={set('telemetrySampling')} aria-label="Live latency sampling" />
+              <Row id="pref-telemetry" label="Live latency sampling" hint="Plot RTT in the diagnostics drawer">
+                <Switch id="pref-telemetry" checked={prefs.telemetrySampling} onCheckedChange={set('telemetrySampling')} aria-label="Live latency sampling" />
               </Row>
               <Row label={`Simulated latency (${prefs.simulatedLatencyMs} ms)`} hint="Demo tool: delays every message to show convergence">
                 <Slider
@@ -129,11 +129,17 @@ export function SettingsDialog({
   );
 }
 
-function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function Row({ id, label, hint, children }: { id?: string; label: string; hint?: string; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-xl px-2 py-2.5 transition-ui hover:bg-accent/40">
       <div className="min-w-0">
-        <p className="text-body font-medium">{label}</p>
+        {id ? (
+          <label htmlFor={id} className="cursor-pointer text-body font-medium select-none">
+            {label}
+          </label>
+        ) : (
+          <p className="text-body font-medium">{label}</p>
+        )}
         {hint && <p className="text-caption text-muted-foreground">{hint}</p>}
       </div>
       {children}

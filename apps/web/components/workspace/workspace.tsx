@@ -2,12 +2,16 @@
 
 import {
   AlertCircleIcon,
+  BubbleChatIcon,
   Cancel01Icon,
+  CodeIcon,
   Copy01Icon,
+  CpuIcon,
   Download04Icon,
   Home01Icon,
   MaximizeScreenIcon,
   MinimizeScreenIcon,
+  UserGroupIcon,
 } from '@hugeicons/core-free-icons';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -25,6 +29,7 @@ import { languageInfo } from '@/lib/languages';
 import type { RoomSession } from '@/lib/session';
 import type { SyncClient } from '@/lib/sync';
 import { cn, isMac } from '@/lib/utils';
+import { ChatPanel } from './chat-panel';
 import { CommandPalette } from './command-palette';
 import { createWorkspace, useWorkspace, WorkspaceProvider } from './context';
 import { DiagnosticsDrawer } from './drawer';
@@ -67,6 +72,7 @@ function Shell() {
   const room = useStore(ws.client.room);
   const language = languageInfo(room.room.language);
   const wide = useMediaQuery('(min-width: 1280px)');
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
   const kicked = status.connection === 'kicked';
   const showPreviewPane = wide && language.preview !== null && ui.previewOpen;
   const showSidebar = ui.sidebarOpen;
@@ -108,131 +114,137 @@ function Shell() {
       {kicked && <KickedBanner />}
 
       <main className="min-h-0 flex-1 relative">
-        {/* Maximized Panel: Editor */}
-        {ui.maximizedPanel === 'editor' && (
-          <section aria-label="Editor" className={cn(card, 'relative size-full')}>
-            <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 rounded-full border border-border/70 bg-card/90 px-2.5 py-1 text-caption text-foreground shadow-card backdrop-blur-md">
-              <span className="text-micro font-medium">Editor Maximized</span>
-              <Button size="icon-xs" variant="ghost" onClick={() => ws.maximizePanel('editor')} aria-label="Restore layout">
-                <Icon icon={MinimizeScreenIcon} size={14} />
-              </Button>
-            </div>
-            <div className="relative min-h-0 flex-1">
-              <Editor readOnly={kicked} />
-              <OffscreenCursors />
-              <FollowController />
-            </div>
-          </section>
-        )}
+        {!isDesktop ? (
+          <MobileWorkspace kicked={kicked} />
+        ) : (
+          <>
+            {/* Maximized Panel: Editor */}
+            {ui.maximizedPanel === 'editor' && (
+              <section aria-label="Editor" className={cn(card, 'relative size-full')}>
+                <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 rounded-full border border-border/70 bg-card/90 px-2.5 py-1 text-caption text-foreground shadow-card backdrop-blur-md">
+                  <span className="text-micro font-medium">Editor Maximized</span>
+                  <Button size="icon-xs" variant="ghost" onClick={() => ws.maximizePanel('editor')} aria-label="Restore layout">
+                    <Icon icon={MinimizeScreenIcon} size={14} />
+                  </Button>
+                </div>
+                <div className="relative min-h-0 flex-1">
+                  <Editor readOnly={kicked} />
+                  <OffscreenCursors />
+                  <FollowController />
+                </div>
+              </section>
+            )}
 
-        {/* Maximized Panel: Preview */}
-        {ui.maximizedPanel === 'preview' && (
-          <section aria-label="Live preview" className={cn(card, 'relative size-full')}>
-            <PreviewPane />
-          </section>
-        )}
+            {/* Maximized Panel: Preview */}
+            {ui.maximizedPanel === 'preview' && (
+              <section aria-label="Live preview" className={cn(card, 'relative size-full')}>
+                <PreviewPane />
+              </section>
+            )}
 
-        {/* Maximized Panel: Sidebar */}
-        {ui.maximizedPanel === 'sidebar' && (
-          <aside aria-label="People, activity, and scratchpad" className={cn(card, 'relative size-full')}>
-            <Sidebar />
-          </aside>
-        )}
+            {/* Maximized Panel: Sidebar */}
+            {ui.maximizedPanel === 'sidebar' && (
+              <aside aria-label="People, activity, and scratchpad" className={cn(card, 'relative size-full')}>
+                <Sidebar />
+              </aside>
+            )}
 
-        {/* Maximized Panel: Drawer */}
-        {ui.maximizedPanel === 'drawer' && (
-          <div className={cn(card, 'relative size-full')}>
-            <DiagnosticsDrawer onCollapse={() => ws.maximizePanel(null)} />
-          </div>
-        )}
+            {/* Maximized Panel: Drawer */}
+            {ui.maximizedPanel === 'drawer' && (
+              <div className={cn(card, 'relative size-full')}>
+                <DiagnosticsDrawer onCollapse={() => ws.maximizePanel(null)} />
+              </div>
+            )}
 
-        {/* Normal Multi-Panel Layout */}
-        {!ui.maximizedPanel && (
-          <ResizableGroup orientation="vertical" defaultLayout={vLayout.defaultLayout} onLayoutChanged={vLayout.onLayoutChanged}>
-            <ResizablePanel id="main" minSize="30">
-              <ResizableGroup key={horizontalIds.join('-')} orientation="horizontal" defaultLayout={hLayout.defaultLayout} onLayoutChanged={hLayout.onLayoutChanged}>
-                <ResizablePanel id="editor" minSize={showPreviewPane || showSidebar ? '30' : 600} defaultSize={showPreviewPane ? '50' : '72'}>
-                  <section aria-label="Editor" className={cn(card, 'relative')}>
-                    {!wide && language.preview && (
-                      <div className="flex h-10 shrink-0 items-center border-b border-border/60 px-2">
-                        <Segmented
-                          aria-label="Editor or preview"
-                          value={ui.editorView}
-                          onValueChange={(v) => ws.ui.update((s) => ({ ...s, editorView: v }))}
-                          options={[
-                            { value: 'code', label: 'Code' },
-                            { value: 'preview', label: 'Preview' },
-                          ]}
-                        />
-                      </div>
-                    )}
-                    <div className={cn('relative min-h-0 flex-1', !wide && ui.editorView === 'preview' && language.preview && 'hidden')}>
-                      <div className="absolute top-2 right-2 z-10 opacity-70 hover:opacity-100 transition-opacity">
-                        <Tip label="Maximize editor">
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            onClick={() => ws.maximizePanel('editor')}
-                            aria-label="Maximize editor"
-                          >
-                            <Icon icon={MaximizeScreenIcon} size={14} />
-                          </Button>
-                        </Tip>
-                      </div>
-                      <Editor readOnly={kicked} />
-                      <OffscreenCursors />
-                      <FollowController />
-                    </div>
-                    {!wide && ui.editorView === 'preview' && language.preview && (
-                      <div className="min-h-0 flex-1">
-                        <PreviewPane header={false} />
-                      </div>
-                    )}
-                  </section>
-                </ResizablePanel>
-                {showPreviewPane && (
-                  <>
-                    <ResizableHandle />
-                    <ResizablePanel id="preview" minSize="20" defaultSize="28" collapsible>
-                      <section aria-label="Live preview" className={card}>
-                        <PreviewPane />
+            {/* Normal Multi-Panel Layout */}
+            {!ui.maximizedPanel && (
+              <ResizableGroup orientation="vertical" defaultLayout={vLayout.defaultLayout} onLayoutChanged={vLayout.onLayoutChanged}>
+                <ResizablePanel id="main" minSize="30">
+                  <ResizableGroup key={horizontalIds.join('-')} orientation="horizontal" defaultLayout={hLayout.defaultLayout} onLayoutChanged={hLayout.onLayoutChanged}>
+                    <ResizablePanel id="editor" minSize={showPreviewPane || showSidebar ? '30' : 600} defaultSize={showPreviewPane ? '50' : '72'}>
+                      <section aria-label="Editor" className={cn(card, 'relative')}>
+                        {!wide && language.preview && (
+                          <div className="flex h-10 shrink-0 items-center border-b border-border/60 px-2">
+                            <Segmented
+                              aria-label="Editor or preview"
+                              value={ui.editorView}
+                              onValueChange={(v) => ws.ui.update((s) => ({ ...s, editorView: v }))}
+                              options={[
+                                { value: 'code', label: 'Code' },
+                                { value: 'preview', label: 'Preview' },
+                              ]}
+                            />
+                          </div>
+                        )}
+                        <div className={cn('relative min-h-0 flex-1', !wide && ui.editorView === 'preview' && language.preview && 'hidden')}>
+                          <div className="absolute top-2 right-2 z-10 opacity-70 hover:opacity-100 transition-opacity">
+                            <Tip label="Maximize editor">
+                              <Button
+                                size="icon-xs"
+                                variant="ghost"
+                                onClick={() => ws.maximizePanel('editor')}
+                                aria-label="Maximize editor"
+                              >
+                                <Icon icon={MaximizeScreenIcon} size={14} />
+                              </Button>
+                            </Tip>
+                          </div>
+                          <Editor readOnly={kicked} />
+                          <OffscreenCursors />
+                          <FollowController />
+                        </div>
+                        {!wide && ui.editorView === 'preview' && language.preview && (
+                          <div className="min-h-0 flex-1">
+                            <PreviewPane header={false} />
+                          </div>
+                        )}
                       </section>
                     </ResizablePanel>
-                  </>
-                )}
-                {showSidebar && (
-                  <>
-                    <ResizableHandle />
-                    <ResizablePanel id="sidebar" minSize={240} maxSize="40" defaultSize={showPreviewPane ? '22' : '28'}>
-                      <aside aria-label="People and activity" className={card}>
-                        <Sidebar />
-                      </aside>
-                    </ResizablePanel>
-                  </>
-                )}
+                    {showPreviewPane && (
+                      <>
+                        <ResizableHandle />
+                        <ResizablePanel id="preview" minSize="20" defaultSize="28" collapsible>
+                          <section aria-label="Live preview" className={card}>
+                            <PreviewPane />
+                          </section>
+                        </ResizablePanel>
+                      </>
+                    )}
+                    {showSidebar && (
+                      <>
+                        <ResizableHandle />
+                        <ResizablePanel id="sidebar" minSize={240} maxSize="40" defaultSize={showPreviewPane ? '22' : '28'}>
+                          <aside aria-label="People and activity" className={card}>
+                            <Sidebar />
+                          </aside>
+                        </ResizablePanel>
+                      </>
+                    )}
+                  </ResizableGroup>
+                </ResizablePanel>
+                <ResizableHandle className={cn(!ui.drawerOpen && 'pointer-events-none')} />
+                <ResizablePanel
+                  id="drawer"
+                  panelRef={drawer}
+                  collapsible
+                  collapsedSize={0}
+                  minSize={220}
+                  defaultSize={0}
+                  onResize={(size) => {
+                    const open = size.inPixels > 0;
+                    if (open !== ws.ui.get().drawerOpen) ws.ui.update((s) => ({ ...s, drawerOpen: open }));
+                  }}
+                >
+                  <div className={card}>
+                    <DiagnosticsDrawer onCollapse={() => ws.ui.update((s) => ({ ...s, drawerOpen: false }))} />
+                  </div>
+                </ResizablePanel>
               </ResizableGroup>
-            </ResizablePanel>
-            <ResizableHandle className={cn(!ui.drawerOpen && 'pointer-events-none')} />
-            <ResizablePanel
-              id="drawer"
-              panelRef={drawer}
-              collapsible
-              collapsedSize={0}
-              minSize={220}
-              defaultSize={0}
-              onResize={(size) => {
-                const open = size.inPixels > 0;
-                if (open !== ws.ui.get().drawerOpen) ws.ui.update((s) => ({ ...s, drawerOpen: open }));
-              }}
-            >
-              <div className={card}>
-                <DiagnosticsDrawer onCollapse={() => ws.ui.update((s) => ({ ...s, drawerOpen: false }))} />
-              </div>
-            </ResizablePanel>
-          </ResizableGroup>
+            )}
+          </>
         )}
       </main>
-      {!ui.zenMode && <StatusBar />}
+      {!ui.zenMode && (isDesktop ? <StatusBar /> : <MobileNavBar />)}
 
       <CommandPalette />
       <HostSheet />
@@ -243,6 +255,129 @@ function Shell() {
       />
       <ShortcutsDialog />
     </div>
+  );
+}
+
+function MobileWorkspace({ kicked }: { kicked: boolean }) {
+  const ws = useWorkspace();
+  const ui = useStore(ws.ui);
+  const room = useStore(ws.client.room);
+  const language = languageInfo(room.room.language);
+
+  return (
+    <div className="size-full min-h-0 flex-1 relative">
+      {ui.mobileTab === 'editor' && (
+        <section aria-label="Editor" className={cn(card, 'relative size-full')}>
+          {language.preview && (
+            <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/60 px-3">
+              <Segmented
+                aria-label="Editor or preview"
+                value={ui.editorView}
+                onValueChange={(v) => ws.ui.update((s) => ({ ...s, editorView: v }))}
+                options={[
+                  { value: 'code', label: 'Code' },
+                  { value: 'preview', label: 'Preview' },
+                ]}
+              />
+            </div>
+          )}
+          <div className={cn('relative min-h-0 flex-1', ui.editorView === 'preview' && language.preview && 'hidden')}>
+            <Editor readOnly={kicked} />
+            <OffscreenCursors />
+            <FollowController />
+          </div>
+          {ui.editorView === 'preview' && language.preview && (
+            <div className="min-h-0 flex-1">
+              <PreviewPane header={false} />
+            </div>
+          )}
+        </section>
+      )}
+
+      {ui.mobileTab === 'chat' && (
+        <section aria-label="Room chat" className={cn(card, 'relative size-full')}>
+          <ChatPanel active={ui.mobileTab === 'chat'} />
+        </section>
+      )}
+
+      {ui.mobileTab === 'activity' && (
+        <aside aria-label="People and activity" className={cn(card, 'relative size-full')}>
+          <Sidebar />
+        </aside>
+      )}
+
+      {ui.mobileTab === 'diagnostics' && (
+        <div className={cn(card, 'relative size-full')}>
+          <DiagnosticsDrawer />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileNavBar() {
+  const ws = useWorkspace();
+  const ui = useStore(ws.ui);
+  const rosterCount = useStore(ws.client.roster).length;
+  const unread = useStore(ws.chatUnread);
+
+  const tabs: Array<{
+    id: 'editor' | 'chat' | 'activity' | 'diagnostics';
+    label: string;
+    icon: typeof CodeIcon;
+    badge?: number;
+  }> = [
+    { id: 'editor', label: 'Editor', icon: CodeIcon },
+    { id: 'chat', label: 'Chat', icon: BubbleChatIcon, badge: unread },
+    { id: 'activity', label: 'Team', icon: UserGroupIcon, badge: rosterCount },
+    { id: 'diagnostics', label: 'Tools', icon: CpuIcon },
+  ];
+
+  return (
+    <nav
+      aria-label="Mobile workspace navigation"
+      className="flex h-12 shrink-0 items-center justify-around rounded-xl border border-border/60 bg-card/95 px-1 shadow-card backdrop-blur-md"
+    >
+      {tabs.map((tab) => {
+        const active = ui.mobileTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => {
+              ws.ui.update((s) => ({ ...s, mobileTab: tab.id }));
+              if (tab.id === 'chat') ws.chatUnread.set(0);
+            }}
+            className={cn(
+              'relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg py-1 text-caption font-medium transition-ui',
+              'min-h-[44px] touch-manipulation',
+              active
+                ? 'text-primary'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            )}
+          >
+            <div className="relative">
+              <Icon icon={tab.icon} size={18} />
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span
+                  className={cn(
+                    'absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none',
+                    tab.id === 'chat'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  {tab.badge > 99 ? '99+' : tab.badge}
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] leading-tight">{tab.label}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -279,7 +414,7 @@ function useGlobalShortcuts() {
         const isHost = room.hostId === room.selfId;
         if (isHost || !room.room.locked) {
           const text = ws.client.text.toString();
-          void formatCode(text, room.room.language as any).then((formatted) => {
+          void formatCode(text, languageInfo(room.room.language).id).then((formatted) => {
             if (formatted !== text) {
               ws.client.doc.transact(() => {
                 ws.client.text.delete(0, ws.client.text.length);

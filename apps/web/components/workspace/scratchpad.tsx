@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/controls';
+import { HoldButton } from '@/components/ui/hold-button';
 import { Icon } from '@/components/ui/icon';
 import { MorphIcon } from '@/components/ui/motion';
 import { toast } from '@/components/ui/toaster';
@@ -118,16 +119,17 @@ export function Scratchpad() {
                   <Icon icon={ArrowRight01Icon} size={14} />
                 </Button>
               </Tip>
-              <Tip label="Clear scratchpad">
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  aria-label="Clear scratchpad"
-                  onClick={handleClear}
-                  className="text-muted-foreground hover:text-destructive"
+              <Tip label="Hold to clear scratchpad">
+                <HoldButton
+                  disabled={!text}
+                  onConfirm={handleClear}
+                  holdMs={1000}
+                  holdingLabel="Clearing…"
+                  className="h-6 px-2 text-micro text-muted-foreground hover:text-destructive"
                 >
-                  <Icon icon={Delete02Icon} size={13} />
-                </Button>
+                  <Icon icon={Delete02Icon} size={12} />
+                  <span>Clear</span>
+                </HoldButton>
               </Tip>
             </>
           )}
