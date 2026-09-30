@@ -26,7 +26,7 @@ import { usePrefs } from '@/components/providers';
 import { DEMO_MODE } from '@/lib/api';
 import type { ConsoleEntry } from '@/lib/console-store';
 import { useNow, useStore } from '@/lib/hooks';
-import { CommandError } from '@/lib/sync';
+import { CommandError, type StormSnapshot } from '@/lib/sync';
 import { SandboxedWorkerRunner } from '@/lib/worker-runner';
 import { cn, formatAgo, formatClock } from '@/lib/utils';
 import { useWorkspace, type UIState } from './context';
@@ -304,56 +304,117 @@ function ChaosLab() {
 
   return (
     <div className="grid h-full min-h-0 grid-cols-[minmax(0,18rem)_minmax(0,1fr)] gap-3 overflow-y-auto p-3">
-      <fieldset disabled={!isHost || storm.running} className="flex flex-col gap-3 rounded-xl border border-border p-3 disabled:opacity-70">
-        <legend className="px-1 text-caption font-medium">Bot storm</legend>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="storm-bots">
-            Bots <span className="font-mono tabular">{bots}</span>
-          </Label>
-          <Slider id="storm-bots" min={1} max={STORM_MAX_BOTS} step={1} value={[bots]} onValueChange={([v]) => setBots(v ?? 1)} aria-label="Number of bots" />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="storm-secs">
-            Duration <span className="font-mono tabular">{seconds}s</span>
-          </Label>
-          <Slider id="storm-secs" min={10} max={STORM_MAX_SECONDS} step={5} value={[seconds]} onValueChange={([v]) => setSeconds(v ?? 10)} aria-label="Duration in seconds" />
-        </div>
-        <label className="flex items-center justify-between gap-2 text-caption">
-          Inject faults (jitter, reorder, stalls)
-          <Switch checked={faults} onCheckedChange={setFaults} />
-        </label>
-        <Button onClick={() => void launch()} disabled={pending || storm.running || !isHost}>
-          <MorphIcon icon={storm.running ? BotIcon : CpuIcon} size={14} />
-          <TextMorph>{storm.running ? `${storm.bots} Bots Active` : 'Launch Storm'}</TextMorph>
-        </Button>
-        {!isHost && <p className="text-micro text-muted-foreground">Only the host can launch a storm.</p>}
-      </fieldset>
-
+      <StormControls
+        isHost={isHost}
+        running={storm.running}
+        bots={bots}
+        setBots={setBots}
+        seconds={seconds}
+        setSeconds={setSeconds}
+        faults={faults}
+        setFaults={setFaults}
+        pending={pending}
+        activeBots={storm.bots}
+        onLaunch={() => void launch()}
+      />
       <div className="flex min-w-0 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border p-4 text-center">
-        {storm.running ? (
-          <>
-            <ThinkingOrb state="working" size={64} animated={prefs.ambientAnimations} label="Bot storm running" />
-            <p className="font-mono text-body tabular">
-              {storm.ops} ops · {storm.endsAt ? Math.max(0, Math.ceil((storm.endsAt - now) / 1000)) : 0}s left
-            </p>
-            <p className="text-caption text-muted-foreground">Keep typing: your edits race the bots and must survive.</p>
-          </>
-        ) : storm.result ? (
-          <>
-            <Gauge value={storm.result.converged ? 1 : 0} label="Replicas converged" toneClass={storm.result.converged ? 'stroke-success' : 'stroke-destructive'} />
-            <Badge tone={storm.result.converged ? 'success' : 'destructive'}>
-              {storm.result.converged ? 'Converged: all replicas identical' : 'Diverged'}
-            </Badge>
-            <p className="font-mono text-caption text-muted-foreground tabular">
-              {storm.result.bots} bots · {storm.result.ops} ops · {(storm.result.durationMs / 1000).toFixed(1)}s · checksum 0x{storm.result.checksum}
-            </p>
-          </>
-        ) : (
-          <p className="max-w-sm text-caption text-muted-foreground">
-            Simulates up to {STORM_MAX_BOTS} concurrent peers typing under latency and network faults to verify replica convergence.
-          </p>
-        )}
+        <StormStatusDisplay storm={storm} now={now} ambientAnimations={prefs.ambientAnimations} />
       </div>
     </div>
+  );
+}
+
+function StormControls({
+  isHost,
+  running,
+  bots,
+  setBots,
+  seconds,
+  setSeconds,
+  faults,
+  setFaults,
+  pending,
+  activeBots,
+  onLaunch,
+}: {
+  isHost: boolean;
+  running: boolean;
+  bots: number;
+  setBots: (v: number) => void;
+  seconds: number;
+  setSeconds: (v: number) => void;
+  faults: boolean;
+  setFaults: (v: boolean) => void;
+  pending: boolean;
+  activeBots: number;
+  onLaunch: () => void;
+}) {
+  return (
+    <fieldset disabled={!isHost || running} className="flex flex-col gap-3 rounded-xl border border-border p-3 disabled:opacity-70">
+      <legend className="px-1 text-caption font-medium">Bot storm</legend>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="storm-bots">
+          Bots <span className="font-mono tabular">{bots}</span>
+        </Label>
+        <Slider id="storm-bots" min={1} max={STORM_MAX_BOTS} step={1} value={[bots]} onValueChange={([v]) => setBots(v ?? 1)} aria-label="Number of bots" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="storm-secs">
+          Duration <span className="font-mono tabular">{seconds}s</span>
+        </Label>
+        <Slider id="storm-secs" min={10} max={STORM_MAX_SECONDS} step={5} value={[seconds]} onValueChange={([v]) => setSeconds(v ?? 10)} aria-label="Duration in seconds" />
+      </div>
+      <label className="flex items-center justify-between gap-2 text-caption">
+        Inject faults (jitter, reorder, stalls)
+        <Switch checked={faults} onCheckedChange={setFaults} />
+      </label>
+      <Button onClick={onLaunch} disabled={pending || running || !isHost}>
+        <MorphIcon icon={running ? BotIcon : CpuIcon} size={14} />
+        <TextMorph>{running ? `${activeBots} Bots Active` : 'Launch Storm'}</TextMorph>
+      </Button>
+      {!isHost && <p className="text-micro text-muted-foreground">Only the host can launch a storm.</p>}
+    </fieldset>
+  );
+}
+
+function StormStatusDisplay({
+  storm,
+  now,
+  ambientAnimations,
+}: {
+  storm: StormSnapshot;
+  now: number;
+  ambientAnimations: boolean;
+}) {
+  if (storm.running) {
+    return (
+      <>
+        <ThinkingOrb state="working" size={64} animated={ambientAnimations} label="Bot storm running" />
+        <p className="font-mono text-body tabular">
+          {storm.ops} ops · {storm.endsAt ? Math.max(0, Math.ceil((storm.endsAt - now) / 1000)) : 0}s left
+        </p>
+        <p className="text-caption text-muted-foreground">Keep typing: your edits race the bots and must survive.</p>
+      </>
+    );
+  }
+
+  if (storm.result) {
+    return (
+      <>
+        <Gauge value={storm.result.converged ? 1 : 0} label="Replicas converged" toneClass={storm.result.converged ? 'stroke-success' : 'stroke-destructive'} />
+        <Badge tone={storm.result.converged ? 'success' : 'destructive'}>
+          {storm.result.converged ? 'Converged: all replicas identical' : 'Diverged'}
+        </Badge>
+        <p className="font-mono text-caption text-muted-foreground tabular">
+          {storm.result.bots} bots · {storm.result.ops} ops · {(storm.result.durationMs / 1000).toFixed(1)}s · checksum 0x{storm.result.checksum}
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <p className="max-w-sm text-caption text-muted-foreground">
+      Simulates up to {STORM_MAX_BOTS} concurrent peers typing under latency and network faults to verify replica convergence.
+    </p>
   );
 }

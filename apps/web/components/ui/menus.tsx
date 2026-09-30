@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Icon } from './icon';
 
 const surface =
-  'z-50 min-w-40 overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-overlay data-[state=open]:animate-fade-in motion-reduce:animate-none';
+  'z-[1100] min-w-40 overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-overlay data-[state=open]:animate-fade-in motion-reduce:animate-none';
 const item =
   'relative flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5 text-body outline-none select-none transition-ui data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground';
 
@@ -90,7 +90,9 @@ export function Select({
       </S.Trigger>
       <S.Portal>
         <S.Content position="popper" sideOffset={6} className={cn(surface, 'max-h-72 w-(--radix-select-trigger-width)')}>
-          <S.Viewport>{children}</S.Viewport>
+          <S.Viewport className="max-h-70 overflow-y-auto overscroll-contain p-1 [scrollbar-width:thin]">
+            {children}
+          </S.Viewport>
         </S.Content>
       </S.Portal>
     </S.Root>

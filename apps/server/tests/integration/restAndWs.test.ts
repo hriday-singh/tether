@@ -76,6 +76,7 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       memberRepo,
       auditRepo,
       chatService,
+      persistenceService,
     };
 
     app = buildApp(deps);

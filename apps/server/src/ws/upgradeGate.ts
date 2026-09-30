@@ -12,6 +12,8 @@ import { RoomRegistry } from '../rooms/roomRegistry.js';
 import { PROTOCOL_VERSION, MAX_MEMBERS_PER_ROOM, MAX_CONN_PER_IP } from '@tether/shared/constants';
 import { attachConnectionHandler } from './connectionHandler.js';
 
+import { PersistenceService } from '../services/persistenceService.js';
+
 export interface UpgradeGateDependencies {
   config: ServerConfig;
   roomRepo: RoomRepo;
@@ -21,6 +23,7 @@ export interface UpgradeGateDependencies {
   auditRepo: AuditRepo;
   auditService: AuditService;
   chatService: ChatService;
+  persistenceService?: PersistenceService;
 }
 
 const ipConnectionCounts = new Map<string, number>();
@@ -48,6 +51,9 @@ export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDepende
 
     if (isDraining) {
       return reject(503, 'Service Unavailable: Server Draining');
+    }
+    if (deps.persistenceService?.isBufferFull()) {
+      return reject(503, 'Service Unavailable: Persistence Buffer Full');
     }
 
     const url = request.url ?? '';

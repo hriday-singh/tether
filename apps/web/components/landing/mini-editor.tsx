@@ -3,7 +3,7 @@
 import { CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
 import { LanguageLogo } from '@/components/icons/language-logo';
-import { presenceClass } from '@/components/ui/avatar';
+import { presenceClass } from '@/lib/presence';
 import { Icon } from '@/components/ui/icon';
 import { TextMorph } from '@/components/ui/motion';
 import { ThinkingOrb } from '@/components/ui/thinking-orb';

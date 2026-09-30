@@ -1,5 +1,5 @@
 import type { StatusSnapshot } from '@/lib/sync';
-import { describeStatus } from './sync-status';
+import { describeStatus } from './sync-status-model';
 
 const base: StatusSnapshot = {
   connection: 'online',

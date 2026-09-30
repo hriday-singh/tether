@@ -9,11 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Field, Input } from '@/components/ui/input';
 import { Select, SelectItem } from '@/components/ui/menus';
-import { seedKey } from '@/components/workspace/room-screen';
 import { api, ApiError, CreateRoomInputSchema, DisplayNameSchema, RoomIdSchema } from '@/lib/api';
 import { useMounted } from '@/lib/hooks';
 import { LANGUAGE_IDS, LANGUAGES, type LanguageId } from '@/lib/languages';
-import { sessions, type RecentSession } from '@/lib/session';
+import { seedKey, sessions, type RecentSession } from '@/lib/session';
 
 type Errors = Partial<Record<'name' | 'roomId' | 'passcode' | 'form', string>>;
 
@@ -105,7 +104,7 @@ export function StartPanel() {
   const name = nameInput ?? (mounted ? sessions.lastName() : '');
 
   const [language, setLanguage] = useState<LanguageId>('html');
-  const [roomId, setRoomId] = useState(params.get('room') ?? '');
+  const [roomId, setRoomId] = useState(() => params.get('room') ?? '');
   const [passcode, setPasscode] = useState('');
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [createErr, setCreateErr] = useState<Errors>({});
@@ -119,8 +118,8 @@ export function StartPanel() {
   const [mode, setMode] = useState<'create' | 'join'>('create');
   const [busy, setBusy] = useState<'create' | 'join' | null>(null);
 
-  const create = async (e: FormEvent, override?: string) => {
-    e.preventDefault();
+  const create = async (e?: FormEvent, override?: string) => {
+    e?.preventDefault();
     const parsed = CreateRoomInputSchema.safeParse({
       name,
       roomId: (override ?? roomId).trim() || undefined,
@@ -181,7 +180,6 @@ export function StartPanel() {
   };
 
   const nameError = mode === 'create' ? createErr.name : joinErr.name;
-
   const formError = mode === 'create' ? createErr.form : joinErr.form;
 
   return (
@@ -216,79 +214,28 @@ export function StartPanel() {
         </Field>
 
         {mode === 'create' ? (
-          <div key="create" className="flex animate-fade-in flex-col gap-4 motion-reduce:animate-none">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="s-lang" label="Language">
-                <Select id="s-lang" value={language} onValueChange={(v) => setLanguage(v as LanguageId)} aria-label="Language">
-                  {LANGUAGE_IDS.map((id) => (
-                    <SelectItem key={id} value={id}>
-                      <LanguageLogo language={id} /> {LANGUAGES[id].label}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </Field>
-              <Field id="s-room" label="Room ID" hint="Optional. Blank picks one." error={createErr.roomId}>
-                <Input
-                  id="s-room"
-                  value={roomId}
-                  placeholder="team-standup"
-                  onChange={(e) => setRoomId(e.target.value.toLowerCase())}
-                  className="font-mono"
-                  aria-invalid={!!createErr.roomId}
-                  aria-describedby={createErr.roomId ? 's-room-error' : 's-room-hint'}
-                />
-              </Field>
-            </div>
-            {suggestion && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="self-start"
-                onClick={(e) => {
-                  setRoomId(suggestion);
-                  void create(e as unknown as FormEvent, suggestion);
-                }}
-              >
-                Use <span className="font-mono">{suggestion}</span> instead
-              </Button>
-            )}
-            <Field id="s-pass" label="Passcode" hint="Optional. Share the link, not the passcode." error={createErr.passcode}>
-              <Input
-                id="s-pass"
-                type="password"
-                autoComplete="new-password"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                aria-invalid={!!createErr.passcode}
-                aria-describedby={createErr.passcode ? 's-pass-error' : 's-pass-hint'}
-              />
-            </Field>
-          </div>
+          <CreateFields
+            language={language}
+            setLanguage={setLanguage}
+            roomId={roomId}
+            setRoomId={setRoomId}
+            passcode={passcode}
+            setPasscode={setPasscode}
+            suggestion={suggestion}
+            createErr={createErr}
+            onCreateWithSuggestion={(s) => {
+              setRoomId(s);
+              void create(undefined, s);
+            }}
+          />
         ) : (
-          <div key="join" className="flex animate-fade-in flex-col gap-4 motion-reduce:animate-none">
-            <Field id="s-join" label="Room ID" error={joinErr.roomId}>
-              <Input
-                id="s-join"
-                value={joinId}
-                placeholder="team-standup"
-                onChange={(e) => setJoinId(e.target.value.toLowerCase())}
-                className="font-mono"
-                aria-invalid={!!joinErr.roomId}
-                aria-describedby={joinErr.roomId ? 's-join-error' : undefined}
-              />
-            </Field>
-            <Field id="s-join-pass" label="Passcode" hint="Only if the room has one." error={joinErr.passcode}>
-              <Input
-                id="s-join-pass"
-                type="password"
-                autoComplete="current-password"
-                value={joinPass}
-                onChange={(e) => setJoinPass(e.target.value)}
-                aria-invalid={!!joinErr.passcode}
-                aria-describedby={joinErr.passcode ? 's-join-pass-error' : 's-join-pass-hint'}
-              />
-            </Field>
-          </div>
+          <JoinFields
+            joinId={joinId}
+            setJoinId={setJoinId}
+            joinPass={joinPass}
+            setJoinPass={setJoinPass}
+            joinErr={joinErr}
+          />
         )}
 
         {formError && (
@@ -301,6 +248,117 @@ export function StartPanel() {
           <Icon icon={ArrowRight01Icon} />
         </Button>
       </form>
+    </div>
+  );
+}
+
+function CreateFields({
+  language,
+  setLanguage,
+  roomId,
+  setRoomId,
+  passcode,
+  setPasscode,
+  suggestion,
+  createErr,
+  onCreateWithSuggestion,
+}: {
+  language: LanguageId;
+  setLanguage: (lang: LanguageId) => void;
+  roomId: string;
+  setRoomId: (id: string) => void;
+  passcode: string;
+  setPasscode: (pass: string) => void;
+  suggestion: string | null;
+  createErr: Errors;
+  onCreateWithSuggestion: (suggestion: string) => void;
+}) {
+  return (
+    <div key="create" className="flex animate-fade-in flex-col gap-4 motion-reduce:animate-none">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="s-lang" label="Language">
+          <Select id="s-lang" value={language} onValueChange={(v) => setLanguage(v as LanguageId)} aria-label="Language">
+            {LANGUAGE_IDS.map((id) => (
+              <SelectItem key={id} value={id}>
+                <LanguageLogo language={id} /> {LANGUAGES[id].label}
+              </SelectItem>
+            ))}
+          </Select>
+        </Field>
+        <Field id="s-room" label="Room ID" hint="Optional. Blank picks one." error={createErr.roomId}>
+          <Input
+            id="s-room"
+            value={roomId}
+            placeholder="team-standup"
+            onChange={(e) => setRoomId(e.target.value.toLowerCase())}
+            className="font-mono"
+            aria-invalid={!!createErr.roomId}
+            aria-describedby={createErr.roomId ? 's-room-error' : 's-room-hint'}
+          />
+        </Field>
+      </div>
+      {suggestion && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={() => onCreateWithSuggestion(suggestion)}
+        >
+          Use <span className="font-mono">{suggestion}</span> instead
+        </Button>
+      )}
+      <Field id="s-pass" label="Passcode" hint="Optional. Share the link, not the passcode." error={createErr.passcode}>
+        <Input
+          id="s-pass"
+          type="password"
+          autoComplete="new-password"
+          value={passcode}
+          onChange={(e) => setPasscode(e.target.value)}
+          aria-invalid={!!createErr.passcode}
+          aria-describedby={createErr.passcode ? 's-pass-error' : 's-pass-hint'}
+        />
+      </Field>
+    </div>
+  );
+}
+
+function JoinFields({
+  joinId,
+  setJoinId,
+  joinPass,
+  setJoinPass,
+  joinErr,
+}: {
+  joinId: string;
+  setJoinId: (id: string) => void;
+  joinPass: string;
+  setJoinPass: (pass: string) => void;
+  joinErr: Errors;
+}) {
+  return (
+    <div key="join" className="flex animate-fade-in flex-col gap-4 motion-reduce:animate-none">
+      <Field id="s-join" label="Room ID" error={joinErr.roomId}>
+        <Input
+          id="s-join"
+          value={joinId}
+          placeholder="team-standup"
+          onChange={(e) => setJoinId(e.target.value.toLowerCase())}
+          className="font-mono"
+          aria-invalid={!!joinErr.roomId}
+          aria-describedby={joinErr.roomId ? 's-join-error' : undefined}
+        />
+      </Field>
+      <Field id="s-join-pass" label="Passcode" hint="Only if the room has one." error={joinErr.passcode}>
+        <Input
+          id="s-join-pass"
+          type="password"
+          autoComplete="current-password"
+          value={joinPass}
+          onChange={(e) => setJoinPass(e.target.value)}
+          aria-invalid={!!joinErr.passcode}
+          aria-describedby={joinErr.passcode ? 's-join-pass-error' : 's-join-pass-hint'}
+        />
+      </Field>
     </div>
   );
 }

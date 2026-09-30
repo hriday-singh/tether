@@ -100,6 +100,7 @@ async function main(): Promise<void> {
     memberRepo,
     auditRepo,
     chatService: new ChatService(new ChatRepo(db)),
+    persistenceService,
   };
   const app = buildApp(deps);
   const wss = new WebSocketServer({ noServer: true });

@@ -13,6 +13,10 @@ import { formatAuditEventRow } from '../repo/auditRepo.js';
 import { getIsDraining } from '../ws/upgradeGate.js';
 import { MAX_MEMBERS_PER_ROOM } from '@tether/shared/constants';
 
+import { PersistenceService } from '../services/persistenceService.js';
+import { createRateLimitHook, defaultIpKeyExtractor } from './rateLimiter.js';
+import { openApiSpec } from './openapi.js';
+
 export interface AppDependencies {
   config: ServerConfig;
   roomService: RoomService;
@@ -22,6 +26,7 @@ export interface AppDependencies {
   roomRegistry: RoomRegistry;
   roomRepo: RoomRepo;
   memberRepo: MemberRepo;
+  persistenceService?: PersistenceService;
 }
 
 export function buildApp(deps: AppDependencies): FastifyInstance {
@@ -56,6 +61,9 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     if (getIsDraining()) {
       return reply.status(503).send({ status: 'draining' });
     }
+    if (deps.persistenceService?.isBufferFull()) {
+      return reply.status(503).send({ status: 'buffer_full' });
+    }
     return reply.send({ status: 'ready', activeRooms: deps.roomRegistry.activeRoomCount });
   });
 
@@ -66,6 +74,48 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     });
   });
 
+  app.get('/docs/openapi.json', async (_req, reply) => {
+    return reply.header('Content-Type', 'application/json').send(openApiSpec);
+  });
+
+  // Rate Limiters
+  const roomCreateLimiter = createRateLimitHook({
+    ratePerSec: 10 / 60,
+    burst: 10,
+  });
+
+  const roomGetLimiter = createRateLimitHook({
+    ratePerSec: 1,
+    burst: 60,
+  });
+
+  const joinLimiter = createRateLimitHook({
+    ratePerSec: 5 / 60,
+    burst: 5,
+    keyExtractor: (req) => {
+      const ip = defaultIpKeyExtractor(req);
+      const roomId = (req.params as { id?: string })?.id?.toLowerCase() ?? 'unknown';
+      return `${ip}:${roomId}`;
+    },
+  });
+
+  const admissionLimiter = createRateLimitHook({
+    ratePerSec: 0.5,
+    burst: 30,
+  });
+
+  const tokenLimiter = createRateLimitHook({
+    ratePerSec: 1,
+    burst: 60,
+    keyExtractor: (req) => {
+      const auth = req.headers['authorization'];
+      if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
+        return auth.slice(7);
+      }
+      return defaultIpKeyExtractor(req);
+    },
+  });
+
   // POST /api/rooms
   const CreateRoomBodySchema = z.object({
     roomId: z.string().optional(),
@@ -74,7 +124,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     language: z.string().min(1).max(50).optional(),
   });
 
-  app.post('/api/rooms', async (request: FastifyRequest, reply: FastifyReply) => {
+  app.post('/api/rooms', { preHandler: roomCreateLimiter }, async (request: FastifyRequest, reply: FastifyReply) => {
     const parsed = CreateRoomBodySchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -110,7 +160,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   });
 
   // GET /api/rooms/:id
-  app.get('/api/rooms/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+  app.get<{ Params: { id: string } }>('/api/rooms/:id', { preHandler: roomGetLimiter }, async (request, reply) => {
     const roomId = request.params.id.toLowerCase();
     const room = deps.roomRepo.findById(roomId);
     if (!room) {
@@ -136,7 +186,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     memberId: z.string().optional(),
   });
 
-  app.post('/api/rooms/:id/join', async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+  app.post<{ Params: { id: string } }>('/api/rooms/:id/join', { preHandler: joinLimiter }, async (request, reply) => {
     const roomId = request.params.id.toLowerCase();
     const parsed = JoinRoomBodySchema.safeParse(request.body);
     if (!parsed.success) {
@@ -240,7 +290,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   });
 
   // GET /api/rooms/:id/chat (ADR-017). Same page shape as /events.
-  app.get('/api/rooms/:id/chat', async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+  app.get<{ Params: { id: string } }>('/api/rooms/:id/chat', { preHandler: tokenLimiter }, async (request, reply) => {
     const roomId = request.params.id.toLowerCase();
     if (!(await authorizeRoom(request, reply, roomId))) return reply;
 
@@ -269,15 +319,13 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   });
 
   // GET /api/rooms/:id/events
-  app.get(
+  app.get<{
+    Params: { id: string };
+    Querystring: { before?: string; after?: string; limit?: string };
+  }>(
     '/api/rooms/:id/events',
-    async (
-      request: FastifyRequest<{
-        Params: { id: string };
-        Querystring: { before?: string; after?: string; limit?: string };
-      }>,
-      reply
-    ) => {
+    { preHandler: tokenLimiter },
+    async (request, reply) => {
       const roomId = request.params.id.toLowerCase();
       if (!(await authorizeRoom(request, reply, roomId))) return reply;
 
@@ -308,7 +356,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   );
 
   // GET /api/rooms/:id/admission
-  app.get('/api/rooms/:id/admission', async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+  app.get<{ Params: { id: string } }>('/api/rooms/:id/admission', { preHandler: admissionLimiter }, async (request, reply) => {
     const roomId = request.params.id.toLowerCase();
     const auth = request.headers['authorization'];
     if (!auth || !auth.startsWith('Bearer ')) {
@@ -321,6 +369,10 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
       claims = await deps.joinService.verifyRoomToken(token, roomId);
     } catch {
       return reply.send({ status: 'reauth' });
+    }
+
+    if (getIsDraining() || deps.persistenceService?.isBufferFull()) {
+      return reply.send({ status: 'draining' });
     }
 
     const room = deps.roomRepo.findById(roomId);

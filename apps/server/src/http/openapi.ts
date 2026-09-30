@@ -1,0 +1,620 @@
+export const openApiSpec = {
+  openapi: '3.1.0',
+  info: {
+    title: 'Tether API',
+    version: '1.0.0',
+    description: 'Real-time collaborative document synchronization, role management, and audit logging API.',
+  },
+  servers: [
+    {
+      url: 'http://localhost:4000',
+      description: 'Local development server',
+    },
+  ],
+  paths: {
+    '/health/live': {
+      get: {
+        summary: 'Liveness probe',
+        description: 'Returns 200 OK if the process is running.',
+        responses: {
+          '200': {
+            description: 'Process is alive',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'ok' },
+                  },
+                  required: ['status'],
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/health/ready': {
+      get: {
+        summary: 'Readiness probe',
+        description: 'Returns 200 if ready to accept traffic, or 503 if server is draining or persistence buffer is saturated.',
+        responses: {
+          '200': {
+            description: 'Server is ready to accept connections',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'ready' },
+                    activeRooms: { type: 'integer', example: 3 },
+                  },
+                  required: ['status', 'activeRooms'],
+                },
+              },
+            },
+          },
+          '503': {
+            description: 'Server is draining or persistence buffer is full',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', enum: ['draining', 'buffer_full'] },
+                  },
+                  required: ['status'],
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/metrics': {
+      get: {
+        summary: 'System metrics',
+        description: 'Returns basic system metrics including active room counts.',
+        responses: {
+          '200': {
+            description: 'Current system metrics',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    activeRooms: { type: 'integer' },
+                    timestamp: { type: 'integer' },
+                  },
+                  required: ['activeRooms', 'timestamp'],
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/docs/openapi.json': {
+      get: {
+        summary: 'OpenAPI Schema',
+        description: 'Returns the machine-readable OpenAPI 3.1.0 specification.',
+        responses: {
+          '200': {
+            description: 'OpenAPI 3.1.0 specification',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/rooms': {
+      post: {
+        summary: 'Create a collaborative room',
+        description: 'Creates a new collaborative room or returns existing room if Idempotency-Key matches.',
+        parameters: [
+          {
+            name: 'Idempotency-Key',
+            in: 'header',
+            required: false,
+            schema: { type: 'string' },
+            description: 'Unique client-generated key for idempotent room creation',
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/CreateRoomRequest',
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Room created successfully',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateRoomResponse' },
+              },
+            },
+          },
+          '200': {
+            description: 'Existing room retrieved via Idempotency-Key',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/CreateRoomResponse' },
+              },
+            },
+          },
+          '400': {
+            description: 'Invalid creation payload',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '409': {
+            description: 'Room ID already taken',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '429': {
+            description: 'Rate limit exceeded (10 req/min/IP)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/rooms/{id}': {
+      get: {
+        summary: 'Get room status',
+        description: 'Returns metadata for a room including lock status and passcode requirement.',
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'Room identifier',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Room details',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/RoomDetailsResponse' },
+              },
+            },
+          },
+          '404': {
+            description: 'Room not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '429': {
+            description: 'Rate limit exceeded (60 req/min/IP)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/rooms/{id}/join': {
+      post: {
+        summary: 'Join a room',
+        description: 'Authenticates a user into a room, returning a signed room JWT.',
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'Room identifier',
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/JoinRoomRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Joined successfully, token issued',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/JoinRoomResponse' },
+              },
+            },
+          },
+          '400': {
+            description: 'Invalid join body',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '401': {
+            description: 'Missing or incorrect passcode',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '403': {
+            description: 'Room is locked or user is banned',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '404': {
+            description: 'Room not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '429': {
+            description: 'Rate limit exceeded (5 req/min/(IP+room))',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/rooms/{id}/admission': {
+      get: {
+        summary: 'Check admission readiness',
+        description: 'Checks whether a client token is currently valid to connect to WebSocket without consuming a connection.',
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+          },
+        ],
+        security: [{ BearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Admission check result',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: {
+                      type: 'string',
+                      enum: ['ok', 'reauth', 'banned', 'locked', 'full', 'draining'],
+                    },
+                  },
+                  required: ['status'],
+                },
+              },
+            },
+          },
+          '404': {
+            description: 'Room not found',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', example: 'not_found' },
+                  },
+                  required: ['status'],
+                },
+              },
+            },
+          },
+          '429': {
+            description: 'Rate limit exceeded (30 req/min/IP)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/rooms/{id}/events': {
+      get: {
+        summary: 'Get audit events',
+        description: 'Retrieves a paginated list of audit events for a room.',
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+          },
+          {
+            name: 'before',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer' },
+            description: 'Cursor: fetch events before sequence number',
+          },
+          {
+            name: 'after',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer' },
+            description: 'Cursor: fetch events after sequence number',
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 50, minimum: 1, maximum: 100 },
+          },
+        ],
+        security: [{ BearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Page of audit events',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/EventsPageResponse' },
+              },
+            },
+          },
+          '401': {
+            description: 'Unauthorized: valid room Bearer token required',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '429': {
+            description: 'Rate limit exceeded (60 req/min/token)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/rooms/{id}/chat': {
+      get: {
+        summary: 'Get chat messages',
+        description: 'Retrieves a paginated list of chat messages for a room.',
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+          },
+          {
+            name: 'before',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer' },
+          },
+          {
+            name: 'after',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer' },
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 50, minimum: 1, maximum: 100 },
+          },
+        ],
+        security: [{ BearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'Page of chat messages',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ChatPageResponse' },
+              },
+            },
+          },
+          '401': {
+            description: 'Unauthorized: valid room Bearer token required',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+          '429': {
+            description: 'Rate limit exceeded (60 req/min/token)',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    securitySchemes: {
+      BearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+    },
+    schemas: {
+      ErrorResponse: {
+        type: 'object',
+        properties: {
+          error: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+              details: { type: 'object' },
+              suggestion: { type: 'string' },
+            },
+            required: ['code', 'message'],
+          },
+        },
+        required: ['error'],
+      },
+      CreateRoomRequest: {
+        type: 'object',
+        properties: {
+          roomId: { type: 'string' },
+          passcode: { type: ['string', 'null'] },
+          name: { type: 'string', minLength: 1, maxLength: 50 },
+          language: { type: 'string' },
+        },
+        required: ['name'],
+      },
+      CreateRoomResponse: {
+        type: 'object',
+        properties: {
+          room: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              epoch: { type: 'string' },
+              language: { type: 'string' },
+              locked: { type: 'boolean' },
+              hasPasscode: { type: 'boolean' },
+            },
+            required: ['id', 'epoch', 'language', 'locked', 'hasPasscode'],
+          },
+          token: { type: 'string' },
+          memberId: { type: 'string' },
+          isExisting: { type: 'boolean' },
+        },
+        required: ['room', 'token', 'memberId'],
+      },
+      RoomDetailsResponse: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          hasPasscode: { type: 'boolean' },
+          locked: { type: 'boolean' },
+          language: { type: 'string' },
+          memberCount: { type: 'integer' },
+        },
+        required: ['id', 'hasPasscode', 'locked', 'language', 'memberCount'],
+      },
+      JoinRoomRequest: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', minLength: 1, maxLength: 50 },
+          passcode: { type: 'string' },
+          memberId: { type: 'string' },
+        },
+        required: ['name'],
+      },
+      JoinRoomResponse: {
+        type: 'object',
+        properties: {
+          room: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              epoch: { type: 'string' },
+              language: { type: 'string' },
+              locked: { type: 'boolean' },
+              hasPasscode: { type: 'boolean' },
+            },
+            required: ['id', 'epoch', 'language', 'locked', 'hasPasscode'],
+          },
+          token: { type: 'string' },
+          memberId: { type: 'string' },
+        },
+        required: ['room', 'token', 'memberId'],
+      },
+      EventsPageResponse: {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'integer' },
+                roomId: { type: 'string' },
+                seq: { type: 'integer' },
+                type: { type: 'string' },
+                actorMemberId: { type: ['string', 'null'] },
+                actorName: { type: ['string', 'null'] },
+                payload: { type: 'object' },
+                createdAt: { type: 'string' },
+              },
+              required: ['id', 'roomId', 'seq', 'type', 'createdAt'],
+            },
+          },
+          nextBefore: { type: ['integer', 'null'] },
+          nextAfter: { type: ['integer', 'null'] },
+        },
+        required: ['items', 'nextBefore', 'nextAfter'],
+      },
+      ChatPageResponse: {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'integer' },
+                roomId: { type: 'string' },
+                seq: { type: 'integer' },
+                clientMsgId: { type: 'string' },
+                memberId: { type: 'string' },
+                name: { type: 'string' },
+                colorIndex: { type: 'integer' },
+                text: { type: 'string' },
+                createdAt: { type: 'string' },
+              },
+              required: ['id', 'roomId', 'seq', 'memberId', 'name', 'text', 'createdAt'],
+            },
+          },
+          nextBefore: { type: ['integer', 'null'] },
+          nextAfter: { type: ['integer', 'null'] },
+        },
+        required: ['items', 'nextBefore', 'nextAfter'],
+      },
+    },
+  },
+} as const;

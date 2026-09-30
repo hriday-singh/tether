@@ -79,6 +79,7 @@ describe('End-to-End Real-Time ServerSyncClient Integration', () => {
       memberRepo,
       auditRepo,
       chatService,
+      persistenceService,
     };
 
     app = buildApp(deps);

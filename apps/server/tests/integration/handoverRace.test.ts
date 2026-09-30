@@ -92,6 +92,7 @@ describe('Host Handover Timing & Race Integration Tests', () => {
       roomRepo,
       memberRepo,
       auditRepo,
+      persistenceService,
     };
 
     app = buildApp(deps);

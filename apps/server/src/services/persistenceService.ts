@@ -1,7 +1,20 @@
 import * as Y from 'yjs';
 import { UpdateRepo } from '../repo/updateRepo.js';
 import { RoomRepo } from '../repo/roomRepo.js';
-import { PERSIST_FLUSH_MS, COMPACT_AFTER_ROWS } from '@tether/shared/constants';
+import {
+  PERSIST_FLUSH_MS,
+  COMPACT_AFTER_ROWS,
+  PERSIST_MAX_QUEUED_PER_ROOM,
+  PERSIST_MAX_BUFFERED_UPDATES,
+} from '@tether/shared/constants';
+
+export class BufferFullError extends Error {
+  public readonly code = 'BUFFER_FULL';
+  constructor(message = 'Persistence buffer is full') {
+    super(message);
+    this.name = 'BufferFullError';
+  }
+}
 
 export interface AckRecipient {
   seq: number;
@@ -13,15 +26,28 @@ export class PersistenceService {
   private pendingAcks = new Map<string, AckRecipient[]>();
   private flushTimers = new Map<string, NodeJS.Timeout>();
   private flushWindowMs: number;
+  private totalBufferedUpdates = 0;
+  private maxBufferedUpdates: number;
+
   /** Live doc for a room, so timer flushes can compact while the room stays active (set by RoomRegistry). */
   public resolveDoc?: (roomId: string) => Y.Doc | undefined;
 
   constructor(
     private updateRepo: UpdateRepo,
     private roomRepo: RoomRepo,
-    flushWindowMs = PERSIST_FLUSH_MS
+    flushWindowMs = PERSIST_FLUSH_MS,
+    maxBufferedUpdates = PERSIST_MAX_BUFFERED_UPDATES
   ) {
     this.flushWindowMs = flushWindowMs;
+    this.maxBufferedUpdates = maxBufferedUpdates;
+  }
+
+  public isBufferFull(): boolean {
+    return this.totalBufferedUpdates >= this.maxBufferedUpdates;
+  }
+
+  public getTotalBufferedUpdates(): number {
+    return this.totalBufferedUpdates;
   }
 
   public enqueueUpdate(
@@ -29,12 +55,17 @@ export class PersistenceService {
     update: Uint8Array,
     ackRecipient?: AckRecipient
   ): void {
+    if (this.isBufferFull()) {
+      throw new BufferFullError();
+    }
+
     let list = this.pendingUpdates.get(roomId);
     if (!list) {
       list = [];
       this.pendingUpdates.set(roomId, list);
     }
     list.push(update);
+    this.totalBufferedUpdates++;
 
     if (ackRecipient) {
       let acks = this.pendingAcks.get(roomId);
@@ -43,6 +74,11 @@ export class PersistenceService {
         this.pendingAcks.set(roomId, acks);
       }
       acks.push(ackRecipient);
+    }
+
+    if (list.length >= PERSIST_MAX_QUEUED_PER_ROOM) {
+      this.flush(roomId, this.resolveDoc?.(roomId));
+      return;
     }
 
     if (!this.flushTimers.has(roomId)) {
@@ -74,7 +110,8 @@ export class PersistenceService {
     try {
       const lastId = this.updateRepo.insertBatch(roomId, merged);
 
-      // Delete ONLY after successful DB commit
+      // Decrement buffer count and clean up pending state ONLY after successful DB commit
+      this.totalBufferedUpdates = Math.max(0, this.totalBufferedUpdates - updates.length);
       this.pendingUpdates.delete(roomId);
       this.pendingAcks.delete(roomId);
 

@@ -24,7 +24,7 @@ export function Tip({
         <TT.Content
           side={side}
           sideOffset={6}
-          className="z-50 flex items-center gap-2 rounded-md border border-border bg-popover px-2 py-1 text-caption text-popover-foreground shadow-capsule data-[state=delayed-open]:animate-fade-in motion-reduce:animate-none"
+          className="z-[1100] flex items-center gap-2 rounded-md border border-border bg-popover px-2 py-1 text-caption text-popover-foreground shadow-capsule data-[state=delayed-open]:animate-fade-in motion-reduce:animate-none"
         >
           {label}
           {shortcut && <Kbd>{shortcut}</Kbd>}

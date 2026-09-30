@@ -48,6 +48,7 @@ async function main() {
     memberRepo,
     auditRepo,
     chatService,
+    persistenceService,
   };
 
   const app = buildApp(deps);

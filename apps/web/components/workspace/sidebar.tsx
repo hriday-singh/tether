@@ -46,46 +46,14 @@ export function Sidebar() {
       onValueChange={(v) => ws.ui.update((s) => ({ ...s, sidebarTab: v as SidebarTab }))}
       className="flex h-full min-h-0 flex-col"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-border/60 p-2">
-        {/* Four tabs overflow a narrow sidebar: scroll the list, keep the panel buttons pinned. */}
-        <TabsList aria-label="Sidebar" className="min-w-0 overflow-x-auto [scrollbar-width:none] [&>*]:shrink-0">
-          <TabsTrigger value="people">
-            People <span className="tabular text-muted-foreground">{count}</span>
-          </TabsTrigger>
-          <TabsTrigger value="chat" aria-label={unread > 0 ? `Chat, ${unread} unread` : undefined}>
-            Chat
-            {unread > 0 && (
-              <Badge tone="primary" className="tabular">
-                {unread > 99 ? '99+' : unread}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="scratchpad">Scratchpad</TabsTrigger>
-        </TabsList>
-        <div className="flex shrink-0 items-center gap-1">
-          <Tip label={ui.maximizedPanel === 'sidebar' ? 'Restore sidebar' : 'Maximize sidebar'}>
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label={ui.maximizedPanel === 'sidebar' ? 'Restore sidebar' : 'Maximize sidebar'}
-              onClick={() => ws.maximizePanel('sidebar')}
-            >
-              <Icon icon={ui.maximizedPanel === 'sidebar' ? MinimizeScreenIcon : MaximizeScreenIcon} size={14} />
-            </Button>
-          </Tip>
-          <Tip label="Close sidebar">
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label="Close sidebar"
-              onClick={() => ws.ui.update((s) => ({ ...s, sidebarOpen: false }))}
-            >
-              <Icon icon={Cancel01Icon} size={14} />
-            </Button>
-          </Tip>
-        </div>
-      </div>
+      <SidebarTabsHeader
+        tab={tab}
+        count={count}
+        unread={unread}
+        maximized={ui.maximizedPanel === 'sidebar'}
+        onMaximize={() => ws.maximizePanel('sidebar')}
+        onClose={() => ws.ui.update((s) => ({ ...s, sidebarOpen: false }))}
+      />
       <TabsContent value="people" className="min-h-0 flex-1 overflow-y-auto p-1.5" forceMount hidden={tab !== 'people'}>
         <Roster />
       </TabsContent>
@@ -99,6 +67,156 @@ export function Sidebar() {
         <Scratchpad />
       </TabsContent>
     </Tabs>
+  );
+}
+
+function SidebarTabsHeader({
+  tab,
+  count,
+  unread,
+  maximized,
+  onMaximize,
+  onClose,
+}: {
+  tab: SidebarTab;
+  count: number;
+  unread: number;
+  maximized: boolean;
+  onMaximize: () => void;
+  onClose: () => void;
+}) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const animRef = useRef<number | null>(null);
+  const speedRef = useRef(0);
+
+  const startScrolling = (speed: number) => {
+    speedRef.current = speed;
+    if (animRef.current === null) {
+      const step = () => {
+        if (listRef.current && speedRef.current !== 0) {
+          listRef.current.scrollLeft += speedRef.current;
+          animRef.current = requestAnimationFrame(step);
+        } else {
+          animRef.current = null;
+        }
+      };
+      animRef.current = requestAnimationFrame(step);
+    }
+  };
+
+  const stopScrolling = () => {
+    speedRef.current = 0;
+    if (animRef.current !== null) {
+      cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+    }
+  };
+
+  // Auto-scroll when active tab changes
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const active = list.querySelector('[data-state="active"]');
+    if (active) {
+      active.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }, [tab]);
+
+  // Clean up animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animRef.current !== null) cancelAnimationFrame(animRef.current);
+    };
+  }, []);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const list = listRef.current;
+    if (!list) return;
+    if (list.scrollWidth <= list.clientWidth) {
+      stopScrolling();
+      return;
+    }
+
+    const rect = list.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    if (width <= 0) return;
+
+    const ratio = x / width;
+
+    // Hovering towards right -> scroll right to reveal Scratchpad
+    if (ratio > 0.6) {
+      const factor = Math.min(1, (ratio - 0.6) / 0.4);
+      const speed = Math.max(2, Math.round(factor * 8));
+      startScrolling(speed);
+    } else if (ratio < 0.4) {
+      // Hovering towards left -> scroll left to reveal People
+      const factor = Math.min(1, (0.4 - ratio) / 0.4);
+      const speed = -Math.max(2, Math.round(factor * 8));
+      startScrolling(speed);
+    } else {
+      stopScrolling();
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const list = listRef.current;
+    if (!list) return;
+    if (e.deltaY !== 0 || e.deltaX !== 0) {
+      list.scrollLeft += e.deltaY !== 0 ? e.deltaY : e.deltaX;
+    }
+  };
+
+  return (
+    <div
+      onMouseMove={handleMouseMove}
+      onMouseLeave={stopScrolling}
+      onWheel={handleWheel}
+      className="flex items-center justify-between gap-2 border-b border-border/60 p-2"
+    >
+      {/* Four tabs overflow a narrow sidebar: hover on the edge or scroll with wheel to pan; active tab auto-scrolls. */}
+      <TabsList
+        ref={listRef}
+        aria-label="Sidebar"
+        className="flex min-w-0 flex-1 overflow-x-auto rounded-full bg-muted p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0"
+      >
+        <TabsTrigger value="people">
+          People <span className="tabular text-muted-foreground">{count}</span>
+        </TabsTrigger>
+        <TabsTrigger value="chat" aria-label={unread > 0 ? `Chat, ${unread} unread` : undefined}>
+          Chat
+          {unread > 0 && (
+            <Badge tone="primary" className="tabular">
+              {unread > 99 ? '99+' : unread}
+            </Badge>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="activity">Activity</TabsTrigger>
+        <TabsTrigger value="scratchpad">Scratchpad</TabsTrigger>
+      </TabsList>
+      <div className="flex shrink-0 items-center gap-1">
+        <Tip label={maximized ? 'Restore sidebar' : 'Maximize sidebar'}>
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            aria-label={maximized ? 'Restore sidebar' : 'Maximize sidebar'}
+            onClick={onMaximize}
+          >
+            <Icon icon={maximized ? MinimizeScreenIcon : MaximizeScreenIcon} size={14} />
+          </Button>
+        </Tip>
+        <Tip label="Close sidebar">
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            aria-label="Close sidebar"
+            onClick={onClose}
+          >
+            <Icon icon={Cancel01Icon} size={14} />
+          </Button>
+        </Tip>
+      </div>
+    </div>
   );
 }
 
@@ -127,6 +245,21 @@ function Roster() {
   );
 }
 
+function getRosterStatusText(status: string, typing: boolean): string {
+  if (status === 'reconnecting') return 'reconnecting…';
+  if (typing) return 'typing';
+  if (status === 'active') return '';
+  return status;
+}
+
+function getRosterAriaLabel(name: string, isSelf: boolean, isHost: boolean, statusText: string): string {
+  const selfSuffix = isSelf ? ' (you)' : '';
+  const hostSuffix = isHost ? ', host' : '';
+  const statusSuffix = statusText ? `, ${statusText}` : '';
+  const actionSuffix = isSelf ? 'Focus editor' : 'Jump to cursor';
+  return `${name}${selfSuffix}${hostSuffix}${statusSuffix}. ${actionSuffix}`;
+}
+
 const RosterRow = memo(function RosterRow({
   member: m,
   presence,
@@ -144,12 +277,14 @@ const RosterRow = memo(function RosterRow({
   const typing = presence?.some((p) => p.typing) ?? false;
   const reconnecting = m.status === 'reconnecting';
   const hasCursor = presence?.some((p) => p.hasCursor) ?? false;
-  const statusText = reconnecting ? 'reconnecting…' : typing ? 'typing' : m.status === 'active' ? '' : m.status;
+  const statusText = getRosterStatusText(m.status, typing);
 
   const jump = () => {
     if (isSelf) return ws.focusEditor();
     if (!ws.jumpTo(m.id)) toast.info(`${m.name} has no cursor in the document yet`);
   };
+
+  const ariaLabel = getRosterAriaLabel(m.name, isSelf, m.isHost, statusText);
 
   return (
     <li
@@ -162,48 +297,90 @@ const RosterRow = memo(function RosterRow({
         type="button"
         onClick={jump}
         className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label={`${m.name}${isSelf ? ' (you)' : ''}${m.isHost ? ', host' : ''}${statusText ? `, ${statusText}` : ''}. ${isSelf ? 'Focus editor' : 'Jump to cursor'}`}
+        aria-label={ariaLabel}
       >
         <Avatar name={m.name} colorIndex={m.colorIndex} isBot={m.isBot} dimmed={reconnecting} />
-        <span className={cn('flex min-w-0 flex-col', reconnecting && 'opacity-60')}>
-          <span className="flex items-center gap-1.5 text-body font-medium">
-            <span className="truncate">{m.name}</span>
-            {isSelf && <span className="text-caption font-normal text-muted-foreground">(you)</span>}
-            {m.isHost && (
-              <span className="inline-flex items-center gap-0.5 text-micro font-medium text-warning">
-                <Icon icon={CrownIcon} size={12} /> Host
-              </span>
-            )}
-            {m.isBot && (
-              <Badge>
-                <Icon icon={BotIcon} size={10} /> bot
-              </Badge>
-            )}
-          </span>
-          <span className="flex h-4 items-center gap-1.5 text-caption text-muted-foreground">
-            {typing && !reconnecting && <TypingDots />}
-            {statusText}
-          </span>
-        </span>
+        <RosterMemberInfo
+          member={m}
+          isSelf={isSelf}
+          reconnecting={reconnecting}
+          typing={typing}
+          statusText={statusText}
+        />
       </button>
       {!isSelf && hasCursor && (
-        <Tip label={following ? 'Stop following (Esc)' : `Follow ${m.name}`}>
-          <Button
-            size="icon-xs"
-            variant="ghost"
-            aria-pressed={following}
-            aria-label={following ? `Stop following ${m.name}` : `Follow ${m.name}`}
-            onClick={() => ws.follow.set(following ? null : m.id)}
-            className={cn(!following && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100')}
-          >
-            <Icon icon={following ? ViewOffIcon : ViewIcon} size={14} className={following ? 'text-primary' : undefined} />
-          </Button>
-        </Tip>
+        <RosterFollowButton
+          memberName={m.name}
+          following={following}
+          onToggle={() => ws.follow.set(following ? null : m.id)}
+        />
       )}
       {viewerIsHost && !isSelf && !m.isBot && <HostRowActions member={m} />}
     </li>
   );
 });
+
+function RosterMemberInfo({
+  member: m,
+  isSelf,
+  reconnecting,
+  typing,
+  statusText,
+}: {
+  member: Member;
+  isSelf: boolean;
+  reconnecting: boolean;
+  typing: boolean;
+  statusText: string;
+}) {
+  return (
+    <span className={cn('flex min-w-0 flex-col', reconnecting && 'opacity-60')}>
+      <span className="flex items-center gap-1.5 text-body font-medium">
+        <span className="truncate">{m.name}</span>
+        {isSelf && <span className="text-caption font-normal text-muted-foreground">(you)</span>}
+        {m.isHost && (
+          <span className="inline-flex items-center gap-0.5 text-micro font-medium text-warning">
+            <Icon icon={CrownIcon} size={12} /> Host
+          </span>
+        )}
+        {m.isBot && (
+          <Badge>
+            <Icon icon={BotIcon} size={10} /> bot
+          </Badge>
+        )}
+      </span>
+      <span className="flex h-4 items-center gap-1.5 text-caption text-muted-foreground">
+        {typing && !reconnecting && <TypingDots />}
+        {statusText}
+      </span>
+    </span>
+  );
+}
+
+function RosterFollowButton({
+  memberName,
+  following,
+  onToggle,
+}: {
+  memberName: string;
+  following: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Tip label={following ? 'Stop following (Esc)' : `Follow ${memberName}`}>
+      <Button
+        size="icon-xs"
+        variant="ghost"
+        aria-pressed={following}
+        aria-label={following ? `Stop following ${memberName}` : `Follow ${memberName}`}
+        onClick={onToggle}
+        className={cn(!following && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100')}
+      >
+        <Icon icon={following ? ViewOffIcon : ViewIcon} size={14} className={following ? 'text-primary' : undefined} />
+      </Button>
+    </Tip>
+  );
+}
 
 function TypingDots() {
   return (

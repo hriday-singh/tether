@@ -265,6 +265,18 @@ export class Room {
     this.lastActiveAt = Date.now();
     const ctx = this.connContexts.get(ws);
     const origin = ctx ? { memberId: ctx.memberId, name: ctx.displayName } : this;
+
+    if (this.persistenceService.isBufferFull()) {
+      this.auditService.logEvent(this.id, {
+        type: 'security.buffer_full',
+        actorMemberId: ctx?.memberId ?? null,
+        actorName: ctx?.displayName ?? null,
+        payload: { reason: 'persistence_buffer_full' },
+      });
+      ws.close(WS_CLOSE_CODES.RESTART);
+      return;
+    }
+
     Y.applyUpdate(this.doc, update, origin);
 
     if (this.exceedsMaxDocSize(update.byteLength)) {
@@ -299,6 +311,17 @@ export class Room {
 
     // Apply doc update to in-memory doc immediately (Invariant I5)
     if (docUpdate.byteLength > 0) {
+      if (this.persistenceService.isBufferFull()) {
+        this.auditService.logEvent(this.id, {
+          type: 'security.buffer_full',
+          actorMemberId: ctx.memberId,
+          actorName: ctx.displayName,
+          payload: { reason: 'persistence_buffer_full' },
+        });
+        ws.close(WS_CLOSE_CODES.RESTART);
+        return;
+      }
+
       Y.applyUpdate(this.doc, docUpdate, { memberId: ctx.memberId, name: ctx.displayName });
 
       if (this.exceedsMaxDocSize(docUpdate.byteLength)) {

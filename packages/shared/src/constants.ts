@@ -31,6 +31,8 @@ export const HOST_GRACE_MS = 5000;
 export const PERSIST_FLUSH_MS = 250;
 export const COMPACT_AFTER_ROWS = 500;
 export const ROOM_UNLOAD_IDLE_MS = 30000;
+export const PERSIST_MAX_QUEUED_PER_ROOM = 64;
+export const PERSIST_MAX_BUFFERED_UPDATES = 10000;
 
 // Verification & Feed
 export const CHECKSUM_QUIET_MS = 500;

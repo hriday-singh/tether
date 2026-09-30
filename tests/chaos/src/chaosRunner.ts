@@ -77,6 +77,7 @@ export async function runChaosSession(options: ChaosRunOptions = {}): Promise<Ch
     memberRepo,
     auditRepo,
     chatService,
+    persistenceService,
   };
 
   const app = buildApp(deps);

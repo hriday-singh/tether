@@ -2,7 +2,7 @@ import { Annotation, Facet, type EditorState, type Extension } from '@codemirror
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import type { Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
-import { presenceClass } from '@/components/ui/avatar';
+import { presenceClass } from '@/lib/presence';
 
 /**
  * Remote cursors, selections and line highlights, resolved against the server roster (docs/04: name and

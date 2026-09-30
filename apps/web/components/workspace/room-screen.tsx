@@ -15,12 +15,10 @@ import { ThinkingOrb } from '@/components/ui/thinking-orb';
 import { api, ApiError, DisplayNameSchema, type RoomInfo } from '@/lib/api';
 import { useMounted, useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
-import { sessions, type RoomSession } from '@/lib/session';
+import { seedKey, sessions, type RoomSession } from '@/lib/session';
 import { createSyncClient, type SyncClient } from '@/lib/sync';
 import { CenterCard, RoomNotFound } from './gates';
 import { Workspace } from './workspace';
-
-export const seedKey = (roomId: string) => `tether:seed:${roomId}`;
 
 export function RoomScreen({ roomId }: { roomId: string }) {
   const mounted = useMounted();
@@ -127,7 +125,6 @@ function JoinGate({
   const { prefs } = usePrefs();
   const [name, setName] = useState(defaultName);
   const [passcode, setPasscode] = useState('');
-  const [otpMode, setOtpMode] = useState(true);
   const [error, setError] = useState<{ field: 'name' | 'passcode' | 'form'; message: string } | null>(null);
   const [joining, setJoining] = useState(false);
 
@@ -155,7 +152,6 @@ function JoinGate({
     }
   };
 
-  const lang = languageInfo(info?.language ?? 'javascript');
   return (
     <main className="grid min-h-dvh place-items-center p-4">
       <form
@@ -166,25 +162,8 @@ function JoinGate({
         className="flex w-full max-w-md flex-col gap-5 rounded-2xl border border-border bg-card p-6 shadow-card"
         aria-busy={joining}
       >
-        <div className="flex items-center justify-between">
-          <Logo className="size-7" />
-          {info ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-caption">
-              <LanguageLogo language={lang.id} /> {lang.label}
-            </span>
-          ) : (
-            <Skeleton className="h-6 w-24 rounded-full" />
-          )}
-        </div>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-display font-semibold tracking-tight">
-            Join <span className="font-mono">{roomId}</span>
-          </h1>
-          <p className="flex items-center gap-1.5 text-body text-muted-foreground">
-            <Icon icon={UserGroupIcon} size={14} />
-            {loading ? 'Checking the room…' : `${info?.memberCount ?? 0} ${info?.memberCount === 1 ? 'developer' : 'developers'} in this room`}
-          </p>
-        </div>
+        <JoinHeader roomId={roomId} info={info} loading={loading} />
+
         <Field id="join-name" label="Display name" error={error?.field === 'name' ? error.message : null}>
           <Input
             id="join-name"
@@ -197,61 +176,15 @@ function JoinGate({
             aria-describedby={error?.field === 'name' ? 'join-name-error' : undefined}
           />
         </Field>
+
         {info?.hasPasscode && (
-          <Field
-            id="join-pass"
-            label="Passcode"
+          <JoinPasscodeField
+            passcode={passcode}
+            setPasscode={setPasscode}
             error={error?.field === 'passcode' ? error.message : null}
-            hint={otpMode ? 'Entering PIN' : undefined}
-          >
-            {otpMode ? (
-              <div className="flex flex-col items-center gap-2 py-1">
-                <InputOTP
-                  maxLength={6}
-                  value={passcode}
-                  onChange={setPasscode}
-                  aria-invalid={error?.field === 'passcode'}
-                  aria-describedby={error?.field === 'passcode' ? 'join-pass-error' : undefined}
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-                <button
-                  type="button"
-                  onClick={() => setOtpMode(false)}
-                  className="text-micro text-muted-foreground underline underline-offset-4 hover:text-foreground"
-                >
-                  Use password field
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                <Input
-                  id="join-pass"
-                  type="password"
-                  autoComplete="current-password"
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value)}
-                  aria-invalid={error?.field === 'passcode'}
-                  aria-describedby={error?.field === 'passcode' ? 'join-pass-error' : undefined}
-                />
-                <button
-                  type="button"
-                  onClick={() => setOtpMode(true)}
-                  className="self-end text-micro text-muted-foreground underline underline-offset-4 hover:text-foreground"
-                >
-                  Use PIN slots
-                </button>
-              </div>
-            )}
-          </Field>
+          />
         )}
+
         {error?.field === 'form' && (
           <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-caption text-destructive">
             {error.message}
@@ -269,5 +202,107 @@ function JoinGate({
         </Button>
       </form>
     </main>
+  );
+}
+
+function JoinHeader({
+  roomId,
+  info,
+  loading,
+}: {
+  roomId: string;
+  info: RoomInfo | undefined;
+  loading: boolean;
+}) {
+  const lang = languageInfo(info?.language ?? 'javascript');
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <Logo className="size-7" />
+        {info ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-caption">
+            <LanguageLogo language={lang.id} /> {lang.label}
+          </span>
+        ) : (
+          <Skeleton className="h-6 w-24 rounded-full" />
+        )}
+      </div>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-display font-semibold tracking-tight">
+          Join <span className="font-mono">{roomId}</span>
+        </h1>
+        <p className="flex items-center gap-1.5 text-body text-muted-foreground">
+          <Icon icon={UserGroupIcon} size={14} />
+          {loading ? 'Checking the room…' : `${info?.memberCount ?? 0} ${info?.memberCount === 1 ? 'developer' : 'developers'} in this room`}
+        </p>
+      </div>
+    </>
+  );
+}
+
+function JoinPasscodeField({
+  passcode,
+  setPasscode,
+  error,
+}: {
+  passcode: string;
+  setPasscode: (pass: string) => void;
+  error: string | null;
+}) {
+  const [otpMode, setOtpMode] = useState(true);
+  return (
+    <Field
+      id="join-pass"
+      label="Passcode"
+      error={error}
+      hint={otpMode ? 'Entering PIN' : undefined}
+    >
+      {otpMode ? (
+        <div className="flex flex-col items-center gap-2 py-1">
+          <InputOTP
+            maxLength={6}
+            value={passcode}
+            onChange={setPasscode}
+            aria-invalid={!!error}
+            aria-describedby={error ? 'join-pass-error' : undefined}
+          >
+            <InputOTPGroup>
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
+          <button
+            type="button"
+            onClick={() => setOtpMode(false)}
+            className="text-micro text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Use password field
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <Input
+            id="join-pass"
+            type="password"
+            autoComplete="current-password"
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+            aria-invalid={!!error}
+            aria-describedby={error ? 'join-pass-error' : undefined}
+          />
+          <button
+            type="button"
+            onClick={() => setOtpMode(true)}
+            className="self-end text-micro text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Use PIN slots
+          </button>
+        </div>
+      )}
+    </Field>
   );
 }

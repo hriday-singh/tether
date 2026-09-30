@@ -19,6 +19,7 @@ const RecentSessionListSchema = z.array(
 const key = (roomId: string) => `collab:session:${roomId}`;
 const NAME_KEY = 'tether:display-name';
 const RECENT_KEY = 'tether:recent-rooms';
+export const seedKey = (roomId: string) => `tether:seed:${roomId}`;
 
 function read<T>(k: string, schema: z.ZodType<T>): T | null {
   try {

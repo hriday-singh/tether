@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Button, buttonVariants } from './button';
+import { Button } from './button';
+import { buttonVariants } from './button-variants';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
 import { ThinkingOrb } from './thinking-orb';
 import { FormattedTime } from './formatted-time';

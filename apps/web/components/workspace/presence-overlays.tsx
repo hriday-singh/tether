@@ -3,7 +3,7 @@
 import { ArrowDown01Icon, ArrowUp01Icon, ViewIcon } from '@hugeicons/core-free-icons';
 import { EditorView } from '@codemirror/view';
 import { useEffect } from 'react';
-import { presenceClass } from '@/components/ui/avatar';
+import { presenceClass } from '@/lib/presence';
 import { Tip } from '@/components/ui/controls';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';

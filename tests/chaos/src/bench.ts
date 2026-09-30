@@ -109,6 +109,7 @@ async function runBenchmark(): Promise<void> {
     memberRepo,
     auditRepo,
     chatService,
+    persistenceService,
   };
 
   const app = buildApp(deps);

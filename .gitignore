@@ -34,3 +34,5 @@ bench-results.json
 Thumbs.db
 .vscode/
 .idea/
+
+debug/
