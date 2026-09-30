@@ -10,7 +10,7 @@ import {
   ArrowRight01Icon,
   Share08Icon,
 } from '@hugeicons/core-free-icons';
-import { STORM_MAX_BOTS, STORM_MAX_SECONDS, THROTTLE_BURST } from '@tether/shared';
+import { STORM_MAX_BOTS, STORM_MAX_SECONDS } from '@tether/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Gauge, LineChart } from '@/components/ui/charts';
@@ -245,7 +245,7 @@ function SyncPanel() {
           <Metric label="RTT p95" value={stats.rttP95} />
           <Metric label="Ack p95" value={stats.ackP95} />
           <Metric label="Pending" value={status.pending} unit="ops" />
-          <Metric label="Frames / s" value={stats.framesPerSec} unit={`of 5 (${stats.tokens}/${THROTTLE_BURST} tokens)`} />
+          <Metric label="Inbound frames / s" value={stats.framesPerSec} unit="" />
         </div>
         {prefs.telemetrySampling ? (
           <LineChart
@@ -413,6 +413,17 @@ function StormStatusDisplay({
           {storm.ops} ops · {storm.endsAt ? Math.max(0, Math.ceil((storm.endsAt - now) / 1000)) : 0}s left
         </p>
         <p className="text-caption text-muted-foreground">Keep typing: your edits race the bots and must survive.</p>
+      </>
+    );
+  }
+
+  if (storm.result?.converged === null) {
+    return (
+      <>
+        <ThinkingOrb state="searching" size={64} animated={ambientAnimations} label="Verifying replicas" />
+        <p className="font-mono text-caption text-muted-foreground tabular">
+          {storm.result.bots} bots · {storm.result.ops} ops · verifying every replica against the server…
+        </p>
       </>
     );
   }

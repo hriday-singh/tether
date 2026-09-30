@@ -83,6 +83,8 @@ function ConnectedRoom({ roomId, session, onReauth }: { roomId: string; session:
         seed,
         onSeeded: () => sessionStorage.removeItem(seedKey(roomId)),
         latencyMs: prefs.simulatedLatencyMs,
+        // Storage only (not state): remounting on a refreshed token would drop the live connection.
+        onToken: (token) => sessions.set(roomId, { ...session, token }),
       });
     } catch {
       onReauth();

@@ -12,7 +12,7 @@ import { FormattedTime } from '@/components/ui/formatted-time';
 import { Textarea } from '@/components/ui/input';
 import { api } from '@/lib/api';
 import { buildChatRows, CHAT_COUNTER_FROM, type ChatRowView, type PendingChat } from '@/lib/chat';
-import { FeedStore } from '@/lib/feed-store';
+import { FeedStore, fillGaps } from '@/lib/feed-store';
 import { useStore } from '@/lib/hooks';
 import { CommandError } from '@/lib/sync';
 import { cn } from '@/lib/utils';
@@ -76,11 +76,7 @@ export function ChatPanel({ active }: { active: boolean }) {
         void history.refetch();
         return;
       }
-      for (let after = feed.gapAfter(room.chatSeq); after !== null && !cancelled; after = feed.gapAfter(room.chatSeq)) {
-        const page = await api.chat(roomId, session.token, { after, limit: 100 }).catch(() => null);
-        if (!page || page.items.length === 0) break;
-        feed.add(page.items);
-      }
+      await fillGaps(feed, room.chatSeq, (after, limit) => api.chat(roomId, session.token, { after, limit }).catch(() => null), () => cancelled);
     };
     void fill();
     return () => {

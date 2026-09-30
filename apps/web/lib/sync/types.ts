@@ -5,7 +5,7 @@ import type { ReadableStore } from '../store';
 
 /**
  * The contract the UI renders against (docs/07 render strategy). The real SyncClient in
- * packages/sync-client (M3) implements this, and the in-browser FakeSyncClient stands in until then.
+ * ServerSyncClient implements this on top of packages/sync-client.
  * The document never enters React state: CodeMirror owns rendering, Yjs owns data, and components read these small stores.
  */
 export type ConnectionState =
@@ -47,7 +47,6 @@ export interface StatsSnapshot {
   ackP95: number | null;
   samples: readonly LatencySample[];
   framesPerSec: number;
-  tokens: number;
   latencyMs: number;
 }
 
@@ -77,7 +76,8 @@ export interface StormResult {
   bots: number;
   ops: number;
   durationMs: number;
-  converged: boolean;
+  /** null while this replica is still being verified against the server checksum. */
+  converged: boolean | null;
   checksum: string;
 }
 export interface StormSnapshot {

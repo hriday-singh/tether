@@ -290,6 +290,25 @@ if ($originsMatch) {
     }
 }
 
+# Derive ALLOWED_DEV_ORIGINS (hostnames only) from ALLOWED_ORIGINS for Next.js HMR
+$devOriginsMatch = $envContent | Select-String -Pattern "(?m)^ALLOWED_ORIGINS=(.*)" | Select-Object -First 1
+if ($devOriginsMatch) {
+    $rawOrigins = $devOriginsMatch.Matches.Groups[1].Value
+    $devHosts = @()
+    foreach ($origin in ($rawOrigins -split ",")) {
+        $host = $origin.Trim() -replace '^https?://','' -replace ':[0-9]+$',''
+        if ($host -and $host -ne "localhost" -and $host -ne "127.0.0.1") {
+            $devHosts += $host
+        }
+    }
+    $devOriginsValue = $devHosts -join ","
+    if ($envContent -match "(?m)^ALLOWED_DEV_ORIGINS=") {
+        $envContent = $envContent -replace "(?m)^ALLOWED_DEV_ORIGINS=.*", "ALLOWED_DEV_ORIGINS=$devOriginsValue"
+    } else {
+        $envContent += "`nALLOWED_DEV_ORIGINS=$devOriginsValue"
+    }
+}
+
 [System.IO.File]::WriteAllText($envPath, $envContent, [System.Text.Encoding]::UTF8)
 Write-Success ".env configuration saved successfully."
 
@@ -390,6 +409,14 @@ if ($Mode -eq "local" -or $Mode -eq "all") {
         exit $LASTEXITCODE
     }
     Write-Success "@tether/shared compiled to dist/."
+
+    Write-Step "Compiling @tether/sync-client workspace package..."
+    & pnpm --filter @tether/sync-client build:pkg
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "Failed to compile @tether/sync-client package."
+        exit $LASTEXITCODE
+    }
+    Write-Success "@tether/sync-client compiled to dist/."
 }
 
 if ($Mode -eq "docker" -or $Mode -eq "all") {

@@ -3,21 +3,12 @@
 import { CrownIcon } from '@hugeicons/core-free-icons';
 import { Icon } from '@/components/ui/icon';
 import { useStore } from '@/lib/hooks';
-import { languageInfo } from '@/lib/languages';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from './context';
 
-const DOT: Record<string, string> = {
-  online: 'bg-success',
-  reconnecting: 'bg-warning animate-pulse-soft',
-  connecting: 'bg-primary animate-pulse-soft',
-  restoring: 'bg-primary animate-pulse-soft',
-  offline: 'bg-destructive',
-};
-
 import { Tip } from '@/components/ui/controls';
 
-/** Bottom status capsule (docs/ui-ux/03): health dot, cursor, encoding, language, peers, host, ping. */
+/** Bottom status capsule (docs/ui-ux/03): cursor, encoding, peers, host. Connection + ping live in the top bar. */
 export function StatusBar() {
   const ws = useWorkspace();
   const { client, cursorPos } = ws;
@@ -25,33 +16,17 @@ export function StatusBar() {
   const pos = useStore(cursorPos);
   const room = useStore(client.room);
   const roster = useStore(client.roster);
-  const stats = useStore(client.stats);
   const unread = useStore(ws.chatUnread);
   const host = roster.find((m) => m.id === room.hostId);
-  const label = status.connection === 'online' ? 'Online' : status.connection[0]!.toUpperCase() + status.connection.slice(1);
 
   return (
     <footer className="flex h-7 shrink-0 items-center gap-3 rounded-xl border border-border/60 bg-card/80 px-3 font-mono text-micro text-muted-foreground shadow-capsule backdrop-blur-md">
-      <Tip label="Click to view connection & sync diagnostics">
-        <button
-          type="button"
-          onClick={() => ws.openDrawerTab('sync')}
-          className="inline-flex items-center gap-1.5 transition-ui hover:text-foreground cursor-pointer"
-          aria-label="Open sync statistics"
-        >
-          <span aria-hidden className={cn('size-1.5 rounded-full', DOT[status.connection] ?? 'bg-muted-foreground')} />
-          {label}
-        </button>
-      </Tip>
-      <Sep />
       <span className="tabular">
         Ln {pos.line}, Col {pos.col}
         {pos.selected > 0 && ` (${pos.selected} selected)`}
       </span>
       <Sep />
       <span>UTF-8</span>
-      <Sep />
-      <span>{languageInfo(room.room.language).label}</span>
       {status.throttled && (
         <>
           <Sep />
@@ -87,17 +62,6 @@ export function StatusBar() {
         <Icon icon={CrownIcon} size={11} className="text-warning" />
         Host: {host?.name ?? '—'}
       </span>
-      <Sep />
-      <Tip label="Click to view live latency and throughput statistics">
-        <button
-          type="button"
-          onClick={() => ws.openDrawerTab('sync')}
-          className="tabular transition-ui hover:text-foreground cursor-pointer"
-          aria-label="Open latency statistics"
-        >
-          Ping: {stats.rtt ?? '--'} ms
-        </button>
-      </Tip>
     </footer>
   );
 }

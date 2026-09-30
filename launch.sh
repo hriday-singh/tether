@@ -156,6 +156,12 @@ if [ ! -f "packages/shared/dist/index.js" ]; then
   write_ok "@tether/shared compiled."
 fi
 
+if [ ! -f "packages/sync-client/dist/index.js" ]; then
+  write_step "Compiling @tether/sync-client workspace package..."
+  $PNPM_CMD --filter @tether/sync-client build:pkg
+  write_ok "@tether/sync-client compiled."
+fi
+
 # 3. Target Selection
 if [ -z "$TARGET" ]; then
   choice=$(prompt_choice "Select what to launch:" 1 \

@@ -63,33 +63,55 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
     return () => window.removeEventListener('blur', onBlur);
   }, [zoomOpen]);
 
-  // Rebuild on text change (debounced).
+  // Rebuild on text change (debounced). Depends on [client, mode] only — NOT on `run`.
+  // Preview-store mutations (Run Page, refresh, language-switch resets) are handled
+  // via a stable store subscription so the text observer is never torn down mid-transition.
   useEffect(() => {
     if (!mode) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const build = (scripts: boolean) => {
-      setLiveText(client.text.toString());
+
+    const buildDoc = () => {
+      const text = client.text.toString();
+      setLiveText(text);
       if (mode === 'html' || mode === 'css') {
-        setDoc(buildPreviewDoc(mode, client.text.toString(), { runScripts: scripts, runId: ws.preview.get().runId }));
+        const { scripts, runId } = ws.preview.get();
+        setDoc(buildPreviewDoc(mode, text, { runScripts: scripts, runId }));
       }
     };
-    build(ws.preview.get().scripts);
+
+    // Initial build on mount / mode change
+    buildDoc();
+
+    // Observe text edits (debounced)
     const onChange = () => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
-        setLiveText(client.text.toString());
         if (mode === 'html' || mode === 'css') {
-          if (ws.preview.get().scripts) ws.preview.set({ runId: randomId(4), scripts: false });
-          else build(false);
+          if (ws.preview.get().scripts) {
+            // User typed while scripts were on — turn scripts off and rebuild
+            ws.preview.set({ runId: randomId(4), scripts: false });
+          } else {
+            buildDoc();
+          }
+        } else {
+          setLiveText(client.text.toString());
         }
       }, DEBOUNCE_MS);
     };
     client.text.observe(onChange);
+
+    // Subscribe to preview store so Run Page / refresh / resets rebuild the doc
+    // without tearing down the text observer.
+    const unsub = (mode === 'html' || mode === 'css')
+      ? ws.preview.subscribe(buildDoc)
+      : undefined;
+
     return () => {
       client.text.unobserve(onChange);
+      unsub?.();
       if (timer) clearTimeout(timer);
     };
-  }, [client, mode, ws.preview, run]);
+  }, [client, mode, ws.preview]);
 
   // Console bridge: only messages from our frame and the current run id are accepted.
   useEffect(() => {

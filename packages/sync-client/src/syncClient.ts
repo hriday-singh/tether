@@ -1,5 +1,5 @@
 import * as Y from 'yjs';
-import WebSocket from 'ws';
+import type WebSocket from 'ws';
 import {
   encodeFrame,
   decodeFrame,
@@ -26,6 +26,7 @@ import { areStateVectorsEqual, hashString } from '@tether/shared/checksum';
 import { StatsStore, ClientStats } from './statsStore.js';
 import { WakeManager } from './wakeManager.js';
 import { probeAdmission } from './admissionProbe.js';
+import { DelayLine } from './delayLine.js';
 import {
   restoreFromStorage,
   persistToStorage,
@@ -38,6 +39,9 @@ import type {
   SyncStorageOptions,
   SyncClientOptions,
 } from './types.js';
+
+// OPEN is 1 in browsers and `ws`. Not `WebSocket.OPEN`: in the browser bundle `ws` is a stub, so it's undefined.
+const WS_OPEN = 1;
 
 export type {
   ClientConnectionStatus,
@@ -69,6 +73,7 @@ export class SyncClient {
   private pendingCommands = new Map<string, { resolve: () => void; reject: (err: Error) => void; timer: NodeJS.Timeout }>();
 
   private statsStore: StatsStore;
+  private readonly delayLine = new DelayLine();
   private wakeManager: WakeManager | null = null;
 
   private apiUrl?: string;
@@ -106,12 +111,13 @@ export class SyncClient {
     this.clock = options.clock ?? (() => Date.now());
 
     this.statsStore = new StatsStore(options.statsWindowSize ?? 60);
+    this.delayLine.setDelay(options.latencyMs ?? 0);
 
     this.wakeManager = new WakeManager({
       probeTimeoutMs: options.wakeProbeTimeoutMs ?? WAKE_PROBE_MS,
       target: options.wakeTarget,
       onWakePing: () => {
-        if (this.status === 'connected' && this.ws?.readyState === WebSocket.OPEN) {
+        if (this.status === 'connected' && this.ws?.readyState === WS_OPEN) {
           this.sendPing();
           this.wakeManager?.startProbe();
         } else if (
@@ -125,11 +131,7 @@ export class SyncClient {
       },
       onWakeTimeout: () => {
         if (this.status === 'connected') {
-          if (this.ws?.terminate) {
-            this.ws.terminate();
-          } else {
-            this.ws?.close();
-          }
+          this.killSocket();
           this.reconnectAttempts = 0;
           this.connect();
         }
@@ -145,7 +147,6 @@ export class SyncClient {
       },
     });
 
-    // Listen to local Y.Doc updates
     this.doc.on('update', this.handleLocalDocUpdate);
   }
 
@@ -173,6 +174,10 @@ export class SyncClient {
       this.reconnectTimer = null;
     }
 
+    // Claim 'connecting' before the async restore so concurrent connect() calls (wake events, StrictMode) bail.
+    this.hasReceivedWelcome = false;
+    this.setStatus(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
+
     if (this.storage && !this.hasRestoredStorage) {
       try {
         await restoreFromStorage(
@@ -185,10 +190,8 @@ export class SyncClient {
         this.options.onError?.(err instanceof Error ? err : new Error('Storage restore failed'));
       }
       this.hasRestoredStorage = true;
+      if (this.isDestroyed || this.isOffline) return;
     }
-
-    this.hasReceivedWelcome = false;
-    this.setStatus(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
     const protocols = [PROTOCOL_VERSION, this.token];
 
     try {
@@ -222,12 +225,13 @@ export class SyncClient {
     this.resetDeadTimer();
     const data = event.data;
 
-    if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
-      const buffer = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
-      this.handleBinaryFrame(buffer);
-    } else if (typeof data === 'string') {
-      this.handleControlMessage(data);
-    }
+    this.delayLine.run(() => {
+      if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
+        this.handleBinaryFrame(data instanceof ArrayBuffer ? new Uint8Array(data) : data);
+      } else if (typeof data === 'string') {
+        this.handleControlMessage(data);
+      }
+    });
   };
 
   private handleBinaryFrame(buffer: Uint8Array): void {
@@ -311,24 +315,20 @@ export class SyncClient {
           }
           break;
         }
-        case 'ok': {
-          const pending = this.pendingCommands.get(parsed.rid);
-          if (pending) {
-            clearTimeout(pending.timer);
-            this.pendingCommands.delete(parsed.rid);
-            pending.resolve();
-          }
+        case 'ok':
+        case 'error': {
+          const pending = parsed.rid ? this.pendingCommands.get(parsed.rid) : undefined;
+          if (!pending || !parsed.rid) break;
+          clearTimeout(pending.timer);
+          this.pendingCommands.delete(parsed.rid);
+          if (parsed.t === 'ok') pending.resolve();
+          else pending.reject(new Error(parsed.code));
           break;
         }
-        case 'error': {
-          if (parsed.rid) {
-            const pending = this.pendingCommands.get(parsed.rid);
-            if (pending) {
-              clearTimeout(pending.timer);
-              this.pendingCommands.delete(parsed.rid);
-              pending.reject(new Error(parsed.code));
-            }
-          }
+        case 'token': {
+          // Hourly refresh: reconnects must present the fresh token, and the app persists it for reloads.
+          this.token = parsed.token;
+          this.options.onToken?.(parsed.token);
           break;
         }
         case 'room.updated': {
@@ -361,6 +361,10 @@ export class SyncClient {
           this.options.onRosterChange?.(this.members);
           break;
         }
+        case 'throttled': {
+          this.options.onThrottled?.(parsed.windowMs);
+          break;
+        }
         case 'host.changed': {
           this.hostId = parsed.hostId;
           this.options.onHostChange?.(parsed.hostId);
@@ -371,7 +375,9 @@ export class SyncClient {
           const localText = this.doc.getText('codemirror').toString();
           const localHash = hashString(localText);
 
-          if (areStateVectorsEqual(localSv, Buffer.from(parsed.sv, 'base64')) && localHash === parsed.hash) {
+          const matched = areStateVectorsEqual(localSv, Buffer.from(parsed.sv, 'base64')) && localHash === parsed.hash;
+          this.options.onChecksum?.({ hash: parsed.hash, matched });
+          if (matched) {
             this.setSyncState('synced');
           } else {
             this.setSyncState('mismatch');
@@ -472,7 +478,7 @@ export class SyncClient {
       awarenessUpdate: awareness,
     };
 
-    if (mergedDoc.byteLength > 0 && this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (mergedDoc.byteLength > 0 && this.ws && this.ws.readyState === WS_OPEN) {
       this.pendingAcks.set(currentSeq, {
         docUpdate: mergedDoc,
         sentAt: this.clock(),
@@ -484,17 +490,20 @@ export class SyncClient {
   }
 
   public sendControl(msg: ClientControlMessage): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      return;
-    }
-    this.ws.send(JSON.stringify(msg));
+    this.sendRaw(JSON.stringify(msg));
   }
 
-  private sendRaw(data: Uint8Array): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      return;
-    }
-    this.ws.send(data);
+  private sendRaw(data: Uint8Array | string): void {
+    const ws = this.ws;
+    if (!ws || ws.readyState !== WS_OPEN) return;
+    this.delayLine.run(() => {
+      if (ws.readyState === WS_OPEN) ws.send(data);
+    });
+  }
+
+  /** Simulated latency (network lab): delays every frame in both directions, order preserved. */
+  public setLatency(ms: number): void {
+    this.delayLine.setDelay(ms);
   }
 
   public sendPing(): void {
@@ -524,8 +533,9 @@ export class SyncClient {
       clearTimeout(this.deadTimer);
     }
     this.deadTimer = setTimeout(() => {
-      // 12s of total silence -> force close and reconnect
-      this.ws?.terminate();
+      // 12s of total silence -> force close and reconnect. Browsers have no terminate(); killSocket falls back to close().
+      if (this.ws) this.ws.onclose = null; // we run handleClose ourselves; don't let the async close event run it twice
+      this.killSocket();
       this.handleClose({ code: WS_CLOSE_CODES.ABNORMAL } as WebSocket.CloseEvent);
     }, CLIENT_DEAD_MS);
   }
@@ -535,6 +545,7 @@ export class SyncClient {
   };
 
   private handleClose = async (event: { code: number }): Promise<void> => {
+    this.delayLine.clear();
     this.stopPingTimer();
     if (this.deadTimer) {
       clearTimeout(this.deadTimer);
@@ -596,6 +607,7 @@ export class SyncClient {
     this.setStatus('reconnecting');
     this.reconnectAttempts++;
     const delay = calculateBackoff(this.reconnectAttempts);
+    this.options.onReconnectScheduled?.(this.reconnectAttempts, delay);
 
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = setTimeout(() => {
@@ -608,7 +620,7 @@ export class SyncClient {
   }
 
   public command(cmd: ClientControlMessage & { rid: string }): Promise<void> {
-    if (this.status !== 'connected' || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (this.status !== 'connected' || !this.ws || this.ws.readyState !== WS_OPEN) {
       return Promise.reject(new Error('offline'));
     }
     return new Promise<void>((resolve, reject) => {
@@ -622,14 +634,9 @@ export class SyncClient {
   }
 
   public killSocket(): void {
-    if (this.ws) {
-      const wsAny = this.ws as unknown as { terminate?: () => void; close: () => void };
-      if (typeof wsAny.terminate === 'function') {
-        wsAny.terminate();
-      } else {
-        wsAny.close();
-      }
-    }
+    const wsAny = this.ws as unknown as { terminate?: () => void; close: () => void } | null;
+    if (typeof wsAny?.terminate === 'function') wsAny.terminate();
+    else wsAny?.close();
   }
 
   public setOffline(offline: boolean): void {
@@ -646,14 +653,7 @@ export class SyncClient {
         clearTimeout(this.deadTimer);
         this.deadTimer = null;
       }
-      if (this.ws) {
-        const wsAny = this.ws as unknown as { terminate?: () => void; close: () => void };
-        if (typeof wsAny.terminate === 'function') {
-          wsAny.terminate();
-        } else {
-          wsAny.close();
-        }
-      }
+      this.killSocket();
       this.setStatus('offline');
     } else {
       this.reconnectAttempts = 0;
@@ -670,6 +670,7 @@ export class SyncClient {
     if (this.deadTimer) clearTimeout(this.deadTimer);
     if (this.storagePersistTimer) clearTimeout(this.storagePersistTimer);
     this.stopPingTimer();
+    this.delayLine.clear();
 
     for (const [, pending] of this.pendingCommands) {
       clearTimeout(pending.timer);
@@ -682,7 +683,7 @@ export class SyncClient {
     this.statsStore.reset();
 
     if (this.ws) {
-      if (this.ws.readyState === WebSocket.OPEN) this.sendControl({ t: 'leave' });
+      if (this.ws.readyState === WS_OPEN) this.ws.send(JSON.stringify({ t: 'leave' }));
       this.ws.close();
       this.ws = null;
     }

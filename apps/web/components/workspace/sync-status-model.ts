@@ -28,8 +28,8 @@ export function describeStatus(s: StatusSnapshot, now: number): StatusView {
         tone: 'warning',
         icon: null,
         orb: 'searching',
-        label: secs > 0 ? `Reconnecting in ${secs}s` : 'Reconnecting…',
-        detail: `Attempt ${Math.max(1, s.attempt)}. Your edits keep saving locally${s.pending ? ` (${s.pending} unsent)` : ''}.`,
+        label: secs > 0 ? `Connection lost · retry in ${secs}s` : 'Connection lost · retrying…',
+        detail: `Lost connection to the server. Attempt ${Math.max(1, s.attempt)}. Your edits keep saving locally${s.pending ? ` (${s.pending} unsent)` : ''}.`,
       };
     }
     case 'offline':
@@ -38,14 +38,14 @@ export function describeStatus(s: StatusSnapshot, now: number): StatusView {
         icon: WifiOff01Icon,
         orb: null,
         label: s.pending ? `Offline · ${s.pending} unsent` : 'Offline',
-        detail: 'Edits are stored on this device and sync when you are back online.',
+        detail: 'No connection to the server. Edits are stored on this device and sync when you are back online.',
       };
     case 'paused':
       return { tone: 'neutral', icon: PauseIcon, orb: null, label: 'Paused', detail: 'Connection paused.' };
     case 'kicked':
     case 'reauth':
     case 'closed':
-      return { tone: 'destructive', icon: AlertCircleIcon, orb: null, label: 'Disconnected', detail: 'This session has ended.' };
+      return { tone: 'destructive', icon: AlertCircleIcon, orb: null, label: 'Disconnected', detail: 'Lost connection to the server and this session has ended. Reload to rejoin.' };
     case 'online':
       if (s.pending > 0) {
         return { tone: 'warning', icon: null, orb: 'working', label: `Saving (${s.pending})`, detail: `${s.pending} change${s.pending === 1 ? '' : 's'} waiting for the server to commit.` };

@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils';
 // Code-split: the canvas orb only loads when a connecting/storm state actually shows it (docs/ui-ux/02 §4).
 const Orb = dynamic(() => import('thinking-orbs').then((m) => m.ThinkingOrb), {
   ssr: false,
-  loading: () => <span className="block size-5 rounded-full bg-primary/40 animate-pulse-soft" />,
+  // bg-current: the placeholder takes the parent's text color, same as the orb it stands in for.
+  loading: () => <span className="block size-5 rounded-full bg-current opacity-40 animate-pulse-soft" />,
 });
 
 export type OrbState = 'connecting' | 'working' | 'breathing' | 'searching' | 'weaving';
@@ -20,6 +21,24 @@ const TONE_TOKENS: Record<OrbTone, string> = {
   destructive: 'var(--destructive)',
   neutral: 'var(--muted-foreground)',
 };
+
+/**
+ * thinking-orbs only accepts #hex / rgb(), but our tokens are oklch. Resolve the variable through the DOM,
+ * then let a 1px canvas convert whatever color space it is into sRGB bytes.
+ */
+function tokenToRgb(token: string): string | undefined {
+  const el = document.createElement('span');
+  el.style.color = token;
+  document.body.appendChild(el);
+  const css = window.getComputedStyle(el).color;
+  el.remove();
+  const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+  if (!ctx) return undefined;
+  ctx.fillStyle = css;
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 /** `animated=false` (ambient animations off) falls back to a CSS pulse dot with zero JS. */
 export function ThinkingOrb({
@@ -42,19 +61,13 @@ export function ThinkingOrb({
   const [computedToneColor, setComputedToneColor] = useState<string | undefined>();
 
   useEffect(() => {
-    if (color) return;
-    const token = tone ? TONE_TOKENS[tone] : undefined;
-    if (!token || typeof document === 'undefined') {
-      return;
-    }
-    // Resolve computed color from CSS token so the canvas receives the theme-accurate RGB
-    const el = document.createElement('span');
-    el.style.color = token;
-    document.body.appendChild(el);
-    const computed = window.getComputedStyle(el).color;
-    document.body.removeChild(el);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync computed CSS variable from DOM
-    setComputedToneColor(computed);
+    if (color || !tone) return;
+    const resolve = () => setComputedToneColor(tokenToRgb(TONE_TOKENS[tone]));
+    resolve();
+    // Tokens change with the theme: re-resolve so the orb keeps matching the pill text.
+    const observer = new MutationObserver(resolve);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] });
+    return () => observer.disconnect();
   }, [tone, color]);
 
   const resolvedColor = color ?? computedToneColor;

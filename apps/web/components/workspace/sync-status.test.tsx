@@ -26,7 +26,7 @@ describe('describeStatus', () => {
 
   it('counts down the reconnect', () => {
     const v = describeStatus({ ...base, connection: 'reconnecting', attempt: 3, retryAt: 2_500 }, 0);
-    expect(v.label).toBe('Reconnecting in 3s');
+    expect(v.label).toBe('Connection lost · retry in 3s');
     expect(v.detail).toContain('Attempt 3');
   });
 });

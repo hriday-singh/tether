@@ -296,6 +296,30 @@ if grep -q "^ALLOWED_ORIGINS=" .env; then
     sed -i.bak -e "s|^ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=${new_origins}|" .env && rm -f .env.bak
   fi
 fi
+
+# Derive ALLOWED_DEV_ORIGINS (hostnames only) from ALLOWED_ORIGINS for Next.js HMR
+if grep -q "^ALLOWED_ORIGINS=" .env; then
+  raw_origins=$(grep "^ALLOWED_ORIGINS=" .env | cut -d'=' -f2-)
+  dev_hosts=""
+  IFS=',' read -ra parts <<< "$raw_origins"
+  for origin in "${parts[@]}"; do
+    # Strip protocol, port, and whitespace to get bare hostname
+    host=$(echo "$origin" | sed -e 's|^https\?://||' -e 's|:[0-9]*$||' -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||')
+    # Skip localhost/127.0.0.1 (Next.js allows those by default)
+    if [ -n "$host" ] && [ "$host" != "localhost" ] && [ "$host" != "127.0.0.1" ]; then
+      if [ -n "$dev_hosts" ]; then
+        dev_hosts="${dev_hosts},${host}"
+      else
+        dev_hosts="$host"
+      fi
+    fi
+  done
+  if grep -q "^ALLOWED_DEV_ORIGINS=" .env; then
+    sed -i.bak -e "s|^ALLOWED_DEV_ORIGINS=.*|ALLOWED_DEV_ORIGINS=${dev_hosts}|" .env && rm -f .env.bak
+  else
+    echo "ALLOWED_DEV_ORIGINS=${dev_hosts}" >> .env
+  fi
+fi
 write_ok ".env configuration saved successfully."
 
 # Ensure data directory exists for SQLite
@@ -395,6 +419,10 @@ if [ "$MODE" = "local" ] || [ "$MODE" = "all" ]; then
   write_step "Compiling @tether/shared workspace package..."
   $PNPM_CMD --filter @tether/shared build:pkg
   write_ok "@tether/shared compiled to dist/."
+
+  write_step "Compiling @tether/sync-client workspace package..."
+  $PNPM_CMD --filter @tether/sync-client build:pkg
+  write_ok "@tether/sync-client compiled to dist/."
 fi
 
 if [ "$MODE" = "docker" ] || [ "$MODE" = "all" ]; then

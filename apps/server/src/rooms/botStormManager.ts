@@ -4,6 +4,7 @@ import * as Y from 'yjs';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import { SyncClient } from '@tether/sync-client';
 import { FaultyWebSocket } from '@tether/sync-client/testing';
+import { areStateVectorsEqual, hashString } from '@tether/shared/checksum';
 import { JoinService } from '../services/joinService.js';
 import { MemberRepo } from '../repo/memberRepo.js';
 import { RoomRepo } from '../repo/roomRepo.js';
@@ -41,6 +42,9 @@ interface ActiveStorm {
   typingTimers: Set<NodeJS.Timeout>;
   stopTimer: NodeJS.Timeout | null;
   stopped: boolean;
+  /** Bot edits applied during the storm (server-side count, all bots). */
+  ops: number;
+  startedAt: number;
   stop: () => Promise<void>;
 }
 
@@ -77,6 +81,8 @@ export class BotStormManager {
       typingTimers: new Set<NodeJS.Timeout>(),
       stopTimer: null,
       stopped: false,
+      ops: 0,
+      startedAt: Date.now(),
       stop: async () => {},
     };
 
@@ -103,8 +109,9 @@ export class BotStormManager {
         bot.client.flushBatch();
       }
 
-      // Small pause for updates to propagate and persist
-      await new Promise((r) => setTimeout(r, 400));
+      // Wait for every bot replica to match the server's before judging convergence.
+      const durationMs = Date.now() - activeStorm.startedAt;
+      const { converged, checksum } = await waitForConvergence(loadedRoom.doc, activeStorm.bots.map((b) => b.doc));
 
       for (const bot of activeStorm.bots) {
         bot.client.destroy();
@@ -116,10 +123,12 @@ export class BotStormManager {
         type: 'demo.storm_completed',
         actorMemberId: null,
         actorName: null,
-        payload: { bots: options.bots, seconds: options.seconds },
+        payload: { bots: options.bots, seconds: options.seconds, durationMs, ops: activeStorm.ops, converged, checksum },
       });
 
       this.activeStorms.delete(options.roomId);
+      // Guarantees a checksum after the completion event so every browser verifies its own replica too.
+      loadedRoom.scheduleChecksum();
     };
 
     activeStorm.stop = stop;
@@ -208,6 +217,7 @@ export class BotStormManager {
             botDoc.transact(() => {
               yText.insert(pos, snippet);
             }, botId);
+            activeStorm.ops++;
 
             const at = Math.min(pos, yText.length);
             const rel = Y.createRelativePositionFromTypeIndex(yText, at);
@@ -242,5 +252,22 @@ export class BotStormManager {
     const storms = Array.from(this.activeStorms.values());
     await Promise.all(storms.map((s) => s.stop()));
     this.activeStorms.clear();
+  }
+}
+
+const CONVERGE_POLL_MS = 100;
+const CONVERGE_TIMEOUT_MS = 3000;
+
+/** Polls until every bot replica has the server's state vector and text, or the timeout passes (= diverged). */
+export async function waitForConvergence(serverDoc: Y.Doc, replicas: Y.Doc[]): Promise<{ converged: boolean; checksum: string }> {
+  const deadline = Date.now() + CONVERGE_TIMEOUT_MS;
+  for (;;) {
+    const sv = Y.encodeStateVector(serverDoc);
+    const checksum = hashString(serverDoc.getText('codemirror').toString());
+    const converged = replicas.every(
+      (d) => areStateVectorsEqual(Y.encodeStateVector(d), sv) && hashString(d.getText('codemirror').toString()) === checksum,
+    );
+    if (converged || Date.now() >= deadline) return { converged, checksum };
+    await new Promise((r) => setTimeout(r, CONVERGE_POLL_MS));
   }
 }

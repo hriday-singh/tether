@@ -24,6 +24,7 @@ jobs:
           node-version: 22
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg
       - run: pnpm lint
 
   typecheck:
@@ -39,6 +40,7 @@ jobs:
           node-version: 22
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg
       - run: pnpm typecheck
 
   test:
@@ -57,6 +59,7 @@ jobs:
           node-version: 22
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg
       - run: pnpm test
 
   chaos:
@@ -72,4 +75,5 @@ jobs:
           node-version: 22
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg
       - run: pnpm run chaos:ci

@@ -177,6 +177,8 @@ export async function attachConnectionHandler(
           }
           case FRAME_KINDS.SYNC_STEP2: {
             room.handleInboundSyncStep2(ws, frame.update);
+            // Handshake done: verify the new replica even if the room is idle (no doc update would trigger it).
+            room.scheduleChecksum();
             break;
           }
           case FRAME_KINDS.UPDATE: {

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WebSocketServer } from 'ws';
 import { FastifyInstance } from 'fastify';
-import { BotStormManager } from './botStormManager.js';
+import * as Y from 'yjs';
+import { BotStormManager, waitForConvergence } from './botStormManager.js';
 import { createDatabase, DatabaseSession } from '../db/database.js';
 import { RoomRepo } from '../repo/roomRepo.js';
 import { UpdateRepo } from '../repo/updateRepo.js';
@@ -154,7 +155,10 @@ describe('BotStormManager', () => {
 
     // Verify audit events recorded demo.storm_completed
     const events = auditService.getEventsAfter('storm-room', 0, 50);
-    expect(events.some((e) => e.type === 'demo.storm_completed')).toBe(true);
+    const completed = events.find((e) => e.type === 'demo.storm_completed');
+    const payload = JSON.parse(String(completed?.payload)) as { converged: boolean; checksum: string; ops: number };
+    expect(payload).toMatchObject({ converged: true, checksum: expect.stringMatching(/^[0-9a-f]{8}$/) });
+    expect(payload.ops).toBeGreaterThan(0);
   });
 
   it('supports early stopping via stopStorm() and supports faults mode', async () => {
@@ -198,4 +202,16 @@ describe('BotStormManager', () => {
     await manager.destroyAll();
     expect(manager.isStormActive('destroy-room')).toBe(false);
   });
+
+  it('waitForConvergence reports divergence when a replica differs after the timeout', async () => {
+    const server = new Y.Doc();
+    server.getText('codemirror').insert(0, 'same');
+    const twin = new Y.Doc();
+    Y.applyUpdate(twin, Y.encodeStateAsUpdate(server));
+    expect((await waitForConvergence(server, [twin])).converged).toBe(true);
+
+    const stray = new Y.Doc();
+    stray.getText('codemirror').insert(0, 'different');
+    expect((await waitForConvergence(server, [twin, stray])).converged).toBe(false);
+  }, 10000);
 });

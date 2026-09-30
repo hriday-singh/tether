@@ -122,7 +122,8 @@ export class Room {
     this.scheduleChecksum();
   };
 
-  private scheduleChecksum(): void {
+  /** Debounced server checksum broadcast; clients compare it with their replica to verify sync. */
+  public scheduleChecksum(): void {
     if (this.checksumQuietTimer) {
       clearTimeout(this.checksumQuietTimer);
     }

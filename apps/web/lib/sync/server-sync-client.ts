@@ -3,7 +3,6 @@ import {
   type ChatMessage,
   type ClientControlMessage,
   type Member,
-  hashString,
 } from '@tether/shared';
 import { SyncClient as ProtocolSyncClient } from '@tether/sync-client';
 import {
@@ -39,9 +38,13 @@ export interface ServerSyncOptions {
   seed?: boolean;
   onSeeded?: () => void;
   latencyMs?: number;
+  /** Hourly token refresh from the server: persist it so a reload rejoins without the gate. */
+  onToken?: (token: string) => void;
 }
 
 const TYPING_MS = 1500;
+/** After a storm ends, this browser's replica must match a server checksum within this window to count as converged. */
+const STORM_VERIFY_MS = 5000;
 
 export class ServerSyncClient implements SyncClient {
   readonly doc = new Y.Doc();
@@ -56,8 +59,14 @@ export class ServerSyncClient implements SyncClient {
   private seedDone = false;
   private typingTimer: ReturnType<typeof setTimeout> | null = null;
   private cleanupStatusTracking?: () => void;
-  private readonly textObserver = () => {
-    this.markTyping();
+  private throttleTimer: ReturnType<typeof setTimeout> | null = null;
+  private framesTimer: ReturnType<typeof setInterval> | null = null;
+  private inboundFrames = 0;
+  /** Storm finished server-side; waiting for this replica's checksum to match before reporting convergence. */
+  private stormVerify: { serverConverged: boolean; timer: ReturnType<typeof setTimeout> } | null = null;
+  private readonly textObserver = (event: Y.YTextEvent) => {
+    // Only our own edits mean we are typing; remote edits must not flip our presence.
+    if (event.transaction.local) this.markTyping();
     const currentStorm = this.storm.get();
     if (currentStorm.running) {
       this.storm.set({
@@ -90,7 +99,6 @@ export class ServerSyncClient implements SyncClient {
       ackP95: null,
       samples: [],
       framesPerSec: 0,
-      tokens: 10,
       latencyMs: 0,
     },
     shallowEqual,
@@ -148,7 +156,10 @@ export class ServerSyncClient implements SyncClient {
     );
 
     this.lab = {
-      setLatency: () => {},
+      setLatency: (ms: number) => {
+        this.protocolClient.setLatency(ms);
+        this.stats.set({ ...this.stats.get(), latencyMs: ms });
+      },
       setOffline: (offline: boolean) => {
         this.protocolClient.setOffline(offline);
       },
@@ -166,6 +177,7 @@ export class ServerSyncClient implements SyncClient {
       doc: this.doc,
       apiUrl,
       roomId: options.roomId,
+      latencyMs: options.latencyMs ?? 0,
       storage: {
         roomId: options.roomId,
         roomEpoch: options.epoch,
@@ -186,28 +198,49 @@ export class ServerSyncClient implements SyncClient {
           conn = 'closed';
         }
 
+        const cur = this.status.get();
         this.status.set({
-          ...this.status.get(),
+          ...cur,
           connection: conn,
           pending: this.protocolClient.unackedCount,
+          // Only a server checksum match (onChecksum) marks the replica verified; a fresh connection starts unverified.
+          verifiedAt: conn === 'online' && cur.connection === 'online' ? cur.verifiedAt : null,
+          ...(conn === 'online' ? { attempt: 0, retryAt: null } : {}),
         });
+      },
+      onReconnectScheduled: (attempt, delayMs) => {
+        this.status.set({ ...this.status.get(), attempt, retryAt: Date.now() + delayMs });
       },
       onSyncStateChange: (syncState) => {
         const cur = this.status.get();
-        if (syncState === 'synced') {
-          this.status.set({
-            ...cur,
-            verifiedAt: Date.now(),
-            checksum: 'verified',
-            pending: 0,
-          });
-        } else if (syncState === 'saving') {
-          this.status.set({
-            ...cur,
-            pending: this.protocolClient.unackedCount,
-          });
+        const pending = this.protocolClient.unackedCount;
+        if (syncState === 'saving') {
+          // New local edits: the last verification no longer covers the document.
+          this.status.set({ ...cur, pending, verifiedAt: null });
+        } else if (syncState === 'mismatch') {
+          this.status.set({ ...cur, pending, verifiedAt: null, checksum: null });
+        } else {
+          this.status.set({ ...cur, pending });
         }
       },
+      onChecksum: ({ hash, matched }) => {
+        const cur = this.status.get();
+        this.status.set(
+          matched
+            ? { ...cur, verifiedAt: Date.now(), checksum: hash, pending: this.protocolClient.unackedCount }
+            : { ...cur, verifiedAt: null, checksum: null },
+        );
+        if (matched && this.stormVerify) this.finishStormVerify(this.stormVerify.serverConverged);
+      },
+      onThrottled: (windowMs) => {
+        this.status.set({ ...this.status.get(), throttled: true });
+        if (this.throttleTimer) clearTimeout(this.throttleTimer);
+        this.throttleTimer = setTimeout(() => {
+          this.throttleTimer = null;
+          this.status.set({ ...this.status.get(), throttled: false });
+        }, windowMs);
+      },
+      onToken: (token) => options.onToken?.(token),
       onStatsChange: (clientStats) => {
         const s = this.stats.get();
         const now = Date.now();
@@ -277,24 +310,7 @@ export class ServerSyncClient implements SyncClient {
             result: null,
           });
         } else if (event.type === 'demo.storm_completed') {
-          const payload = (event.payload ?? {}) as { bots?: number; seconds?: number };
-          const seconds = payload.seconds ?? 0;
-          const text = this.text.toString();
-          const checksum = hashString(text);
-          const currentStorm = this.storm.get();
-          this.storm.set({
-            running: false,
-            bots: 0,
-            endsAt: null,
-            ops: currentStorm.ops,
-            result: {
-              bots: payload.bots ?? currentStorm.bots,
-              durationMs: seconds * 1000,
-              ops: currentStorm.ops,
-              converged: true,
-              checksum,
-            },
-          });
+          this.startStormVerify(event.payload);
         }
 
         for (const listener of this.eventListeners) {
@@ -323,6 +339,17 @@ export class ServerSyncClient implements SyncClient {
         });
       },
     });
+
+    this.stats.set({ ...this.stats.get(), latencyMs: options.latencyMs ?? 0 });
+
+    // Frames/s: remote updates actually applied to this replica, sampled once a second.
+    this.doc.on('update', (_update: Uint8Array, origin: unknown) => {
+      if (origin === this.protocolClient) this.inboundFrames++;
+    });
+    this.framesTimer = setInterval(() => {
+      this.stats.set({ ...this.stats.get(), framesPerSec: this.inboundFrames });
+      this.inboundFrames = 0;
+    }, 1000);
 
     // Bridge local awareness changes to protocol client
     this.awareness.on('update', ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
@@ -466,7 +493,45 @@ export class ServerSyncClient implements SyncClient {
     this.destroy();
   }
 
+  /** Server reports bot replicas vs its own; convergence also needs this browser's replica to match a server checksum. */
+  private startStormVerify(raw: unknown): void {
+    const payload = (raw ?? {}) as { bots?: number; seconds?: number; durationMs?: number; ops?: number; converged?: boolean; checksum?: string };
+    const current = this.storm.get();
+    const ops = payload.ops ?? current.ops;
+    this.storm.set({
+      running: false,
+      bots: 0,
+      endsAt: null,
+      ops,
+      result: {
+        bots: payload.bots ?? current.bots,
+        durationMs: payload.durationMs ?? (payload.seconds ?? 0) * 1000,
+        ops,
+        converged: null,
+        checksum: payload.checksum ?? '--------',
+      },
+    });
+    if (this.stormVerify) clearTimeout(this.stormVerify.timer);
+    this.stormVerify = {
+      serverConverged: payload.converged === true,
+      timer: setTimeout(() => this.finishStormVerify(false), STORM_VERIFY_MS),
+    };
+  }
+
+  private finishStormVerify(converged: boolean): void {
+    if (!this.stormVerify) return;
+    clearTimeout(this.stormVerify.timer);
+    this.stormVerify = null;
+    const s = this.storm.get();
+    if (!s.result) return;
+    const checksum = this.status.get().checksum ?? s.result.checksum;
+    this.storm.set({ ...s, result: { ...s.result, converged, checksum } });
+  }
+
   destroy(): void {
+    if (this.framesTimer) clearInterval(this.framesTimer);
+    if (this.throttleTimer) clearTimeout(this.throttleTimer);
+    if (this.stormVerify) clearTimeout(this.stormVerify.timer);
     if (this.typingTimer) {
       clearTimeout(this.typingTimer);
       this.typingTimer = null;

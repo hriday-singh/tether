@@ -1,9 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
+import * as Y from 'yjs';
 import { ServerSyncClient } from './server-sync-client';
 import { CommandError } from './types';
 
 interface MockSyncClientOpts {
   onEvent?: (event: unknown) => void;
+  onChecksum?: (result: { hash: string; matched: boolean }) => void;
+  onSyncStateChange?: (state: string) => void;
+  onStatusChange?: (status: string) => void;
+  onThrottled?: (windowMs: number) => void;
+  onToken?: (token: string) => void;
   [key: string]: unknown;
 }
 
@@ -26,6 +32,7 @@ vi.mock('@tether/sync-client', () => {
         queueAwarenessUpdate: vi.fn(),
         killSocket: vi.fn(),
         setOffline: vi.fn(),
+        setLatency: vi.fn(),
         wakeManagerInstance: { destroy: vi.fn() },
       };
     }),
@@ -170,19 +177,73 @@ describe('ServerSyncClient', () => {
       type: 'demo.storm_completed',
       actorMemberId: null,
       actorName: null,
-      payload: { bots: 4, seconds: 10 },
+      payload: { bots: 4, seconds: 10, durationMs: 9800, ops: 57, converged: true, checksum: 'abcd1234' },
       timestamp: new Date().toISOString(),
     });
 
+    // Server says bot replicas converged; this browser's replica is still unverified.
     const finished = client.storm.get();
     expect(finished.running).toBe(false);
     expect(finished.bots).toBe(0);
-    expect(finished.result).toMatchObject({
-      durationMs: 10000,
-      ops: 1,
-      converged: true,
-    });
+    expect(finished.result).toMatchObject({ durationMs: 9800, ops: 57, converged: null, checksum: 'abcd1234' });
 
+    lastCreatedOpts?.onChecksum?.({ hash: 'abcd1234', matched: true });
+    expect(client.storm.get().result).toMatchObject({ converged: true, checksum: 'abcd1234' });
+
+    client.destroy();
+  });
+
+  it('reports a storm as diverged when this replica never matches a server checksum', () => {
+    vi.useFakeTimers();
+    const client = new ServerSyncClient(options);
+    lastCreatedOpts?.onEvent?.({
+      id: 2, roomId: 'test-room', seq: 2, type: 'demo.storm_completed', actorMemberId: null, actorName: null,
+      payload: { bots: 2, ops: 10, durationMs: 5000, converged: true, checksum: 'abcd1234' },
+      timestamp: new Date().toISOString(),
+    });
+    lastCreatedOpts?.onChecksum?.({ hash: 'ffff0000', matched: false });
+    vi.advanceTimersByTime(5000);
+    expect(client.storm.get().result?.converged).toBe(false);
+    client.destroy();
+    vi.useRealTimers();
+  });
+
+  it('marks the replica verified only on a server checksum match, and new local edits clear it', () => {
+    const client = new ServerSyncClient(options);
+    lastCreatedOpts?.onStatusChange?.('connected');
+    lastCreatedOpts?.onSyncStateChange?.('synced');
+    expect(client.status.get().verifiedAt).toBeNull();
+
+    lastCreatedOpts?.onChecksum?.({ hash: '0badf00d', matched: true });
+    expect(client.status.get()).toMatchObject({ checksum: '0badf00d' });
+    expect(client.status.get().verifiedAt).not.toBeNull();
+
+    lastCreatedOpts?.onSyncStateChange?.('saving');
+    expect(client.status.get().verifiedAt).toBeNull();
+    client.destroy();
+  });
+
+  it('surfaces server throttling for its window and forwards token refreshes', () => {
+    vi.useFakeTimers();
+    const onToken = vi.fn();
+    const client = new ServerSyncClient({ ...options, onToken });
+    lastCreatedOpts?.onThrottled?.(1000);
+    expect(client.status.get().throttled).toBe(true);
+    vi.advanceTimersByTime(1000);
+    expect(client.status.get().throttled).toBe(false);
+
+    lastCreatedOpts?.onToken?.('fresh');
+    expect(onToken).toHaveBeenCalledWith('fresh');
+    client.destroy();
+    vi.useRealTimers();
+  });
+
+  it('does not mark us typing on remote edits', () => {
+    const client = new ServerSyncClient(options);
+    const remote = new Y.Doc();
+    remote.getText('codemirror').insert(0, 'from a peer');
+    Y.applyUpdate(client.doc, Y.encodeStateAsUpdate(remote), 'remote');
+    expect(client.awareness.getLocalState()?.typing).toBe(false);
     client.destroy();
   });
 
@@ -198,6 +259,10 @@ describe('ServerSyncClient', () => {
 
     client.lab.setOffline(false);
     expect(mockProtocol.setOffline).toHaveBeenCalledWith(false);
+
+    client.lab.setLatency(150);
+    expect((mockProtocol as unknown as { setLatency: ReturnType<typeof vi.fn> }).setLatency).toHaveBeenCalledWith(150);
+    expect(client.stats.get().latencyMs).toBe(150);
 
     client.destroy();
   });

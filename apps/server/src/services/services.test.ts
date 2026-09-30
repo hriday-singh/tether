@@ -144,6 +144,14 @@ describe('Services Layer', () => {
       expect(event2.seq).toBe(2);
       expect(event3.seq).toBe(1); // separate sequence for room r2
     });
+
+    it('reading history does not consume sequence numbers', () => {
+      roomRepo.create({ id: 'r3', epoch: 'e3', createdBy: 'u3' });
+      auditService.logEvent('r3', { type: 'a' });
+      auditService.getEventsBefore('r3', undefined, 50);
+      auditService.getEventsBefore('r3', undefined, 50);
+      expect(auditService.logEvent('r3', { type: 'b' }).seq).toBe(2);
+    });
   });
 
   describe('PersistenceService', () => {

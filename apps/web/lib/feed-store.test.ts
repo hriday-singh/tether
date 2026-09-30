@@ -1,5 +1,6 @@
 import type { AuditEvent } from '@tether/shared';
-import { FeedStore } from './feed-store';
+import { vi } from 'vitest';
+import { FeedStore, fillGaps } from './feed-store';
 
 const ev = (seq: number): AuditEvent => ({
   id: seq,
@@ -42,5 +43,25 @@ describe('FeedStore', () => {
     f.add([ev(1)]);
     expect(f.shouldResetFor(400)).toBe(false);
     expect(f.shouldResetFor(10_000)).toBe(true);
+  });
+
+  it('fillGaps settles server-side holes instead of re-fetching them forever', async () => {
+    const f = new FeedStore();
+    f.add([ev(1), ev(7)]);
+    // Server sequence has holes at 2 and 5 (seqs that were never written).
+    const server = [3, 4, 6, 7].map(ev);
+    const fetchAfter = vi.fn(async (after: number) => ({ items: server.filter((e) => e.seq > after) }));
+    await fillGaps(f, 7, fetchAfter, () => false);
+    expect(fetchAfter).toHaveBeenCalledTimes(1);
+    expect(f.gapAfter(7)).toBeNull();
+    expect(f.snapshot.get().items.map((e) => e.seq)).toEqual([7, 6, 4, 3, 1]);
+  });
+
+  it('fillGaps stops on a failed fetch', async () => {
+    const f = new FeedStore();
+    f.add([ev(1), ev(5)]);
+    const fetchAfter = vi.fn(async () => null);
+    await fillGaps(f, 5, fetchAfter, () => false);
+    expect(fetchAfter).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,5 +1,5 @@
 import * as Y from 'yjs';
-import WebSocket from 'ws';
+import type WebSocket from 'ws';
 import type {
   Member,
   RoomMetadata,
@@ -52,6 +52,16 @@ export interface SyncClientOptions {
   onRoomUpdate?: (settings: { locked?: boolean; hasPasscode?: boolean; language?: string }) => void;
   onEvent?: (event: AuditEvent) => void;
   onChat?: (message: ChatMessage) => void;
+  /** Every server checksum broadcast: `matched` is true when this replica equals the server's (same state vector and text hash). */
+  onChecksum?: (result: { hash: string; matched: boolean }) => void;
+  /** Server issued a refreshed room token (used for the next reconnect). */
+  onToken?: (token: string) => void;
+  /** Server is rate-limiting broadcasts to this client for `windowMs`. */
+  onThrottled?: (windowMs: number) => void;
+  /** Reconnect attempt `attempt` fires in `delayMs`. */
+  onReconnectScheduled?: (attempt: number, delayMs: number) => void;
+  /** Simulated latency applied to every frame in both directions (network lab). */
+  latencyMs?: number;
   clock?: () => number;
   statsWindowSize?: number;
   wakeProbeTimeoutMs?: number;

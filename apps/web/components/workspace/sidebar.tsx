@@ -23,7 +23,7 @@ import { FormattedTime } from '@/components/ui/formatted-time';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/menus';
 import { toast } from '@/components/ui/toaster';
 import { api } from '@/lib/api';
-import { FeedStore } from '@/lib/feed-store';
+import { FeedStore, fillGaps } from '@/lib/feed-store';
 import { useStore } from '@/lib/hooks';
 import { CommandError, type PresenceEntry } from '@/lib/sync';
 import { cn } from '@/lib/utils';
@@ -463,11 +463,7 @@ function ActivityFeed() {
         void history.refetch();
         return;
       }
-      for (let after = feed.gapAfter(eventSeq); after !== null && !cancelled; after = feed.gapAfter(eventSeq)) {
-        const page = await api.events(roomId, session.token, { after, limit: 100 }).catch(() => null);
-        if (!page || page.items.length === 0) break;
-        feed.add(page.items);
-      }
+      await fillGaps(feed, eventSeq, (after, limit) => api.events(roomId, session.token, { after, limit }).catch(() => null), () => cancelled);
     };
     void fill();
     return () => {

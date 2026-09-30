@@ -190,17 +190,12 @@ function MaximizedPanelView({
   kicked: boolean;
   onRestore: () => void;
 }) {
-  const ws = useWorkspace();
-  const room = useStore(ws.client.room);
-  const lang = languageInfo(room.room.language);
-
   return (
     <section aria-label="Editor" className={cn(card, 'relative flex size-full min-h-0 flex-col')}>
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/60 px-2.5">
         <div className="flex items-center gap-1.5 text-caption font-medium">
           <Icon icon={CodeIcon} size={14} className="text-muted-foreground" />
           <span>Editor</span>
-          <span className="font-mono text-micro text-muted-foreground">({lang.label})</span>
           <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-micro font-medium text-primary">
             Maximized
           </span>
@@ -237,8 +232,6 @@ function DesktopEditorPanel({
 }) {
   const ws = useWorkspace();
   const ui = useStore(ws.ui);
-  const room = useStore(ws.client.room);
-  const lang = languageInfo(room.room.language);
 
   return (
     <ResizablePanel id="editor" minSize={showPreviewPane || showSidebar ? '30' : 600} defaultSize={showPreviewPane ? '50' : '72'}>
@@ -258,7 +251,6 @@ function DesktopEditorPanel({
             <div className="flex items-center gap-1.5 text-caption font-medium">
               <Icon icon={CodeIcon} size={14} className="text-muted-foreground" />
               <span>Editor</span>
-              <span className="font-mono text-micro text-muted-foreground">({lang.label})</span>
             </div>
           )}
           {!ui.zenMode && (

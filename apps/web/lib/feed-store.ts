@@ -13,6 +13,8 @@ export interface FeedSnapshot<T extends { seq: number } = AuditEvent> {
  */
 export class FeedStore<T extends { seq: number } = AuditEvent> {
   private bySeq = new Map<number, T>();
+  /** Seqs a server page proved do not exist (holes in the server's sequence): never treated as gaps. */
+  private absent = new Set<number>();
   private readonly store = createStore<FeedSnapshot<T>>({ items: [], highest: 0 });
   readonly snapshot: ReadableStore<FeedSnapshot<T>> = this.store;
 
@@ -27,6 +29,20 @@ export class FeedStore<T extends { seq: number } = AuditEvent> {
     if (changed) this.publish();
   }
 
+  /**
+   * Adds an `after=` page and records the seqs it proves missing. `complete` (page shorter than the limit)
+   * means nothing else exists up to `serverSeq`, so the tail is settled too.
+   */
+  fill(after: number, items: readonly T[], complete: boolean, serverSeq = 0): void {
+    const got = new Set(items.map((i) => i.seq));
+    const last = items.length > 0 ? Math.max(...got) : after;
+    const end = complete ? Math.max(last, serverSeq) : last;
+    for (let s = after + 1; s <= end; s++) {
+      if (!got.has(s) && !this.bySeq.has(s)) this.absent.add(s);
+    }
+    this.add(items);
+  }
+
   get highest(): number {
     return this.store.get().highest;
   }
@@ -38,7 +54,7 @@ export class FeedStore<T extends { seq: number } = AuditEvent> {
    */
   gapAfter(serverSeq = 0): number | null {
     if (this.bySeq.size === 0) return null;
-    const seqs = [...this.bySeq.keys()].sort((a, b) => a - b);
+    const seqs = [...this.bySeq.keys(), ...this.absent].sort((a, b) => a - b);
     for (let i = 0; i < seqs.length - 1; i++) {
       if (seqs[i + 1]! !== seqs[i]! + 1) return seqs[i]!;
     }
@@ -53,11 +69,32 @@ export class FeedStore<T extends { seq: number } = AuditEvent> {
 
   reset(): void {
     this.bySeq.clear();
+    this.absent.clear();
     this.publish();
   }
 
   private publish(): void {
     const items = [...this.bySeq.values()].sort((a, b) => b.seq - a.seq);
     this.store.set({ items, highest: items[0]?.seq ?? 0 });
+  }
+}
+
+const FILL_PAGE = 100;
+
+/** Fetches `after=` pages until no hole is left. Stops on a failed fetch, cancellation, or a page that makes no progress. */
+export async function fillGaps<T extends { seq: number }>(
+  feed: FeedStore<T>,
+  serverSeq: number,
+  fetchAfter: (after: number, limit: number) => Promise<{ items: readonly T[] } | null>,
+  cancelled: () => boolean,
+): Promise<void> {
+  let after = feed.gapAfter(serverSeq);
+  while (after !== null && !cancelled()) {
+    const page = await fetchAfter(after, FILL_PAGE);
+    if (!page || cancelled()) return;
+    feed.fill(after, page.items, page.items.length < FILL_PAGE, serverSeq);
+    const next = feed.gapAfter(serverSeq);
+    if (next === after) return;
+    after = next;
   }
 }

@@ -44,7 +44,8 @@ export class AuditService {
   }
 
   public getEventsBefore(roomId: string, beforeSeq?: number, limit = 50): AuditEventRow[] {
-    const seq = beforeSeq ?? this.getNextSeq(roomId);
+    // Open upper bound when no cursor. Not getNextSeq(): that increments the counter and punches holes in the sequence.
+    const seq = beforeSeq ?? Number.MAX_SAFE_INTEGER;
     return this.auditRepo.getEventsBefore(roomId, seq, limit);
   }
 

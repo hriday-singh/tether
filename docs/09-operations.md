@@ -18,7 +18,6 @@ refuses to start on invalid config).
 | `PERSIST_FLUSH_MS` | server | `250` | persistence flush interval |
 | `ROOM_UNLOAD_IDLE_MS`| server | `30000` | idle delay before room memory unload |
 | `DEMO_MODE` | server | `false` | enables server-side bot storm spawner (`demo.storm`) |
-| `NEXT_PUBLIC_SYNC_MODE`| web | `server` | `server` (real Fastify + WS) or `fake` (in-memory) |
 | `NEXT_PUBLIC_API_URL` | web | `http://localhost:4000` | backend REST API URL |
 | `NEXT_PUBLIC_WS_URL` | web | `ws://localhost:4000` | backend WebSocket URL |
 | `NEXT_PUBLIC_DEMO_MODE`| web | `false` | enables Network Lab panel and StormPanel |
