@@ -13,6 +13,7 @@ import {
   CHAT_BURST,
   CHAT_RATE_PER_SEC,
   FRAME_KINDS,
+  MAX_MEMBERS_PER_ROOM,
   SERVER_PING_MS,
   WS_CLOSE_CODES,
 } from '@tether/shared/constants';
@@ -81,7 +82,7 @@ export async function attachConnectionHandler(
     joinedAt: m.first_joined_at,
     status: 'active',
     isHost: room.hostElector.hostId === m.member_id,
-    isBot: false,
+    isBot: room.isBot(m.member_id),
   }));
   const allMembers = disambiguateDisplayNames(rawMembers);
 
@@ -92,7 +93,7 @@ export async function attachConnectionHandler(
     joinedAt: new Date().toISOString(),
     status: 'active',
     isHost: room.hostElector.hostId === member.id,
-    isBot: false,
+    isBot: room.isBot(member.id),
   };
 
   const token = await deps.joinService.issueRoomToken({
@@ -359,12 +360,42 @@ export async function attachConnectionHandler(
               ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'forbidden', message: 'Demo mode disabled' }));
               return;
             }
+            if (!deps.botStormManager) {
+              ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'bad_request', message: 'Storm spawner unavailable' }));
+              return;
+            }
+            if (deps.botStormManager.isStormActive(room.id)) {
+              ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'conflict', message: 'Storm already active' }));
+              return;
+            }
+
+            const currentMemberCount = deps.memberRepo.getMembers(room.id).length;
+            if (currentMemberCount + msg.bots > MAX_MEMBERS_PER_ROOM) {
+              ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'bad_request', message: 'Room capacity exceeded' }));
+              return;
+            }
+
             deps.auditService.logEvent(room.id, {
               type: 'demo.storm',
               actorMemberId: member.id,
               actorName: member.name,
               payload: { bots: msg.bots, seconds: msg.seconds, faults: msg.faults },
             });
+
+            const port = deps.serverPort ?? (deps.config.PORT || 4000);
+            void deps.botStormManager
+              .startStorm({
+                roomId: room.id,
+                hostMemberId: member.id,
+                bots: msg.bots,
+                seconds: msg.seconds,
+                faults: msg.faults,
+                port,
+              })
+              .catch((err) => {
+                console.error(`[demo.storm] Failed to run storm in room ${room.id}:`, err);
+              });
+
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;
           }

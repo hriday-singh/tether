@@ -115,7 +115,6 @@ function Shell() {
           <MobileWorkspace kicked={kicked} />
         ) : ui.maximizedPanel ? (
           <MaximizedPanelView
-            maximizedPanel={ui.maximizedPanel}
             kicked={kicked}
             onRestore={() => ws.maximizePanel(null)}
           />
@@ -146,50 +145,42 @@ function Shell() {
 }
 
 function MaximizedPanelView({
-  maximizedPanel,
   kicked,
   onRestore,
 }: {
-  maximizedPanel: 'editor' | 'preview' | 'sidebar' | 'drawer';
   kicked: boolean;
   onRestore: () => void;
 }) {
-  switch (maximizedPanel) {
-    case 'editor':
-      return (
-        <section aria-label="Editor" className={cn(card, 'relative size-full')}>
-          <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 rounded-full border border-border/70 bg-card/90 px-2.5 py-1 text-caption text-foreground shadow-card backdrop-blur-md">
-            <span className="text-micro font-medium">Editor Maximized</span>
-            <Button size="icon-xs" variant="ghost" onClick={onRestore} aria-label="Restore layout">
+  const ws = useWorkspace();
+  const room = useStore(ws.client.room);
+  const lang = languageInfo(room.room.language);
+
+  return (
+    <section aria-label="Editor" className={cn(card, 'relative flex size-full min-h-0 flex-col')}>
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/60 px-2.5">
+        <div className="flex items-center gap-1.5 text-caption font-medium">
+          <Icon icon={CodeIcon} size={14} className="text-muted-foreground" />
+          <span>Editor</span>
+          <span className="font-mono text-micro text-muted-foreground">({lang.label})</span>
+          <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-micro font-medium text-primary">
+            Maximized
+          </span>
+        </div>
+        <div className="ml-auto flex items-center gap-1">
+          <Tip label="Restore editor">
+            <Button size="icon-xs" variant="ghost" onClick={onRestore} aria-label="Restore editor">
               <Icon icon={MinimizeScreenIcon} size={14} />
             </Button>
-          </div>
-          <div className="relative min-h-0 flex-1">
-            <Editor readOnly={kicked} />
-            <OffscreenCursors />
-            <FollowController />
-          </div>
-        </section>
-      );
-    case 'preview':
-      return (
-        <section aria-label="Live preview" className={cn(card, 'relative size-full')}>
-          <PreviewPane />
-        </section>
-      );
-    case 'sidebar':
-      return (
-        <aside aria-label="People, activity, and scratchpad" className={cn(card, 'relative size-full')}>
-          <Sidebar />
-        </aside>
-      );
-    case 'drawer':
-      return (
-        <div className={cn(card, 'relative size-full')}>
-          <DiagnosticsDrawer onCollapse={onRestore} />
+          </Tip>
         </div>
-      );
-  }
+      </div>
+      <div className="relative min-h-0 flex-1">
+        <Editor readOnly={kicked} />
+        <OffscreenCursors />
+        <FollowController />
+      </div>
+    </section>
+  );
 }
 
 function DesktopEditorPanel({
@@ -207,12 +198,14 @@ function DesktopEditorPanel({
 }) {
   const ws = useWorkspace();
   const ui = useStore(ws.ui);
+  const room = useStore(ws.client.room);
+  const lang = languageInfo(room.room.language);
 
   return (
     <ResizablePanel id="editor" minSize={showPreviewPane || showSidebar ? '30' : 600} defaultSize={showPreviewPane ? '50' : '72'}>
-      <section aria-label="Editor" className={cn(card, 'relative')}>
-        {!wide && languagePreview && (
-          <div className="flex h-10 shrink-0 items-center border-b border-border/60 px-2">
+      <section aria-label="Editor" className={cn(card, 'relative flex h-full min-h-0 flex-col')}>
+        <div className="flex h-10 shrink-0 items-center justify-between border-b border-border/60 px-2.5">
+          {!wide && languagePreview ? (
             <Segmented
               aria-label="Editor or preview"
               value={ui.editorView}
@@ -222,10 +215,14 @@ function DesktopEditorPanel({
                 { value: 'preview', label: 'Preview' },
               ]}
             />
-          </div>
-        )}
-        <div className={cn('relative min-h-0 flex-1', !wide && ui.editorView === 'preview' && languagePreview && 'hidden')}>
-          <div className="absolute top-2 right-2 z-10 opacity-70 hover:opacity-100 transition-opacity">
+          ) : (
+            <div className="flex items-center gap-1.5 text-caption font-medium">
+              <Icon icon={CodeIcon} size={14} className="text-muted-foreground" />
+              <span>Editor</span>
+              <span className="font-mono text-micro text-muted-foreground">({lang.label})</span>
+            </div>
+          )}
+          <div className="ml-auto flex items-center gap-1">
             <Tip label="Maximize editor">
               <Button
                 size="icon-xs"
@@ -237,6 +234,9 @@ function DesktopEditorPanel({
               </Button>
             </Tip>
           </div>
+        </div>
+
+        <div className={cn('relative min-h-0 flex-1', !wide && ui.editorView === 'preview' && languagePreview && 'hidden')}>
           <Editor readOnly={kicked} />
           <OffscreenCursors />
           <FollowController />
@@ -320,7 +320,7 @@ function DesktopResizableLayout({
         }}
       >
         <div className={card}>
-          <DiagnosticsDrawer onCollapse={() => ws.ui.update((s) => ({ ...s, drawerOpen: false }))} />
+          <DiagnosticsDrawer />
         </div>
       </ResizablePanel>
     </ResizableGroup>

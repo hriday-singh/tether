@@ -12,6 +12,7 @@ import { ChatRepo } from './repo/chatRepo.js';
 import { ChatService } from './services/chatService.js';
 import { PersistenceService } from './services/persistenceService.js';
 import { RoomRegistry } from './rooms/roomRegistry.js';
+import { BotStormManager } from './rooms/botStormManager.js';
 import { buildApp } from './http/app.js';
 import { createUpgradeGate, setDraining } from './ws/upgradeGate.js';
 
@@ -37,6 +38,13 @@ async function main() {
     config.ROOM_UNLOAD_IDLE_MS,
     config.HOST_GRACE_MS
   );
+  const botStormManager = new BotStormManager({
+    joinService,
+    memberRepo,
+    roomRepo,
+    auditService,
+    roomRegistry,
+  });
 
   const deps = {
     config,
@@ -49,6 +57,8 @@ async function main() {
     auditRepo,
     chatService,
     persistenceService,
+    botStormManager,
+    serverPort: config.PORT,
   };
 
   const app = buildApp(deps);
@@ -65,6 +75,7 @@ async function main() {
   const shutdown = async () => {
     console.log('Shutting down server...');
     setDraining(true);
+    await botStormManager.destroyAll();
     roomRegistry.destroy();
     persistenceService.destroy();
     wss.close();

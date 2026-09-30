@@ -13,7 +13,7 @@ import {
   Share08Icon,
   StopIcon,
   CheckmarkCircle02Icon,
-  AiMagicIcon,
+  TextAlignLeftIcon,
 } from '@hugeicons/core-free-icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -114,14 +114,14 @@ export function TopBar() {
               aria-label="Host controls"
               onClick={() => ws.ui.update((s) => ({ ...s, hostSheet: true }))}
             >
-              <Icon icon={CrownIcon} className="text-warning" />
+              <Icon icon={CrownIcon} size={14} className="text-warning" />
             </Button>
           </Tip>
         )}
         <OverflowMenu languageExt={lang.ext} />
         <Tip label="Settings" shortcut={`${mod} ,`}>
           <Button size="icon-sm" variant="ghost" aria-label="Settings" onClick={() => ws.ui.update((s) => ({ ...s, settings: true }))}>
-            <Icon icon={Settings01Icon} />
+            <Icon icon={Settings01Icon} size={14} />
           </Button>
         </Tip>
       </div>
@@ -169,7 +169,7 @@ function FormatButton() {
         onClick={() => void handleFormat()}
         disabled={!canFormat}
       >
-        <Icon icon={AiMagicIcon} size={15} />
+        <Icon icon={TextAlignLeftIcon} size={14} />
       </Button>
     </Tip>
   );
@@ -264,24 +264,24 @@ function OverflowMenu({ languageExt }: { languageExt: string }) {
       <Tip label="Export and more">
         <DropdownMenuTrigger asChild>
           <Button size="icon-sm" variant="ghost" aria-label="Export and more">
-            <Icon icon={Download04Icon} />
+            <Icon icon={Download04Icon} size={14} />
           </Button>
         </DropdownMenuTrigger>
       </Tip>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Export</DropdownMenuLabel>
         <DropdownMenuItem onSelect={download}>
-          <Icon icon={Download04Icon} /> Download {ws.roomId}.{languageExt}
+          <Icon icon={Download04Icon} size={14} /> Download {ws.roomId}.{languageExt}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void copyAll()}>
-          <Icon icon={Copy01Icon} /> Copy all
+          <Icon icon={Copy01Icon} size={14} /> Copy all
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void navigator.clipboard.writeText(`${location.origin}/r/${ws.roomId}`).then(() => toast.success('Invite link copied'))}>
-          <Icon icon={Link01Icon} /> Copy invite link
+          <Icon icon={Link01Icon} size={14} /> Copy invite link
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem destructive onSelect={() => void leave()}>
-          <Icon icon={Logout03Icon} /> Leave room
+          <Icon icon={Logout03Icon} size={14} /> Leave room
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

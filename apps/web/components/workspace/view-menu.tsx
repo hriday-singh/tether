@@ -1,10 +1,10 @@
 'use client';
 
 import {
-  AiMagicIcon,
   BrowserIcon,
   CodeIcon,
   CpuIcon,
+  FlashIcon,
   FullScreenIcon,
   Layout01Icon,
   MaximizeScreenIcon,
@@ -54,7 +54,7 @@ export function ViewMenu() {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem onSelect={() => ws.ui.update((s) => ({ ...s, zenMode: !s.zenMode }))}>
-          <Icon icon={FullScreenIcon} />
+          <Icon icon={FullScreenIcon} size={14} />
           <span>{ui.zenMode ? 'Exit Zen Mode' : 'Zen Mode'}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -76,7 +76,7 @@ function WorkspacePanelsItems({
       <DropdownMenuLabel>Workspace Panels</DropdownMenuLabel>
 
       <DropdownMenuItem onSelect={() => ws.maximizePanel('editor')}>
-        <Icon icon={ui.maximizedPanel === 'editor' ? MinimizeScreenIcon : MaximizeScreenIcon} />
+        <Icon icon={ui.maximizedPanel === 'editor' ? MinimizeScreenIcon : MaximizeScreenIcon} size={14} />
         <span>{ui.maximizedPanel === 'editor' ? 'Restore Editor' : 'Maximize Editor'}</span>
       </DropdownMenuItem>
 
@@ -85,19 +85,19 @@ function WorkspacePanelsItems({
           if (ws.view.current) openSearchPanel(ws.view.current);
         }}
       >
-        <Icon icon={Search01Icon} />
+        <Icon icon={Search01Icon} size={14} />
         <span>Find in Document</span>
       </DropdownMenuItem>
 
       <DropdownMenuItem onSelect={() => ws.togglePanel('sidebar')}>
-        <Icon icon={SidebarRightIcon} />
+        <Icon icon={SidebarRightIcon} size={14} />
         <span>Sidebar</span>
         {ui.sidebarOpen && <Icon icon={Tick02Icon} size={14} className="ml-auto text-primary" />}
       </DropdownMenuItem>
 
       {hasPreview && (
         <DropdownMenuItem onSelect={() => ws.togglePanel('preview')}>
-          <Icon icon={BrowserIcon} />
+          <Icon icon={BrowserIcon} size={14} />
           <span>Live Preview</span>
           {ui.previewOpen && <Icon icon={Tick02Icon} size={14} className="ml-auto text-primary" />}
         </DropdownMenuItem>
@@ -119,7 +119,7 @@ function DiagnosticsViewsItems({
       <DropdownMenuLabel>Diagnostics &amp; Views</DropdownMenuLabel>
 
       <DropdownMenuItem onSelect={() => ws.openDrawerTab('console')}>
-        <Icon icon={CodeIcon} />
+        <Icon icon={CodeIcon} size={14} />
         <span>Console &amp; REPL</span>
         {ui.drawerOpen && ui.drawerTab === 'console' && (
           <Icon icon={Tick02Icon} size={14} className="ml-auto text-primary" />
@@ -127,7 +127,7 @@ function DiagnosticsViewsItems({
       </DropdownMenuItem>
 
       <DropdownMenuItem onSelect={() => ws.openDrawerTab('sync')}>
-        <Icon icon={CpuIcon} />
+        <Icon icon={CpuIcon} size={14} />
         <span>Sync &amp; Latency Stats</span>
         {ui.drawerOpen && ui.drawerTab === 'sync' && (
           <Icon icon={Tick02Icon} size={14} className="ml-auto text-primary" />
@@ -136,7 +136,7 @@ function DiagnosticsViewsItems({
 
       {DEMO_MODE && (
         <DropdownMenuItem onSelect={() => ws.openDrawerTab('chaos')}>
-          <Icon icon={AiMagicIcon} />
+          <Icon icon={FlashIcon} size={14} />
           <span>Chaos Lab</span>
           {ui.drawerOpen && ui.drawerTab === 'chaos' && (
             <Icon icon={Tick02Icon} size={14} className="ml-auto text-primary" />
@@ -147,7 +147,7 @@ function DiagnosticsViewsItems({
       <DropdownMenuItem
         onSelect={() => ws.ui.update((s) => ({ ...s, sidebarOpen: true, sidebarTab: 'scratchpad' }))}
       >
-        <Icon icon={Note01Icon} />
+        <Icon icon={Note01Icon} size={14} />
         <span>Shared Scratchpad</span>
         {ui.sidebarOpen && ui.sidebarTab === 'scratchpad' && (
           <Icon icon={Tick02Icon} size={14} className="ml-auto text-primary" />

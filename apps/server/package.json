@@ -27,6 +27,7 @@
   "dependencies": {
     "@fastify/cors": "^10.0.2",
     "@tether/shared": "workspace:*",
+    "@tether/sync-client": "workspace:*",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
     "jose": "^6.0.8",
@@ -38,7 +39,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tether/sync-client": "workspace:*",
     "@types/node": "^24.2.0",
     "@types/ws": "^8.5.14",
     "pino-pretty": "^13.0.0",

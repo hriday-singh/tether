@@ -14,6 +14,8 @@ import { attachConnectionHandler } from './connectionHandler.js';
 
 import { PersistenceService } from '../services/persistenceService.js';
 
+import { BotStormManager } from '../rooms/botStormManager.js';
+
 export interface UpgradeGateDependencies {
   config: ServerConfig;
   roomRepo: RoomRepo;
@@ -24,6 +26,8 @@ export interface UpgradeGateDependencies {
   auditService: AuditService;
   chatService: ChatService;
   persistenceService?: PersistenceService;
+  botStormManager?: BotStormManager;
+  serverPort?: number;
 }
 
 const ipConnectionCounts = new Map<string, number>();

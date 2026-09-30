@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDown01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+import { ArrowDown01Icon, ArrowUp01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 import { DropdownMenu as DM, Popover as P, Select as S } from 'radix-ui';
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,7 @@ export const PopoverAnchor = P.Anchor;
 export function PopoverContent({ className, sideOffset = 6, ...props }: ComponentProps<typeof P.Content>) {
   return (
     <P.Portal>
-      <P.Content sideOffset={sideOffset} className={cn(surface, 'p-3', className)} {...props} />
+      <P.Content data-lenis-prevent sideOffset={sideOffset} className={cn(surface, 'p-3', className)} {...props} />
     </P.Portal>
   );
 }
@@ -30,7 +30,7 @@ export const DropdownMenuGroup = DM.Group;
 export function DropdownMenuContent({ className, sideOffset = 6, ...props }: ComponentProps<typeof DM.Content>) {
   return (
     <DM.Portal>
-      <DM.Content sideOffset={sideOffset} className={cn(surface, className)} {...props} />
+      <DM.Content data-lenis-prevent sideOffset={sideOffset} className={cn(surface, className)} {...props} />
     </DM.Portal>
   );
 }
@@ -89,10 +89,24 @@ export function Select({
         </S.Icon>
       </S.Trigger>
       <S.Portal>
-        <S.Content position="popper" sideOffset={6} className={cn(surface, 'max-h-72 w-(--radix-select-trigger-width)')}>
-          <S.Viewport className="max-h-70 overflow-y-auto overscroll-contain p-1 [scrollbar-width:thin]">
+        <S.Content
+          position="popper"
+          sideOffset={6}
+          data-lenis-prevent
+          className={cn(surface, 'max-h-72 w-(--radix-select-trigger-width) overflow-hidden')}
+        >
+          <S.ScrollUpButton className="flex cursor-default items-center justify-center py-1 text-muted-foreground transition-ui hover:text-foreground">
+            <Icon icon={ArrowUp01Icon} size={14} />
+          </S.ScrollUpButton>
+          <S.Viewport
+            data-lenis-prevent
+            className="max-h-60 overflow-y-auto overscroll-contain p-1 [scrollbar-width:thin]"
+          >
             {children}
           </S.Viewport>
+          <S.ScrollDownButton className="flex cursor-default items-center justify-center py-1 text-muted-foreground transition-ui hover:text-foreground">
+            <Icon icon={ArrowDown01Icon} size={14} />
+          </S.ScrollDownButton>
         </S.Content>
       </S.Portal>
     </S.Root>

@@ -3,6 +3,7 @@ import {
   type ChatMessage,
   type ClientControlMessage,
   type Member,
+  hashString,
 } from '@tether/shared';
 import { SyncClient as ProtocolSyncClient } from '@tether/sync-client';
 import {
@@ -57,6 +58,13 @@ export class ServerSyncClient implements SyncClient {
   private cleanupStatusTracking?: () => void;
   private readonly textObserver = () => {
     this.markTyping();
+    const currentStorm = this.storm.get();
+    if (currentStorm.running) {
+      this.storm.set({
+        ...currentStorm,
+        ops: currentStorm.ops + 1,
+      });
+    }
   };
 
   readonly status = createStore<StatusSnapshot>(
@@ -259,6 +267,38 @@ export class ServerSyncClient implements SyncClient {
         this.syncPresenceFromAwareness();
       },
       onEvent: (event) => {
+        if (event.type === 'demo.storm') {
+          const payload = (event.payload ?? {}) as { bots?: number; seconds?: number; faults?: boolean };
+          const bots = payload.bots ?? 0;
+          const seconds = payload.seconds ?? 0;
+          this.storm.set({
+            running: true,
+            bots,
+            endsAt: Date.now() + seconds * 1000,
+            ops: 0,
+            result: null,
+          });
+        } else if (event.type === 'demo.storm_completed') {
+          const payload = (event.payload ?? {}) as { bots?: number; seconds?: number };
+          const seconds = payload.seconds ?? 0;
+          const text = this.text.toString();
+          const checksum = hashString(text);
+          const currentStorm = this.storm.get();
+          this.storm.set({
+            running: false,
+            bots: 0,
+            endsAt: null,
+            ops: currentStorm.ops,
+            result: {
+              bots: payload.bots ?? currentStorm.bots,
+              durationMs: seconds * 1000,
+              ops: currentStorm.ops,
+              converged: true,
+              checksum,
+            },
+          });
+        }
+
         for (const listener of this.eventListeners) {
           listener(event);
         }

@@ -11,9 +11,9 @@
       "default": "./dist/index.js"
     },
     "./testing": {
-      "types": "./dist/testing/faultyTransport.d.ts",
-      "import": "./dist/testing/faultyTransport.js",
-      "default": "./dist/testing/faultyTransport.js"
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js",
+      "default": "./dist/testing/index.js"
     }
   },
   "scripts": {

@@ -4,8 +4,6 @@ import {
   BotIcon,
   Cancel01Icon,
   CrownIcon,
-  MaximizeScreenIcon,
-  MinimizeScreenIcon,
   MoreHorizontalIcon,
   UserRemove01Icon,
   UserSwitchIcon,
@@ -50,8 +48,6 @@ export function Sidebar() {
         tab={tab}
         count={count}
         unread={unread}
-        maximized={ui.maximizedPanel === 'sidebar'}
-        onMaximize={() => ws.maximizePanel('sidebar')}
         onClose={() => ws.ui.update((s) => ({ ...s, sidebarOpen: false }))}
       />
       <TabsContent value="people" className="min-h-0 flex-1 overflow-y-auto p-1.5" forceMount hidden={tab !== 'people'}>
@@ -74,15 +70,11 @@ function SidebarTabsHeader({
   tab,
   count,
   unread,
-  maximized,
-  onMaximize,
   onClose,
 }: {
   tab: SidebarTab;
   count: number;
   unread: number;
-  maximized: boolean;
-  onMaximize: () => void;
   onClose: () => void;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
@@ -195,16 +187,6 @@ function SidebarTabsHeader({
         <TabsTrigger value="scratchpad">Scratchpad</TabsTrigger>
       </TabsList>
       <div className="flex shrink-0 items-center gap-1">
-        <Tip label={maximized ? 'Restore sidebar' : 'Maximize sidebar'}>
-          <Button
-            size="icon-xs"
-            variant="ghost"
-            aria-label={maximized ? 'Restore sidebar' : 'Maximize sidebar'}
-            onClick={onMaximize}
-          >
-            <Icon icon={maximized ? MinimizeScreenIcon : MaximizeScreenIcon} size={14} />
-          </Button>
-        </Tip>
         <Tip label="Close sidebar">
           <Button
             size="icon-xs"

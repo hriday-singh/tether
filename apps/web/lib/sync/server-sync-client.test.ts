@@ -2,10 +2,18 @@ import { describe, it, expect, vi } from 'vitest';
 import { ServerSyncClient } from './server-sync-client';
 import { CommandError } from './types';
 
+interface MockSyncClientOpts {
+  onEvent?: (event: unknown) => void;
+  [key: string]: unknown;
+}
+
+let lastCreatedOpts: MockSyncClientOpts | null = null;
+
 // Mock @tether/sync-client
 vi.mock('@tether/sync-client', () => {
   return {
-    SyncClient: vi.fn().mockImplementation((opts) => {
+    SyncClient: vi.fn().mockImplementation((opts: MockSyncClientOpts) => {
+      lastCreatedOpts = opts;
       return {
         url: opts.url,
         token: opts.token,
@@ -126,5 +134,53 @@ describe('ServerSyncClient', () => {
 
     client.destroy();
     vi.useRealTimers();
+  });
+
+  it('updates storm store on demo.storm and demo.storm_completed events', () => {
+    const client = new ServerSyncClient(options);
+    expect(client.storm.get().running).toBe(false);
+
+    lastCreatedOpts?.onEvent?.({
+      id: 1,
+      roomId: 'test-room',
+      seq: 1,
+      type: 'demo.storm',
+      actorMemberId: 'mem-1',
+      actorName: 'Host',
+      payload: { bots: 4, seconds: 10, faults: true },
+      timestamp: new Date().toISOString(),
+    });
+
+    const active = client.storm.get();
+    expect(active.running).toBe(true);
+    expect(active.bots).toBe(4);
+    expect(active.endsAt).toBeGreaterThan(Date.now());
+    expect(active.ops).toBe(0);
+
+    // Simulate typing during storm
+    client.text.insert(0, 'hello');
+    expect(client.storm.get().ops).toBe(1);
+
+    lastCreatedOpts?.onEvent?.({
+      id: 2,
+      roomId: 'test-room',
+      seq: 2,
+      type: 'demo.storm_completed',
+      actorMemberId: null,
+      actorName: null,
+      payload: { bots: 4, seconds: 10 },
+      timestamp: new Date().toISOString(),
+    });
+
+    const finished = client.storm.get();
+    expect(finished.running).toBe(false);
+    expect(finished.bots).toBe(0);
+    expect(finished.result).toMatchObject({
+      durationMs: 10000,
+      ops: 1,
+      converged: true,
+    });
+
+    client.destroy();
   });
 });

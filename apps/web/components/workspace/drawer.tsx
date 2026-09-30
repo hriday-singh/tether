@@ -6,9 +6,6 @@ import {
   CancelCircleIcon,
   CpuIcon,
   Delete02Icon,
-  MaximizeScreenIcon,
-  MinimizeScreenIcon,
-  MinusSignIcon,
   BotIcon,
   ArrowRight01Icon,
 } from '@hugeicons/core-free-icons';
@@ -32,7 +29,7 @@ import { cn, formatAgo, formatClock } from '@/lib/utils';
 import { useWorkspace, type UIState } from './context';
 import { Metric } from './sync-status';
 
-export function DiagnosticsDrawer({ onCollapse }: { onCollapse?: () => void }) {
+export function DiagnosticsDrawer() {
   const ws = useWorkspace();
   const ui = useStore(ws.ui);
   const tab = ui.drawerTab;
@@ -47,26 +44,6 @@ export function DiagnosticsDrawer({ onCollapse }: { onCollapse?: () => void }) {
           </TabsList>
         </Tabs>
         <div className="ml-auto flex items-center gap-1">
-          <Tip label={ui.maximizedPanel === 'drawer' ? 'Restore drawer' : 'Maximize drawer'}>
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label={ui.maximizedPanel === 'drawer' ? 'Restore drawer' : 'Maximize drawer'}
-              onClick={() => ws.maximizePanel('drawer')}
-            >
-              <Icon icon={ui.maximizedPanel === 'drawer' ? MinimizeScreenIcon : MaximizeScreenIcon} size={14} />
-            </Button>
-          </Tip>
-          <Tip label="Collapse (Ctrl `)">
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label="Collapse diagnostics"
-              onClick={onCollapse ?? (() => ws.ui.update((s) => ({ ...s, drawerOpen: false })))}
-            >
-              <Icon icon={MinusSignIcon} size={14} />
-            </Button>
-          </Tip>
           <Tip label="Close drawer">
             <Button
               size="icon-xs"

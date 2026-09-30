@@ -5,6 +5,7 @@ import { buttonVariants } from './button-variants';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
 import { ThinkingOrb } from './thinking-orb';
 import { FormattedTime } from './formatted-time';
+import { Popover, PopoverContent, PopoverTrigger, Select, SelectItem } from './menus';
 
 describe('Button', () => {
   it('includes touch-target hit expansion class for icon-xs size', () => {
@@ -23,6 +24,19 @@ describe('Button', () => {
     const classes = buttonVariants({ variant: 'primary' });
     expect(classes).toContain('bg-primary');
     expect(classes).toContain('text-primary-foreground');
+  });
+
+  it('preserves text-primary-foreground when rendered through cn with size classes', () => {
+    const { rerender } = render(<Button size="lg">Create room</Button>);
+    let button = screen.getByRole('button', { name: 'Create room' });
+    expect(button.className).toContain('bg-primary');
+    expect(button.className).toContain('text-primary-foreground');
+    expect(button.className).toContain('text-body');
+
+    rerender(<Button size="sm">Create room</Button>);
+    button = screen.getByRole('button', { name: 'Create room' });
+    expect(button.className).toContain('text-primary-foreground');
+    expect(button.className).toContain('text-caption');
   });
 });
 
@@ -69,5 +83,31 @@ describe('FormattedTime', () => {
     expect(timeEl).toHaveAttribute('dateTime', iso);
     expect(timeEl).toHaveClass('test-time');
     expect(timeEl?.textContent).toBeTruthy();
+  });
+});
+
+describe('Menus and Popovers', () => {
+  it('PopoverContent includes data-lenis-prevent to avoid smooth scroll hijacking', () => {
+    render(
+      <Popover open>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverContent data-testid="popover-content">Popover Body</PopoverContent>
+      </Popover>,
+    );
+    const content = screen.getByTestId('popover-content');
+    expect(content).toBeInTheDocument();
+    expect(content).toHaveAttribute('data-lenis-prevent');
+  });
+
+  it('Select renders combobox trigger and displays value', () => {
+    render(
+      <Select value="html" onValueChange={() => {}} aria-label="Language selection">
+        <SelectItem value="html">HTML</SelectItem>
+        <SelectItem value="css">CSS</SelectItem>
+      </Select>,
+    );
+    const trigger = screen.getByRole('combobox', { name: 'Language selection' });
+    expect(trigger).toBeInTheDocument();
+    expect(trigger).toHaveTextContent('HTML');
   });
 });

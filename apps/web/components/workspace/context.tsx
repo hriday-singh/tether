@@ -27,7 +27,7 @@ export interface UIState {
   /** Laptop layout (lg): the editor card shows code or preview. */
   editorView: 'code' | 'preview';
   mobileTab: 'editor' | 'chat' | 'activity' | 'diagnostics';
-  maximizedPanel: 'editor' | 'preview' | 'sidebar' | 'drawer' | null;
+  maximizedPanel: 'editor' | null;
   zenMode: boolean;
 }
 
@@ -59,7 +59,7 @@ export interface Workspace {
   stop(): void;
   focusEditor(): void;
   togglePanel(panel: 'sidebar' | 'preview' | 'drawer'): void;
-  maximizePanel(panel: 'editor' | 'preview' | 'sidebar' | 'drawer' | null): void;
+  maximizePanel(panel: 'editor' | null): void;
   openDrawerTab(tab: 'console' | 'sync' | 'chaos'): void;
 }
 

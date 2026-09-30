@@ -31,4 +31,28 @@ describe('UIState mobileTab behavior', () => {
     ui.update((s) => ({ ...s, mobileTab: 'diagnostics' }));
     expect(ui.get().mobileTab).toBe('diagnostics');
   });
+
+  it('supports maximizing and restoring editor only', () => {
+    const ui = createStore<UIState>({
+      palette: false,
+      settings: false,
+      shortcuts: false,
+      hostSheet: false,
+      drawerOpen: false,
+      drawerTab: 'console',
+      sidebarOpen: true,
+      sidebarTab: 'people',
+      previewOpen: true,
+      editorView: 'code',
+      mobileTab: 'editor',
+      maximizedPanel: null,
+      zenMode: false,
+    });
+
+    expect(ui.get().maximizedPanel).toBeNull();
+    ui.update((s) => ({ ...s, maximizedPanel: 'editor' }));
+    expect(ui.get().maximizedPanel).toBe('editor');
+    ui.update((s) => ({ ...s, maximizedPanel: null }));
+    expect(ui.get().maximizedPanel).toBeNull();
+  });
 });

@@ -137,7 +137,7 @@ export const ClientDemoStormSchema = z.object({
   t: z.literal('demo.storm'),
   rid: z.string().uuid(),
   bots: z.number().int().min(1).max(STORM_MAX_BOTS),
-  seconds: z.number().int().min(10).max(STORM_MAX_SECONDS),
+  seconds: z.number().int().min(1).max(STORM_MAX_SECONDS),
   faults: z.boolean(),
 });
 

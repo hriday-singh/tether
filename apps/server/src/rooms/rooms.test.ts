@@ -281,6 +281,30 @@ describe('Rooms & RoomRegistry', () => {
       room.destroy();
     });
 
+    it('tracks bot members and exposes isBot(memberId)', () => {
+      roomRepo.create({ id: 'test-bot-room', epoch: 'epoch-1', createdBy: 'u1' });
+
+      const room = new Room(
+        'test-bot-room',
+        'epoch-1',
+        null,
+        [],
+        persistenceService,
+        auditService
+      );
+
+      const humanWs = new MockSocket();
+      const botWs = new MockSocket();
+
+      room.addConnection(humanWs as unknown as WebSocket, { id: 'u1', name: 'Alice', colorIndex: 0 }, false);
+      room.addConnection(botWs as unknown as WebSocket, { id: 'bot-1', name: 'Bot Alpha', colorIndex: 1 }, true);
+
+      expect(room.isBot('u1')).toBe(false);
+      expect(room.isBot('bot-1')).toBe(true);
+
+      room.destroy();
+    });
+
     it('closes active sockets with WS_CLOSE_CODES.RESTART (1012) on destroy', () => {
       roomRepo.create({ id: 'test-destroy-room', epoch: 'epoch-1', createdBy: 'u1' });
 

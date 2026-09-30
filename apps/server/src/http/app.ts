@@ -17,6 +17,8 @@ import { PersistenceService } from '../services/persistenceService.js';
 import { createRateLimitHook, defaultIpKeyExtractor } from './rateLimiter.js';
 import { openApiSpec } from './openapi.js';
 
+import { BotStormManager } from '../rooms/botStormManager.js';
+
 export interface AppDependencies {
   config: ServerConfig;
   roomService: RoomService;
@@ -27,6 +29,7 @@ export interface AppDependencies {
   roomRepo: RoomRepo;
   memberRepo: MemberRepo;
   persistenceService?: PersistenceService;
+  botStormManager?: BotStormManager;
 }
 
 export function buildApp(deps: AppDependencies): FastifyInstance {

@@ -32,6 +32,9 @@ importers:
       '@tether/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@tether/sync-client':
+        specifier: workspace:*
+        version: link:../../packages/sync-client
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
@@ -60,9 +63,6 @@ importers:
         specifier: ^3.24.2
         version: 3.25.76
     devDependencies:
-      '@tether/sync-client':
-        specifier: workspace:*
-        version: link:../../packages/sync-client
       '@types/node':
         specifier: ^24.2.0
         version: 24.19.0

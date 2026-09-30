@@ -39,6 +39,7 @@ export class Room {
   private connections = new Set<WebSocket>();
   private connContexts = new Map<WebSocket, RoomConnectionContext>();
   private claimedClientIDs = new Map<number, string>();
+  private botMemberIds = new Set<string>();
   private checksumQuietTimer: NodeJS.Timeout | null = null;
   private editCoalescer: EditSummaryCoalescer;
   // Upper-bound estimate of the encoded doc size; Infinity forces an exact measure on the first update.
@@ -143,9 +144,24 @@ export class Room {
     });
   }
 
-  public addConnection(ws: WebSocket, member: { id: string; name: string; colorIndex: number }): { ctx: RoomConnectionContext; isNew: boolean } {
+  public markBot(memberId: string): void {
+    this.botMemberIds.add(memberId);
+  }
+
+  public isBot(memberId: string): boolean {
+    return this.botMemberIds.has(memberId);
+  }
+
+  public addConnection(
+    ws: WebSocket,
+    member: { id: string; name: string; colorIndex: number },
+    isBot = false
+  ): { ctx: RoomConnectionContext; isNew: boolean } {
     this.lastActiveAt = Date.now();
     this.connections.add(ws);
+    if (isBot) {
+      this.botMemberIds.add(member.id);
+    }
 
     const awarenessBinding = new AwarenessBinding(member.id, this.claimedClientIDs);
     const floodGuard = new FloodGuard();

@@ -5,23 +5,24 @@ import {
   ArrowReloadHorizontalIcon,
   BrowserIcon,
   Cancel01Icon,
-  MaximizeScreenIcon,
-  MinimizeScreenIcon,
+  MinusSignIcon,
+  PlusSignIcon,
   ZoomInAreaIcon,
 } from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
-import { Badge, Tip } from '@/components/ui/controls';
+import { Badge, Slider, Tip } from '@/components/ui/controls';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/menus';
 import { useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
 import { buildPreviewDoc, isConsoleMessage } from '@/lib/preview';
-import { randomId } from '@/lib/utils';
+import { cn, randomId } from '@/lib/utils';
 import { useWorkspace } from './context';
 
 const DEBOUNCE_MS = 300;
 const WATCHDOG_MS = 5000;
-const ZOOMS = [1, 0.75, 0.5] as const;
+const PRESET_ZOOMS = [0.5, 0.75, 1, 1.25, 1.5] as const;
 
 /**
  * Sandboxed live preview (docs/ui-ux/05): sandbox="allow-scripts" only, so the frame has an opaque origin
@@ -31,13 +32,21 @@ const ZOOMS = [1, 0.75, 0.5] as const;
 export function PreviewPane({ header = true }: { header?: boolean }) {
   const ws = useWorkspace();
   const { client } = ws;
-  const ui = useStore(ws.ui);
   const mode = languageInfo(useStore(client.room).room.language).preview;
   const run = useStore(ws.preview);
   const [doc, setDoc] = useState('');
-  const [zoom, setZoom] = useState<(typeof ZOOMS)[number]>(1);
+  const [zoom, setZoom] = useState<number>(1);
+  const [zoomOpen, setZoomOpen] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const lastBeat = useRef(0);
+
+  // Close zoom popover when clicking into iframe or window blurs
+  useEffect(() => {
+    if (!zoomOpen) return;
+    const onBlur = () => setZoomOpen(false);
+    window.addEventListener('blur', onBlur);
+    return () => window.removeEventListener('blur', onBlur);
+  }, [zoomOpen]);
 
   // Rebuild on text change (debounced). An edit after "Run page" drops back to script-free live mode.
   useEffect(() => {
@@ -130,29 +139,96 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
                 <Icon icon={ArrowReloadHorizontalIcon} size={14} />
               </Button>
             </Tip>
-            <Tip label={`Zoom ${Math.round(zoom * 100)}%`}>
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                aria-label={`Zoom, now ${Math.round(zoom * 100)} percent`}
-                onClick={() => setZoom(ZOOMS[(ZOOMS.indexOf(zoom) + 1) % ZOOMS.length]!)}
+            <Popover open={zoomOpen} onOpenChange={setZoomOpen}>
+              <Tip label={`Zoom ${Math.round(zoom * 100)}%`}>
+                <PopoverTrigger asChild>
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label={`Zoom controls, now ${Math.round(zoom * 100)} percent`}
+                  >
+                    <Icon icon={ZoomInAreaIcon} size={14} />
+                  </Button>
+                </PopoverTrigger>
+              </Tip>
+              <PopoverContent
+                side="bottom"
+                align="end"
+                className="w-60 flex flex-col gap-3 p-3"
+                onPointerDownOutside={() => setZoomOpen(false)}
+                onInteractOutside={() => setZoomOpen(false)}
               >
-                <Icon icon={ZoomInAreaIcon} size={14} />
-              </Button>
-            </Tip>
+                <div className="flex items-center justify-between text-caption font-medium">
+                  <span className="text-muted-foreground">Zoom Level</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono tabular">{Math.round(zoom * 100)}%</span>
+                    {zoom !== 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setZoom(1)}
+                        className="text-micro text-primary hover:underline"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label="Zoom out"
+                    disabled={zoom <= 0.25}
+                    onClick={() => setZoom((z) => Math.max(0.25, Math.round((z - 0.1) * 100) / 100))}
+                  >
+                    <Icon icon={MinusSignIcon} size={12} />
+                  </Button>
+                  <Slider
+                    min={25}
+                    max={200}
+                    step={5}
+                    value={[Math.round(zoom * 100)]}
+                    onValueChange={([val]) => val && setZoom(val / 100)}
+                    aria-label="Preview zoom scale"
+                    className="flex-1"
+                  />
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label="Zoom in"
+                    disabled={zoom >= 2}
+                    onClick={() => setZoom((z) => Math.min(2, Math.round((z + 0.1) * 100) / 100))}
+                  >
+                    <Icon icon={PlusSignIcon} size={12} />
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between gap-1 border-t border-border/50 pt-2">
+                  {PRESET_ZOOMS.map((p) => {
+                    const active = Math.abs(zoom - p) < 0.01;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setZoom(p)}
+                        className={cn(
+                          'h-6 rounded px-1.5 text-micro font-medium transition-ui',
+                          active
+                            ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                        )}
+                      >
+                        {Math.round(p * 100)}%
+                      </button>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Tip label="Open in new window">
               <Button size="icon-xs" variant="ghost" aria-label="Open preview in new window" onClick={popout}>
                 <Icon icon={ArrowExpand01Icon} size={14} />
-              </Button>
-            </Tip>
-            <Tip label={ui.maximizedPanel === 'preview' ? 'Restore' : 'Maximize'}>
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                aria-label={ui.maximizedPanel === 'preview' ? 'Restore preview' : 'Maximize preview'}
-                onClick={() => ws.maximizePanel('preview')}
-              >
-                <Icon icon={ui.maximizedPanel === 'preview' ? MinimizeScreenIcon : MaximizeScreenIcon} size={14} />
               </Button>
             </Tip>
             <Tip label="Close preview">
@@ -176,7 +252,10 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
           sandbox="allow-scripts"
           srcDoc={doc}
           referrerPolicy="no-referrer"
-          className="absolute top-0 left-0 origin-top-left border-0 bg-preview-canvas"
+          className={cn(
+            'absolute top-0 left-0 origin-top-left border-0 bg-preview-canvas',
+            zoomOpen && 'pointer-events-none',
+          )}
           style={{ width: `${100 / zoom}%`, height: `${100 / zoom}%`, transform: `scale(${zoom})` }}
         />
       </div>
