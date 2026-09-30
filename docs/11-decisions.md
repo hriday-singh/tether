@@ -127,8 +127,7 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
      Yjs doc, so checksum, convergence and chaos invariants are unchanged. Chat has its own
      per-connection token bucket, so chat traffic never uses up the 5 frames/s edit budget.
 - **Consequences:** One new table, two control messages, one REST route and one sidebar tab. The audit
-  feed stays an audit feed, and chat messages do not create audit events. Plan:
-  `docs/superpowers/plans/2026-09-30-text-chat.md`.
+  feed stays an audit feed, and chat messages do not create audit events.
 
 ## Research sources (fetched 2026-09-29)
 

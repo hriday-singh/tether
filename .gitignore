@@ -37,3 +37,9 @@ Thumbs.db
 
 debug/
 .playwright-mcp/
+
+# Internal / AI tooling (kept locally, not published)
+AGENTS.md
+CLAUDE.md
+docs/superpowers/
+docs/week1-completion-plan.md

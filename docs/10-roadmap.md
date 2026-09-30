@@ -108,7 +108,7 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] Server sync client wiring (needs connect-frontend plan Tasks 1 + 3)
 - [x] Docs 04/06/07 synced
 
-Plan: [2026-09-30-text-chat.md](superpowers/plans/2026-09-30-text-chat.md). Voice chat is out, see ADR-017.
+Voice chat is out, see ADR-017.
 
 ## Week 3: stretch (in priority order)
 
