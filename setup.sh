@@ -45,6 +45,8 @@ write_err() {
 MODE=""
 DATABASE=""
 DATABASE_URL=""
+BACKEND_PORT=""
+FRONTEND_PORT=""
 NON_INTERACTIVE=false
 SKIP_LAUNCH=false
 
@@ -59,6 +61,12 @@ for arg in "$@"; do
     --database-url=*)
       DATABASE_URL="${arg#*=}"
       ;;
+    --backend-port=*|--port=*)
+      BACKEND_PORT="${arg#*=}"
+      ;;
+    --frontend-port=*|--web-port=*)
+      FRONTEND_PORT="${arg#*=}"
+      ;;
     --non-interactive)
       NON_INTERACTIVE=true
       ;;
@@ -72,6 +80,8 @@ for arg in "$@"; do
       echo "  --mode=local|docker|all      Setup environment (default: local)"
       echo "  --database=sqlite|postgres   Database driver (default: sqlite)"
       echo "  --database-url=URL           Postgres connection string"
+      echo "  --backend-port=PORT          Backend API port (default: 4000)"
+      echo "  --frontend-port=PORT         Frontend web client port (default: 3001)"
       echo "  --non-interactive            Run silently with defaults"
       echo "  --skip-launch                Do not prompt to launch after setup"
       exit 0
@@ -94,18 +104,20 @@ prompt_choice() {
     return 0
   fi
 
-  echo -e "\n${prompt_text}"
+  echo -e "\n${prompt_text}" >&2
   local idx=1
   for opt in "${options[@]}"; do
     local suffix=""
     if [ "$idx" -eq "$default_idx" ]; then
       suffix=" ${GRAY}[Default: Press Enter]${NC}"
     fi
-    echo -e "  [${idx}] ${opt}${suffix}"
+    echo -e "  [${idx}] ${opt}${suffix}" >&2
     idx=$((idx + 1))
   done
 
+  local ans=""
   read -r -p "Select option (1-${#options[@]}) [${default_idx}]: " ans
+  ans=$(echo "$ans" | tr -d '[:space:]')
   if [ -z "$ans" ]; then
     echo "$default_idx"
   else
@@ -191,7 +203,34 @@ if [ "$DATABASE" = "postgres" ]; then
   write_ok "PostgreSQL URL: $DATABASE_URL"
 fi
 
-# 3. Environment Configuration (.env)
+# 3. Port Configuration
+if [ -z "$BACKEND_PORT" ]; then
+  def_bp="4000"
+  if [ -f ".env" ] && grep -qE "^PORT=[0-9]+" .env; then
+    def_bp=$(grep -E "^PORT=[0-9]+" .env | head -n1 | cut -d'=' -f2 | tr -d '[:space:]')
+  fi
+  BACKEND_PORT=$(prompt_text "Enter backend server port" "$def_bp")
+fi
+if ! [[ "$BACKEND_PORT" =~ ^[0-9]+$ ]]; then
+  write_warn "Invalid backend port '$BACKEND_PORT'. Falling back to 4000."
+  BACKEND_PORT="4000"
+fi
+write_ok "Backend port selected: $BACKEND_PORT"
+
+if [ -z "$FRONTEND_PORT" ]; then
+  def_fp="3001"
+  if [ -f ".env" ] && grep -qE "^WEB_PORT=[0-9]+" .env; then
+    def_fp=$(grep -E "^WEB_PORT=[0-9]+" .env | head -n1 | cut -d'=' -f2 | tr -d '[:space:]')
+  fi
+  FRONTEND_PORT=$(prompt_text "Enter frontend web client port" "$def_fp")
+fi
+if ! [[ "$FRONTEND_PORT" =~ ^[0-9]+$ ]]; then
+  write_warn "Invalid frontend port '$FRONTEND_PORT'. Falling back to 3001."
+  FRONTEND_PORT="3001"
+fi
+write_ok "Frontend port selected: $FRONTEND_PORT"
+
+# 4. Environment Configuration (.env)
 write_step "Configuring environment (.env)..."
 if [ ! -f ".env.example" ]; then
   write_err ".env.example template not found!"
@@ -238,9 +277,24 @@ else
   fi
 fi
 
-# Ensure PORT defaults
-if grep -q "^PORT=3000" .env && grep -q "NEXT_PUBLIC_API_URL=http://localhost:4000" .env; then
-  sed -i.bak -e "s|^PORT=3000|PORT=4000|" .env && rm -f .env.bak
+# Update Ports in .env
+sed -i.bak -e "s|^PORT=.*|PORT=${BACKEND_PORT}|" .env && rm -f .env.bak
+sed -i.bak -e "s|^SERVER_PORT=.*|SERVER_PORT=${BACKEND_PORT}|" .env && rm -f .env.bak
+if grep -q "^WEB_PORT=" .env; then
+  sed -i.bak -e "s|^WEB_PORT=.*|WEB_PORT=${FRONTEND_PORT}|" .env && rm -f .env.bak
+else
+  echo "WEB_PORT=${FRONTEND_PORT}" >> .env
+fi
+sed -i.bak -e "s|^NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=http://localhost:${BACKEND_PORT}|" .env && rm -f .env.bak
+sed -i.bak -e "s|^NEXT_PUBLIC_WS_URL=.*|NEXT_PUBLIC_WS_URL=ws://localhost:${BACKEND_PORT}|" .env && rm -f .env.bak
+
+# Update ALLOWED_ORIGINS to ensure frontend port is permitted
+if grep -q "^ALLOWED_ORIGINS=" .env; then
+  current_origins=$(grep "^ALLOWED_ORIGINS=" .env | cut -d'=' -f2-)
+  if [[ "$current_origins" != *"localhost:${FRONTEND_PORT}"* ]]; then
+    new_origins="${current_origins},http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}"
+    sed -i.bak -e "s|^ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=${new_origins}|" .env && rm -f .env.bak
+  fi
 fi
 write_ok ".env configuration saved successfully."
 
@@ -357,8 +411,8 @@ write_header "Setup Complete!"
 echo -e "${GREEN}Configuration Summary:${NC}"
 echo -e "  - Mode:            ${MODE}"
 echo -e "  - Database:        ${DATABASE}"
-echo -e "  - Backend Server:  http://localhost:4000 (WebSocket: ws://localhost:4000)"
-echo -e "  - Frontend Client: http://localhost:3001 (or :3000 in Docker)"
+echo -e "  - Backend Server:  http://localhost:${BACKEND_PORT} (WebSocket: ws://localhost:${BACKEND_PORT})"
+echo -e "  - Frontend Client: http://localhost:${FRONTEND_PORT} (or :3000 in Docker)"
 echo -e "  - Environment:     .env"
 echo ""
 

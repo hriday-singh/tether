@@ -105,18 +105,20 @@ prompt_choice() {
   shift
   local options=("$@")
 
-  echo -e "\n${prompt_text}"
+  echo -e "\n${prompt_text}" >&2
   local idx=1
   for opt in "${options[@]}"; do
     local suffix=""
     if [ "$idx" -eq "$default_idx" ]; then
       suffix=" ${GRAY}[Default: Press Enter]${NC}"
     fi
-    echo -e "  [${idx}] ${opt}${suffix}"
+    echo -e "  [${idx}] ${opt}${suffix}" >&2
     idx=$((idx + 1))
   done
 
+  local ans=""
   read -r -p "Select option (1-${#options[@]}) [${default_idx}]: " ans
+  ans=$(echo "$ans" | tr -d '[:space:]')
   if [ -z "$ans" ]; then
     echo "$default_idx"
   else
@@ -137,6 +139,16 @@ if [ ! -f ".env" ]; then
   fi
 fi
 
+# Detect configured ports
+BACKEND_PORT="4000"
+FRONTEND_PORT="3001"
+if [ -f ".env" ]; then
+  bp=$(grep -E "^PORT=[0-9]+" .env | head -n1 | cut -d'=' -f2 | tr -d '[:space:]' || true)
+  if [ -n "$bp" ]; then BACKEND_PORT="$bp"; fi
+  fp=$(grep -E "^WEB_PORT=[0-9]+" .env | head -n1 | cut -d'=' -f2 | tr -d '[:space:]' || true)
+  if [ -n "$fp" ]; then FRONTEND_PORT="$fp"; fi
+fi
+
 # 2. Build Verification
 if [ ! -f "packages/shared/dist/index.js" ]; then
   write_step "Compiling @tether/shared workspace package..."
@@ -147,9 +159,9 @@ fi
 # 3. Target Selection
 if [ -z "$TARGET" ]; then
   choice=$(prompt_choice "Select what to launch:" 1 \
-    "Local: Both Servers (Backend :4000 + Web :3001) [Recommended]" \
-    "Local: Backend Server Only (Fastify + WS on :4000)" \
-    "Local: Frontend Web Client Only (Next.js on :3001)" \
+    "Local: Both Servers (Backend :${BACKEND_PORT} + Web :${FRONTEND_PORT}) [Recommended]" \
+    "Local: Backend Server Only (Fastify + WS on :${BACKEND_PORT})" \
+    "Local: Frontend Web Client Only (Next.js on :${FRONTEND_PORT})" \
     "Docker Compose: Web + Server" \
     "Docker Compose: Web + Server + PostgreSQL")
 
@@ -193,10 +205,10 @@ echo -e "${GREEN}============================================================${N
 case "$TARGET" in
   both|local)
     echo -e "${CYAN}Endpoints:${NC}"
-    echo -e "  * Web App:       http://localhost:3001"
-    echo -e "  * Backend API:   http://localhost:4000"
-    echo -e "  * WebSocket:     ws://localhost:4000"
-    echo -e "  * Health Check:  http://localhost:4000/health/ready"
+    echo -e "  * Web App:       http://localhost:${FRONTEND_PORT}"
+    echo -e "  * Backend API:   http://localhost:${BACKEND_PORT}"
+    echo -e "  * WebSocket:     ws://localhost:${BACKEND_PORT}"
+    echo -e "  * Health Check:  http://localhost:${BACKEND_PORT}/health/ready"
     echo ""
     echo -e "${GRAY}Press Ctrl+C to stop both servers.${NC}\n"
 
@@ -205,16 +217,16 @@ case "$TARGET" in
 
   server)
     echo -e "${CYAN}Backend API & WebSocket Server${NC}"
-    echo -e "  * URL:    http://localhost:4000"
-    echo -e "  * WS:     ws://localhost:4000"
-    echo -e "  * Health: http://localhost:4000/health/ready"
+    echo -e "  * URL:    http://localhost:${BACKEND_PORT}"
+    echo -e "  * WS:     ws://localhost:${BACKEND_PORT}"
+    echo -e "  * Health: http://localhost:${BACKEND_PORT}/health/ready"
     echo ""
     $PNPM_CMD --filter @tether/server dev
     ;;
 
   web)
     echo -e "${GREEN}Frontend Web Client (Next.js)${NC}"
-    echo -e "  * URL: http://localhost:3001"
+    echo -e "  * URL: http://localhost:${FRONTEND_PORT}"
     echo ""
     $PNPM_CMD --filter @tether/web dev
     ;;
