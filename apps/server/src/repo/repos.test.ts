@@ -117,6 +117,18 @@ describe('Repository Layer', () => {
       memberRepo.banMember('r1', 'm2');
       expect(memberRepo.isBanned('r1', 'm2')).toBe(true);
     });
+
+    it('getMembers excludes banned rows; deleteMember removes the row', () => {
+      roomRepo.create({ id: 'r1', epoch: 'e1', createdBy: 'u1' });
+      memberRepo.upsertMember({ roomId: 'r1', memberId: 'a', displayName: 'A', colorIndex: 0 });
+      memberRepo.upsertMember({ roomId: 'r1', memberId: 'b', displayName: 'B', colorIndex: 1 });
+      memberRepo.banMember('r1', 'b');
+      expect(memberRepo.getMembers('r1').map((m) => m.member_id)).toEqual(['a']);
+      expect(memberRepo.isBanned('r1', 'b')).toBe(true);
+
+      memberRepo.deleteMember('r1', 'a');
+      expect(memberRepo.getMember('r1', 'a')).toBeUndefined();
+    });
   });
 
   describe('AuditRepo', () => {

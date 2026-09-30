@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { Button } from './button';
+import { ConfirmButton } from './confirm-button';
 import { buttonVariants } from './button-variants';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
 import { ThinkingOrb } from './thinking-orb';
@@ -117,5 +118,21 @@ describe('Toaster', () => {
   it('renders Toaster component successfully', () => {
     const { container } = render(<Toaster />);
     expect(container).toBeInTheDocument();
+  });
+});
+
+describe('ConfirmButton', () => {
+  it('asks once, then confirms on Yes; Cancel does nothing', () => {
+    const onConfirm = vi.fn();
+    render(<ConfirmButton title="Remove Ravi?" onConfirm={onConfirm}>Remove</ConfirmButton>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(screen.getByRole('dialog', { name: 'Remove Ravi?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 });

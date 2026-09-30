@@ -17,7 +17,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, Tip } from '@/components/ui/controls';
-import { HoldButton } from '@/components/ui/hold-button';
+import { ConfirmButton } from '@/components/ui/confirm-button';
 import { Icon } from '@/components/ui/icon';
 import { FormattedTime } from '@/components/ui/formatted-time';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/menus';
@@ -404,9 +404,15 @@ function HostRowActions({ member }: { member: Member }) {
         >
           <Icon icon={UserSwitchIcon} size={14} /> Make host
         </Button>
-        <HoldButton disabled={busy} onConfirm={() => void run('Kick', () => client.command({ t: 'host.kick', memberId: member.id }))}>
-          <Icon icon={UserRemove01Icon} size={14} /> Hold to remove
-        </HoldButton>
+        <ConfirmButton
+          disabled={busy}
+          title={`Remove ${member.name}?`}
+          description="They are disconnected and can't rejoin this room."
+          className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onConfirm={() => void run('Kick', () => client.command({ t: 'host.kick', memberId: member.id }))}
+        >
+          <Icon icon={UserRemove01Icon} size={14} /> Remove
+        </ConfirmButton>
       </PopoverContent>
     </Popover>
   );

@@ -41,7 +41,7 @@ export function DiagnosticsDrawer() {
           <TabsList aria-label="Diagnostics panels">
             <TabsTrigger value="console">Console</TabsTrigger>
             <TabsTrigger value="sync">Sync &amp; Latency</TabsTrigger>
-            {DEMO_MODE && <TabsTrigger value="chaos">Chaos Lab</TabsTrigger>}
+            {DEMO_MODE && <TabsTrigger value="chaos">Chaos</TabsTrigger>}
           </TabsList>
         </Tabs>
         <div className="ml-auto flex items-center gap-1">
@@ -296,7 +296,7 @@ function SyncPanel() {
   );
 }
 
-// ------------------------------------------------------------------ Chaos Lab (P2 bot storm)
+// ------------------------------------------------------------------ Chaos (P2 bot storm)
 
 function ChaosLab() {
   const { client } = useWorkspace();
@@ -315,7 +315,7 @@ function ChaosLab() {
     try {
       await client.command({ t: 'demo.storm', bots, seconds, faults });
     } catch (e) {
-      toast.error('Storm did not start', { description: e instanceof CommandError ? e.code : String(e) });
+      toast.error('Chaos did not start', { description: e instanceof CommandError ? e.code : String(e) });
     } finally {
       setPending(false);
     }
@@ -370,7 +370,7 @@ function StormControls({
 }) {
   return (
     <fieldset disabled={!isHost || running} className="flex flex-col gap-3 rounded-xl border border-border p-3 disabled:opacity-70">
-      <legend className="px-1 text-caption font-medium">Bot storm</legend>
+      <legend className="px-1 text-caption font-medium">Chaos</legend>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="storm-bots">
           Bots <span className="font-mono tabular">{bots}</span>
@@ -389,9 +389,9 @@ function StormControls({
       </label>
       <Button onClick={onLaunch} disabled={pending || running || !isHost}>
         <MorphIcon icon={running ? BotIcon : CpuIcon} size={14} />
-        <TextMorph>{running ? `${activeBots} Bots Active` : 'Launch Storm'}</TextMorph>
+        <TextMorph>{running ? `${activeBots} Bots Active` : 'Launch Chaos'}</TextMorph>
       </Button>
-      {!isHost && <p className="text-micro text-muted-foreground">Only the host can launch a storm.</p>}
+      {!isHost && <p className="text-micro text-muted-foreground">Only the host can launch Chaos.</p>}
     </fieldset>
   );
 }
@@ -408,7 +408,7 @@ function StormStatusDisplay({
   if (storm.running) {
     return (
       <>
-        <ThinkingOrb state="working" size={64} animated={ambientAnimations} label="Bot storm running" />
+        <ThinkingOrb state="working" size={64} animated={ambientAnimations} label="Chaos running" />
         <p className="font-mono text-body tabular">
           {storm.ops} ops · {storm.endsAt ? Math.max(0, Math.ceil((storm.endsAt - now) / 1000)) : 0}s left
         </p>

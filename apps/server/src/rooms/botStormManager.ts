@@ -117,6 +117,8 @@ export class BotStormManager {
         bot.client.destroy();
         bot.awareness.destroy();
         bot.doc.destroy();
+        // Bot ids are single-use; leaving rows behind fills the 32-seat capacity after a few storms.
+        this.deps.memberRepo.deleteMember(options.roomId, bot.memberId);
       }
 
       this.deps.auditService.logEvent(options.roomId, {

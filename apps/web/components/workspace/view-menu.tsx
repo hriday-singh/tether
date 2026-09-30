@@ -137,7 +137,7 @@ function DiagnosticsViewsItems({
       {DEMO_MODE && (
         <DropdownMenuItem onSelect={() => ws.openDrawerTab('chaos')}>
           <Icon icon={FlashIcon} size={14} />
-          <span>Chaos Lab</span>
+          <span>Chaos</span>
           {ui.drawerOpen && ui.drawerTab === 'chaos' && (
             <Icon icon={Tick02Icon} size={14} className="ml-auto text-primary" />
           )}

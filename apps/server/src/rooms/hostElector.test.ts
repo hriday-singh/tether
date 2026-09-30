@@ -102,4 +102,23 @@ describe('HostElector', () => {
 
     elector.destroy();
   });
+  it('evict drops a member immediately with no grace timeout and re-elects if host', () => {
+    const removed: string[] = [];
+    const elector = new HostElector({ graceMs: 1000, onMemberRemoved: (id) => removed.push(id) });
+    elector.addMember('alice', 1000);
+    elector.addMember('bob', 2000);
+
+    elector.disconnectConnection('bob'); // abrupt close starts grace
+    expect(elector.isPresent('bob')).toBe(true);
+    elector.evict('bob');
+    expect(elector.isPresent('bob')).toBe(false);
+    vi.advanceTimersByTime(2000);
+    expect(removed).toEqual([]); // no "timed out" after a kick
+
+    elector.addMember('bob', 2000);
+    elector.evict('alice');
+    expect(elector.hostId).toBe('bob');
+
+    elector.destroy();
+  });
 });

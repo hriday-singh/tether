@@ -66,7 +66,7 @@ export function describeEvent(e: AuditEvent): EventView {
     case 'security.protocol':
       return { icon: Shield01Icon, text: `Connection closed for abuse (${str(p.code)})`, tone: 'destructive' };
     case 'demo.storm':
-      return { icon: CpuIcon, text: `${who} launched a bot storm: ${num(p.bots)} bots, ${num(p.seconds)} s${p.faults ? ', faults on' : ''}`, tone: 'primary' };
+      return { icon: CpuIcon, text: `${who} launched Chaos: ${num(p.bots)} bots, ${num(p.seconds)} s${p.faults ? ', faults on' : ''}`, tone: 'primary' };
     default:
       return { icon: AlertCircleIcon, text: `${who}: ${e.type}`, tone: 'neutral' };
   }

@@ -4,9 +4,9 @@ import { CrownIcon, Key01Icon, LockKeyIcon, UserRemove01Icon, UserSwitchIcon } f
 import { useState } from 'react';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { ConfirmButton } from '@/components/ui/confirm-button';
 import { Switch } from '@/components/ui/controls';
 import { Dialog, DialogDescription, DialogHeader, DialogTitle, SheetContent } from '@/components/ui/dialog';
-import { HoldButton } from '@/components/ui/hold-button';
 import { Icon } from '@/components/ui/icon';
 import { Field, Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toaster';
@@ -128,9 +128,17 @@ export function HostSheet() {
               >
                 <Icon icon={UserSwitchIcon} size={12} /> Host
               </Button>
-              <HoldButton disabled={pending !== null} onConfirm={() => void send(`k-${m.id}`, { t: 'host.kick', memberId: m.id }, `${m.name} removed`)} className="h-6 px-2 text-micro">
+              <ConfirmButton
+                size="xs"
+                variant="ghost"
+                disabled={pending !== null}
+                title={`Remove ${m.name}?`}
+                description="They are disconnected and can't rejoin this room."
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onConfirm={() => void send(`k-${m.id}`, { t: 'host.kick', memberId: m.id }, `${m.name} removed`)}
+              >
                 <Icon icon={UserRemove01Icon} size={12} /> Kick
-              </HoldButton>
+              </ConfirmButton>
             </div>
           ))}
         </section>

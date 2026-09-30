@@ -108,6 +108,25 @@ export class HostElector {
     }
   }
 
+  /** Connected or inside the reconnect grace window. */
+  public isPresent(memberId: string): boolean {
+    return this.members.has(memberId);
+  }
+
+  /** Kick: drop immediately and silently (the kick already announced it), no grace, no "timed out". */
+  public evict(memberId: string): void {
+    this.members.delete(memberId);
+    const timer = this.pendingGraceTimers.get(memberId);
+    if (timer) {
+      clearTimeout(timer);
+      this.pendingGraceTimers.delete(memberId);
+    }
+    if (this.currentHostId === memberId) {
+      this.currentHostId = null;
+      this.elect('handover-leave', memberId);
+    }
+  }
+
   public manualTransfer(targetMemberId: string): boolean {
     const target = this.members.get(targetMemberId);
     if (!target || target.activeConnections === 0) {

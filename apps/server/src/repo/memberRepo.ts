@@ -58,9 +58,13 @@ export class MemberRepo {
 
   public getMembers(roomId: string): MemberRow[] {
     const stmt = this.db.prepare<MemberRow>(
-      `SELECT * FROM room_members WHERE room_id = ? ORDER BY first_joined_at ASC`
+      `SELECT * FROM room_members WHERE room_id = ? AND banned_at IS NULL ORDER BY first_joined_at ASC`
     );
     return stmt.all(roomId);
+  }
+
+  public deleteMember(roomId: string, memberId: string): void {
+    this.db.prepare(`DELETE FROM room_members WHERE room_id = ? AND member_id = ?`).run(roomId, memberId);
   }
 
   public getMember(roomId: string, memberId: string): MemberRow | undefined {

@@ -68,7 +68,7 @@ export function SettingsDialog({
                   ]}
                 />
               </Row>
-              <Row id="pref-ambient" label="Ambient animations" hint="Canvas orbs for connecting and storms">
+              <Row id="pref-ambient" label="Ambient animations" hint="Canvas orbs for connecting and Chaos runs">
                 <Switch id="pref-ambient" checked={prefs.ambientAnimations} onCheckedChange={set('ambientAnimations')} aria-label="Ambient animations" />
               </Row>
               <Row id="pref-reduce-motion" label="Reduce motion" hint="Turns off transitions and morphs">

@@ -27,7 +27,7 @@ const GUARANTEES = [
   },
   {
     title: 'Chaos tested in CI',
-    body: 'Bot storms with jitter, dropped packets, and network partitions run on every change.',
+    body: 'Chaos runs with jitter, dropped packets, and network partitions run on every change.',
   },
 ];
 

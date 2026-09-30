@@ -75,7 +75,11 @@ export async function attachConnectionHandler(
 
   // Send Welcome message with disambiguated names
   const roomRow = deps.roomRepo.findById(room.id)!;
-  const rawMembers = deps.memberRepo.getMembers(room.id).map((m): Member => ({
+  // Roster = people actually here now. room_members is history (every past bot, everyone who ever joined).
+  const rawMembers = deps.memberRepo
+    .getMembers(room.id)
+    .filter((m) => room.hostElector.isPresent(m.member_id))
+    .map((m): Member => ({
     id: m.member_id,
     name: m.display_name,
     colorIndex: m.color_index,
@@ -234,6 +238,7 @@ export async function attachConnectionHandler(
               actorName: member.name,
               payload: { reason: 'kicked', targetMemberId: msg.memberId },
             });
+            room.hostElector.evict(msg.memberId);
             room.terminateMemberSockets(msg.memberId, WS_CLOSE_CODES.KICKED);
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;

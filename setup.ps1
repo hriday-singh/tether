@@ -217,6 +217,26 @@ if ($FrontendPort -notmatch '^\d+$') {
 }
 Write-Success "Frontend port selected: $FrontendPort"
 
+# 3b. Allowed Origins Configuration
+$baseOrigins = @("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:$FrontendPort", "http://127.0.0.1:$FrontendPort")
+$baseOrigins = $baseOrigins | Select-Object -Unique
+$defaultOriginsDisplay = $baseOrigins -join ', '
+
+if (-not $NonInteractive) {
+    Write-Host ""
+    Write-Host "The following origins will be allowed for backend CORS by default:" -ForegroundColor Gray
+    Write-Host "  $defaultOriginsDisplay" -ForegroundColor Gray
+}
+$ExtraBackendOrigins = Prompt-Text -PromptText "Additional backend CORS origins (comma-separated, or Enter to skip)" -DefaultValue ""
+Write-Success "Backend CORS origins configured."
+
+if (-not $NonInteractive) {
+    Write-Host ""
+    Write-Host "Next.js allows localhost / 127.0.0.1 by default for dev HMR." -ForegroundColor Gray
+}
+$ExtraFrontendOrigins = Prompt-Text -PromptText "Additional frontend dev hostnames (comma-separated, e.g. 192.168.1.5, or Enter to skip)" -DefaultValue ""
+Write-Success "Frontend dev origins configured."
+
 # 4. Environment File Configuration (.env)
 Write-Step "Configuring environment (.env)..."
 $envPath = Join-Path $PSScriptRoot ".env"
@@ -280,33 +300,35 @@ if ($envContent -match "(?m)^WEB_PORT=") {
 $envContent = $envContent -replace "(?m)^NEXT_PUBLIC_API_URL=.*", "NEXT_PUBLIC_API_URL=http://localhost:$BackendPort"
 $envContent = $envContent -replace "(?m)^NEXT_PUBLIC_WS_URL=.*", "NEXT_PUBLIC_WS_URL=ws://localhost:$BackendPort"
 
-# Update ALLOWED_ORIGINS to ensure frontend port is permitted
-$originsMatch = $envContent | Select-String -Pattern "(?m)^ALLOWED_ORIGINS=(.*)" | Select-Object -First 1
-if ($originsMatch) {
-    $currentOrigins = $originsMatch.Matches.Groups[1].Value
-    if ($currentOrigins -notlike "*localhost:$FrontendPort*") {
-        $newOrigins = "$currentOrigins,http://localhost:$FrontendPort,http://127.0.0.1:$FrontendPort"
-        $envContent = $envContent -replace "(?m)^ALLOWED_ORIGINS=.*", "ALLOWED_ORIGINS=$newOrigins"
+# Update ALLOWED_ORIGINS with base origins + any user-supplied extras
+$finalOrigins = ($baseOrigins -join ',')
+if (-not [string]::IsNullOrWhiteSpace($ExtraBackendOrigins)) {
+    $finalOrigins = "$finalOrigins,$ExtraBackendOrigins"
+}
+$envContent = $envContent -replace "(?m)^ALLOWED_ORIGINS=.*", "ALLOWED_ORIGINS=$finalOrigins"
+
+# Derive ALLOWED_DEV_ORIGINS from ALLOWED_ORIGINS + any user-supplied frontend extras
+$devHosts = @()
+foreach ($origin in ($finalOrigins -split ",")) {
+    $h = $origin.Trim() -replace '^https?://','' -replace ':[0-9]+$',''
+    if ($h -and $h -ne "localhost" -and $h -ne "127.0.0.1") {
+        $devHosts += $h
     }
 }
-
-# Derive ALLOWED_DEV_ORIGINS (hostnames only) from ALLOWED_ORIGINS for Next.js HMR
-$devOriginsMatch = $envContent | Select-String -Pattern "(?m)^ALLOWED_ORIGINS=(.*)" | Select-Object -First 1
-if ($devOriginsMatch) {
-    $rawOrigins = $devOriginsMatch.Matches.Groups[1].Value
-    $devHosts = @()
-    foreach ($origin in ($rawOrigins -split ",")) {
-        $host = $origin.Trim() -replace '^https?://','' -replace ':[0-9]+$',''
-        if ($host -and $host -ne "localhost" -and $host -ne "127.0.0.1") {
-            $devHosts += $host
+if (-not [string]::IsNullOrWhiteSpace($ExtraFrontendOrigins)) {
+    foreach ($h in ($ExtraFrontendOrigins -split ",")) {
+        $trimmed = $h.Trim()
+        if ($trimmed -and $trimmed -ne "localhost" -and $trimmed -ne "127.0.0.1") {
+            $devHosts += $trimmed
         }
     }
-    $devOriginsValue = $devHosts -join ","
-    if ($envContent -match "(?m)^ALLOWED_DEV_ORIGINS=") {
-        $envContent = $envContent -replace "(?m)^ALLOWED_DEV_ORIGINS=.*", "ALLOWED_DEV_ORIGINS=$devOriginsValue"
-    } else {
-        $envContent += "`nALLOWED_DEV_ORIGINS=$devOriginsValue"
-    }
+}
+$devHosts = $devHosts | Select-Object -Unique
+$devOriginsValue = $devHosts -join ","
+if ($envContent -match "(?m)^ALLOWED_DEV_ORIGINS=") {
+    $envContent = $envContent -replace "(?m)^ALLOWED_DEV_ORIGINS=.*", "ALLOWED_DEV_ORIGINS=$devOriginsValue"
+} else {
+    $envContent += "`nALLOWED_DEV_ORIGINS=$devOriginsValue"
 }
 
 [System.IO.File]::WriteAllText($envPath, $envContent, [System.Text.Encoding]::UTF8)

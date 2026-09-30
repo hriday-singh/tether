@@ -230,6 +230,36 @@ if ! [[ "$FRONTEND_PORT" =~ ^[0-9]+$ ]]; then
 fi
 write_ok "Frontend port selected: $FRONTEND_PORT"
 
+# 3b. Allowed Origins Configuration
+# Build deduplicated base origins list
+declare -a BASE_ORIGINS=("http://localhost:3000" "http://127.0.0.1:3000" "http://localhost:${FRONTEND_PORT}" "http://127.0.0.1:${FRONTEND_PORT}")
+# Deduplicate (in case FRONTEND_PORT is 3000)
+declare -a UNIQUE_ORIGINS=()
+for o in "${BASE_ORIGINS[@]}"; do
+  local_dup=false
+  for u in "${UNIQUE_ORIGINS[@]+"${UNIQUE_ORIGINS[@]}"}"; do
+    if [ "$o" = "$u" ]; then local_dup=true; break; fi
+  done
+  if [ "$local_dup" = false ]; then UNIQUE_ORIGINS+=("$o"); fi
+done
+BASE_ORIGINS=("${UNIQUE_ORIGINS[@]}")
+DEFAULT_ORIGINS_DISPLAY=$(IFS=', '; echo "${BASE_ORIGINS[*]}")
+
+if [ "$NON_INTERACTIVE" = false ]; then
+  echo ""
+  echo -e "${GRAY}The following origins will be allowed for backend CORS by default:${NC}"
+  echo -e "${GRAY}  ${DEFAULT_ORIGINS_DISPLAY}${NC}"
+fi
+EXTRA_BACKEND_ORIGINS=$(prompt_text "Additional backend CORS origins (comma-separated, or Enter to skip)" "")
+write_ok "Backend CORS origins configured."
+
+if [ "$NON_INTERACTIVE" = false ]; then
+  echo ""
+  echo -e "${GRAY}Next.js allows localhost / 127.0.0.1 by default for dev HMR.${NC}"
+fi
+EXTRA_FRONTEND_ORIGINS=$(prompt_text "Additional frontend dev hostnames (comma-separated, e.g. 192.168.1.5, or Enter to skip)" "")
+write_ok "Frontend dev origins configured."
+
 # 4. Environment Configuration (.env)
 write_step "Configuring environment (.env)..."
 if [ ! -f ".env.example" ]; then
@@ -288,37 +318,44 @@ fi
 sed -i.bak -e "s|^NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=http://localhost:${BACKEND_PORT}|" .env && rm -f .env.bak
 sed -i.bak -e "s|^NEXT_PUBLIC_WS_URL=.*|NEXT_PUBLIC_WS_URL=ws://localhost:${BACKEND_PORT}|" .env && rm -f .env.bak
 
-# Update ALLOWED_ORIGINS to ensure frontend port is permitted
-if grep -q "^ALLOWED_ORIGINS=" .env; then
-  current_origins=$(grep "^ALLOWED_ORIGINS=" .env | cut -d'=' -f2-)
-  if [[ "$current_origins" != *"localhost:${FRONTEND_PORT}"* ]]; then
-    new_origins="${current_origins},http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}"
-    sed -i.bak -e "s|^ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=${new_origins}|" .env && rm -f .env.bak
-  fi
+# Update ALLOWED_ORIGINS with base origins + any user-supplied extras
+FINAL_ORIGINS=$(IFS=','; echo "${BASE_ORIGINS[*]}")
+if [ -n "$EXTRA_BACKEND_ORIGINS" ]; then
+  FINAL_ORIGINS="${FINAL_ORIGINS},${EXTRA_BACKEND_ORIGINS}"
 fi
+sed -i.bak -e "s|^ALLOWED_ORIGINS=.*|ALLOWED_ORIGINS=${FINAL_ORIGINS}|" .env && rm -f .env.bak
 
-# Derive ALLOWED_DEV_ORIGINS (hostnames only) from ALLOWED_ORIGINS for Next.js HMR
-if grep -q "^ALLOWED_ORIGINS=" .env; then
-  raw_origins=$(grep "^ALLOWED_ORIGINS=" .env | cut -d'=' -f2-)
-  dev_hosts=""
-  IFS=',' read -ra parts <<< "$raw_origins"
-  for origin in "${parts[@]}"; do
-    # Strip protocol, port, and whitespace to get bare hostname
-    host=$(echo "$origin" | sed -e 's|^https\?://||' -e 's|:[0-9]*$||' -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||')
-    # Skip localhost/127.0.0.1 (Next.js allows those by default)
-    if [ -n "$host" ] && [ "$host" != "localhost" ] && [ "$host" != "127.0.0.1" ]; then
+# Derive ALLOWED_DEV_ORIGINS from ALLOWED_ORIGINS + any user-supplied frontend extras
+dev_hosts=""
+IFS=',' read -ra parts <<< "$FINAL_ORIGINS"
+for origin in "${parts[@]}"; do
+  host=$(echo "$origin" | sed -e 's|^https\?://||' -e 's|:[0-9]*$||' -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||')
+  if [ -n "$host" ] && [ "$host" != "localhost" ] && [ "$host" != "127.0.0.1" ]; then
+    if [ -n "$dev_hosts" ]; then
+      dev_hosts="${dev_hosts},${host}"
+    else
+      dev_hosts="$host"
+    fi
+  fi
+done
+# Append any extra frontend-specific hostnames
+if [ -n "$EXTRA_FRONTEND_ORIGINS" ]; then
+  IFS=',' read -ra fe_parts <<< "$EXTRA_FRONTEND_ORIGINS"
+  for h in "${fe_parts[@]}"; do
+    trimmed=$(echo "$h" | sed -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||')
+    if [ -n "$trimmed" ] && [ "$trimmed" != "localhost" ] && [ "$trimmed" != "127.0.0.1" ]; then
       if [ -n "$dev_hosts" ]; then
-        dev_hosts="${dev_hosts},${host}"
+        dev_hosts="${dev_hosts},${trimmed}"
       else
-        dev_hosts="$host"
+        dev_hosts="$trimmed"
       fi
     fi
   done
-  if grep -q "^ALLOWED_DEV_ORIGINS=" .env; then
-    sed -i.bak -e "s|^ALLOWED_DEV_ORIGINS=.*|ALLOWED_DEV_ORIGINS=${dev_hosts}|" .env && rm -f .env.bak
-  else
-    echo "ALLOWED_DEV_ORIGINS=${dev_hosts}" >> .env
-  fi
+fi
+if grep -q "^ALLOWED_DEV_ORIGINS=" .env; then
+  sed -i.bak -e "s|^ALLOWED_DEV_ORIGINS=.*|ALLOWED_DEV_ORIGINS=${dev_hosts}|" .env && rm -f .env.bak
+else
+  echo "ALLOWED_DEV_ORIGINS=${dev_hosts}" >> .env
 fi
 write_ok ".env configuration saved successfully."
 

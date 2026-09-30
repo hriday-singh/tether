@@ -360,10 +360,10 @@ export function buildPaletteCommands(args: BuildPaletteCommandsArgs): PaletteCom
       id: 'view:chaos',
       category: 'Navigation & Views',
       icon: FlashIcon,
-      label: 'Open Chaos Lab (Automated Network Simulator)',
-      keywords: ['chaos', 'chaos lab', 'partition', 'latency storm', 'packet drop', 'stress'],
+      label: 'Open Chaos',
+      keywords: ['chaos', 'chaos lab', 'storm', 'bots', 'faults', 'stress'], // old names still find it
       priority: 82,
-      onSelect: act(() => routerPush('/chaos')),
+      onSelect: act(() => ui({ drawerOpen: true, drawerTab: 'chaos' })),
     },
 
     // 3. Room & Collaboration

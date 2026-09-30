@@ -51,7 +51,7 @@ export function describeStatus(s: StatusSnapshot, now: number): StatusView {
         return { tone: 'warning', icon: null, orb: 'working', label: `Saving (${s.pending})`, detail: `${s.pending} change${s.pending === 1 ? '' : 's'} waiting for the server to commit.` };
       }
       if (s.verifiedAt === null) {
-        return { tone: 'primary', icon: null, orb: 'breathing', label: 'Syncing…', detail: 'Waiting for the room to go quiet to verify.' };
+        return { tone: 'primary', icon: null, orb: 'working', label: 'Syncing…', detail: 'Waiting for the room to go quiet to verify.' };
       }
       return {
         tone: 'success',
