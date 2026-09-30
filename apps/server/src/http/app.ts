@@ -10,6 +10,7 @@ import { RoomRegistry } from '../rooms/roomRegistry.js';
 import { MemberRepo } from '../repo/memberRepo.js';
 import { RoomRepo } from '../repo/roomRepo.js';
 import { formatAuditEventRow } from '../repo/auditRepo.js';
+import { getIsDraining } from '../ws/upgradeGate.js';
 import { MAX_MEMBERS_PER_ROOM } from '@tether/shared/constants';
 
 export interface AppDependencies {
@@ -52,6 +53,9 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   });
 
   app.get('/health/ready', async (_req, reply) => {
+    if (getIsDraining()) {
+      return reply.status(503).send({ status: 'draining' });
+    }
     return reply.send({ status: 'ready', activeRooms: deps.roomRegistry.activeRoomCount });
   });
 

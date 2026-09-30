@@ -39,6 +39,8 @@ const PEERS = [
   { name: 'Ravi', color: 1 },
 ];
 
+const LINE_KEYS = ['line-fn-decl', 'line-filter', 'line-return', 'line-close'] as const;
+
 export function MiniEditor() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState(0);
@@ -103,14 +105,16 @@ export function MiniEditor() {
       {/* Tall leading gives each name tag its own gap between rows, so tags never cover code or each other.
           pt-7 leaves room for a tag above line 1; overflow-hidden keeps the height fixed for the whole loop. */}
       <pre className="overflow-hidden bg-editor px-4 pt-7 pb-5 font-mono text-caption leading-[2.4] sm:text-body">
-        {lines.map((text, i) => (
-          <div key={i} className="flex">
-            <span className="w-6 shrink-0 text-right text-muted-foreground/60 select-none tabular">{i + 1}</span>
-            <code className="relative pl-3 whitespace-pre text-foreground">
-              {renderLine(text, i, cursor)}
-            </code>
-          </div>
-        ))}
+        {lines
+          .map((text, idx) => ({ id: LINE_KEYS[idx] ?? `line-${idx}`, text, lineNum: idx }))
+          .map((line) => (
+            <div key={line.id} className="flex">
+              <span className="w-6 shrink-0 text-right text-muted-foreground/60 select-none tabular">{line.lineNum + 1}</span>
+              <code className="relative pl-3 whitespace-pre text-foreground">
+                {renderLine(line.text, line.lineNum, cursor)}
+              </code>
+            </div>
+          ))}
       </pre>
     </div>
   );
@@ -121,10 +125,10 @@ function renderLine(text: string, line: number, cursor: Record<number, { line: n
   if (!marks.length) return text;
   const out: React.ReactNode[] = [];
   let last = 0;
-  marks.forEach((m, i) => {
+  marks.forEach((m) => {
     out.push(text.slice(last, m.col));
     out.push(
-      <span key={i} className={cn(presenceClass(m.color), 'relative inline-block h-[1.2em] w-0 border-l-2 border-(--p) align-text-bottom')}>
+      <span key={m.name} className={cn(presenceClass(m.color), 'relative inline-block h-[1.2em] w-0 border-l-2 border-(--p) align-text-bottom')}>
         <span className="absolute bottom-full -left-0.5 rounded-t-md rounded-r-md bg-(--p) px-1.5 py-0.5 font-sans text-micro leading-none font-medium whitespace-nowrap text-presence-ink">
           {m.name}
         </span>

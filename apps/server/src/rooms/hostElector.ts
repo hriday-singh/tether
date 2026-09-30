@@ -15,13 +15,13 @@ export class HostElector {
   private graceMs: number;
   private clock: () => number;
   private pendingGraceTimers = new Map<string, NodeJS.Timeout>();
-  private onHostChanged?: (newHostId: string | null, reason: HandoverReason) => void;
+  private onHostChanged?: (newHostId: string | null, reason: HandoverReason, previousHostId: string | null) => void;
   private onMemberRemoved?: (memberId: string, reason: 'leave' | 'timeout') => void;
 
   constructor(options: {
     graceMs?: number;
     clock?: () => number;
-    onHostChanged?: (newHostId: string | null, reason: HandoverReason) => void;
+    onHostChanged?: (newHostId: string | null, reason: HandoverReason, previousHostId: string | null) => void;
     onMemberRemoved?: (memberId: string, reason: 'leave' | 'timeout') => void;
   } = {}) {
     this.graceMs = options.graceMs ?? HOST_GRACE_MS;
@@ -102,8 +102,9 @@ export class HostElector {
     this.onMemberRemoved?.(memberId, reason === 'handover-leave' ? 'leave' : 'timeout');
 
     if (this.currentHostId === memberId) {
+      const prevHost = this.currentHostId;
       this.currentHostId = null;
-      this.elect(reason);
+      this.elect(reason, prevHost);
     }
   }
 
@@ -112,7 +113,7 @@ export class HostElector {
     if (!target || target.activeConnections === 0) {
       return false;
     }
-    this.setHost(targetMemberId, 'manual');
+    this.setHost(targetMemberId, 'manual', this.currentHostId);
     return true;
   }
 
@@ -120,7 +121,7 @@ export class HostElector {
    * Pure election: electHost = argmin(joinedAt, tiebreak memberId)
    * over all eligible members (active or in grace).
    */
-  public elect(reason: HandoverReason): void {
+  public elect(reason: HandoverReason, previousHostId?: string | null): void {
     let best: ElectorMember | null = null;
 
     for (const member of this.members.values()) {
@@ -136,13 +137,14 @@ export class HostElector {
     }
 
     const newHostId = best ? best.id : null;
-    this.setHost(newHostId, reason);
+    this.setHost(newHostId, reason, previousHostId);
   }
 
-  private setHost(newHostId: string | null, reason: HandoverReason): void {
+  private setHost(newHostId: string | null, reason: HandoverReason, previousHostId?: string | null): void {
+    const prev = previousHostId !== undefined ? previousHostId : this.currentHostId;
     if (this.currentHostId !== newHostId) {
       this.currentHostId = newHostId;
-      this.onHostChanged?.(newHostId, reason);
+      this.onHostChanged?.(newHostId, reason, prev);
     }
   }
 

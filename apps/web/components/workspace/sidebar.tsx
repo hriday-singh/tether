@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Badge, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, Tip } from '@/components/ui/controls';
 import { HoldButton } from '@/components/ui/hold-button';
 import { Icon } from '@/components/ui/icon';
+import { FormattedTime } from '@/components/ui/formatted-time';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/menus';
 import { toast } from '@/components/ui/toaster';
 import { api } from '@/lib/api';
@@ -376,14 +377,11 @@ const TONE = {
 
 const FeedItem = memo(function FeedItem({ event }: { event: AuditEvent }) {
   const view = describeEvent(event);
-  const time = new Date(event.createdAt);
   return (
     <div className="flex items-start gap-2.5 rounded-lg px-2 py-2 text-caption">
       <Icon icon={view.icon} size={14} className={cn('mt-0.5', TONE[view.tone])} />
       <span className="min-w-0 flex-1 text-foreground">{view.text}</span>
-      <time dateTime={event.createdAt} className="shrink-0 font-mono text-micro text-muted-foreground tabular">
-        {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </time>
+      <FormattedTime date={event.createdAt} className="shrink-0 font-mono text-micro text-muted-foreground tabular" />
     </div>
   );
 });

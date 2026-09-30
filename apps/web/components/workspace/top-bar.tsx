@@ -177,11 +177,19 @@ function FormatButton() {
 
 function RoomIdPill({ roomId }: { roomId: string }) {
   const [copied, flash] = useFlag(2000);
+  const handleCopy = () => {
+    navigator.clipboard
+      .writeText(roomId)
+      .then(flash)
+      .catch(() => {
+        toast.error('Failed to copy room ID');
+      });
+  };
   return (
     <Tip label="Copy room ID">
       <button
         type="button"
-        onClick={() => void navigator.clipboard.writeText(roomId).then(flash)}
+        onClick={handleCopy}
         className="hidden sm:inline-flex h-7 max-w-48 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 font-mono text-caption transition-ui hover:border-primary/40"
         aria-label={copied ? 'Room ID copied' : `Copy room ID ${roomId}`}
       >

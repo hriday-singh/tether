@@ -30,6 +30,10 @@ export function setDraining(draining: boolean): void {
   isDraining = draining;
 }
 
+export function getIsDraining(): boolean {
+  return isDraining;
+}
+
 export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDependencies) {
   return async function handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
     function reject(status: number, reason: string) {

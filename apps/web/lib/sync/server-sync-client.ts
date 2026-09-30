@@ -40,6 +40,8 @@ export interface ServerSyncOptions {
   latencyMs?: number;
 }
 
+const TYPING_MS = 1500;
+
 export class ServerSyncClient implements SyncClient {
   readonly doc = new Y.Doc();
   readonly text = this.doc.getText('codemirror');
@@ -51,6 +53,11 @@ export class ServerSyncClient implements SyncClient {
   private readonly chatListeners = new Set<(message: ChatMessage) => void>();
   private isPaused = false;
   private seedDone = false;
+  private typingTimer: ReturnType<typeof setTimeout> | null = null;
+  private cleanupStatusTracking?: () => void;
+  private readonly textObserver = () => {
+    this.markTyping();
+  };
 
   readonly status = createStore<StatusSnapshot>(
     {
@@ -287,6 +294,46 @@ export class ServerSyncClient implements SyncClient {
       this.protocolClient.queueAwarenessUpdate(update);
       this.syncPresenceFromAwareness();
     });
+
+    // Initialize local awareness state
+    this.awareness.setLocalState({
+      memberId: options.memberId,
+      cursor: null,
+      highlight: null,
+      typing: false,
+      status: 'active',
+    });
+
+    // Observe text edits to update typing indicator
+    this.text.observe(this.textObserver);
+    this.setupStatusTracking();
+  }
+
+  private markTyping(): void {
+    if (!this.awareness.getLocalState()?.typing) {
+      this.awareness.setLocalStateField('typing', true);
+    }
+    if (this.typingTimer) {
+      clearTimeout(this.typingTimer);
+    }
+    this.typingTimer = setTimeout(() => {
+      this.awareness.setLocalStateField('typing', false);
+    }, TYPING_MS);
+  }
+
+  private setupStatusTracking(): void {
+    if (typeof document === 'undefined') return;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        this.awareness.setLocalStateField('status', 'away');
+      } else {
+        this.awareness.setLocalStateField('status', 'active');
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    this.cleanupStatusTracking = () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }
 
   private maybeSeedStarter(lang: string): void {
@@ -382,6 +429,12 @@ export class ServerSyncClient implements SyncClient {
   }
 
   destroy(): void {
+    if (this.typingTimer) {
+      clearTimeout(this.typingTimer);
+      this.typingTimer = null;
+    }
+    this.cleanupStatusTracking?.();
+    this.text.unobserve(this.textObserver);
     this.eventListeners.clear();
     this.chatListeners.clear();
     this.protocolClient.destroy();

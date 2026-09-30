@@ -29,4 +29,11 @@ describe('preview builder', () => {
     expect(isConsoleMessage({ source: 'other', type: 'log', payload: [] })).toBe(false);
     expect(isConsoleMessage(null)).toBe(false);
   });
+
+  it('safely escapes runId containing script breakout characters', () => {
+    const maliciousRunId = '</script><script>alert("pwned")</script>';
+    const doc = buildPreviewDoc('html', '<p>Hello</p>', { runScripts: false, runId: maliciousRunId });
+    expect(doc).not.toContain(maliciousRunId);
+    expect(doc).toContain('\\u003c/script>');
+  });
 });

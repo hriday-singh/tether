@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton, Tip } from '@/components/ui/controls';
 import { Icon } from '@/components/ui/icon';
+import { FormattedTime } from '@/components/ui/formatted-time';
 import { Textarea } from '@/components/ui/input';
 import { api } from '@/lib/api';
 import { buildChatRows, CHAT_COUNTER_FROM, type ChatRowView, type PendingChat } from '@/lib/chat';
@@ -172,7 +173,6 @@ const ChatRow = memo(function ChatRow({
   onRetry: () => void;
   onDiscard: () => void;
 }) {
-  const time = new Date(row.createdAt);
   return (
     <li className={cn('flex gap-2.5 rounded-lg px-2 py-0.5 transition-ui hover:bg-accent/40', row.head && 'mt-2')}>
       <span className="w-6 shrink-0 pt-0.5">{row.head && <Avatar name={row.name} colorIndex={row.colorIndex} size="sm" />}</span>
@@ -181,9 +181,7 @@ const ChatRow = memo(function ChatRow({
           <div className="flex items-baseline gap-1.5">
             <span className="truncate text-caption font-medium text-foreground">{row.name}</span>
             {isSelf && <span className="text-micro text-muted-foreground">(you)</span>}
-            <time dateTime={row.createdAt} className="ml-auto shrink-0 font-mono text-micro text-muted-foreground tabular">
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </time>
+            <FormattedTime date={row.createdAt} className="ml-auto shrink-0 font-mono text-micro text-muted-foreground tabular" />
           </div>
         )}
         {/* Plain text only: React escapes it, and chat never renders HTML. */}

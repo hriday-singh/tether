@@ -88,7 +88,7 @@ export class Room {
 
     this.hostElector = new HostElector({
       graceMs: hostGraceMs,
-      onHostChanged: (newHostId, reason) => {
+      onHostChanged: (newHostId, reason, previousHostId) => {
         this.broadcastControl({
           t: 'host.changed',
           hostId: newHostId,
@@ -96,7 +96,7 @@ export class Room {
         });
         this.auditService.logEvent(this.id, {
           type: 'host.changed',
-          payload: { hostId: newHostId, reason },
+          payload: { from: previousHostId, to: newHostId, reason },
         });
       },
       onMemberRemoved: (memberId, reason) => {
@@ -287,6 +287,12 @@ export class Room {
     // Check flood
     const floodCode = ctx.floodGuard.checkFrame(docUpdate.byteLength + awarenessUpdate.byteLength);
     if (floodCode) {
+      this.auditService.logEvent(this.id, {
+        type: 'security.flood',
+        actorMemberId: ctx.memberId,
+        actorName: ctx.displayName,
+        payload: { code: floodCode },
+      });
       ws.close(floodCode);
       return;
     }
@@ -316,6 +322,12 @@ export class Room {
     if (awarenessUpdate.byteLength > 0) {
       const awResult = ctx.awarenessBinding.filterAwarenessUpdate(awarenessUpdate);
       if (awResult.closeCode) {
+        this.auditService.logEvent(this.id, {
+          type: 'security.protocol',
+          actorMemberId: ctx.memberId,
+          actorName: ctx.displayName,
+          payload: { code: awResult.closeCode },
+        });
         ws.close(awResult.closeCode);
         return;
       }

@@ -15,7 +15,7 @@ import { ChatRepo } from '../../src/repo/chatRepo.js';
 import { PersistenceService } from '../../src/services/persistenceService.js';
 import { RoomRegistry } from '../../src/rooms/roomRegistry.js';
 import { buildApp } from '../../src/http/app.js';
-import { createUpgradeGate } from '../../src/ws/upgradeGate.js';
+import { createUpgradeGate, setDraining } from '../../src/ws/upgradeGate.js';
 import { SyncClient } from '@tether/sync-client';
 import { ServerConfig } from '../../src/config.js';
 import { encodeFrame } from '@tether/shared/protocol/codec';
@@ -539,6 +539,89 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       });
 
       ws.close();
+    });
+
+    it('returns 503 from /health/ready when draining', async () => {
+      const readyBefore = await app.inject({ method: 'GET', url: '/health/ready' });
+      expect(readyBefore.statusCode).toBe(200);
+
+      setDraining(true);
+      const readyDraining = await app.inject({ method: 'GET', url: '/health/ready' });
+      expect(readyDraining.statusCode).toBe(503);
+      expect(JSON.parse(readyDraining.payload)).toEqual({ status: 'draining' });
+
+      setDraining(false);
+      const readyAfter = await app.inject({ method: 'GET', url: '/health/ready' });
+      expect(readyAfter.statusCode).toBe(200);
+    });
+
+    it('logs security.protocol audit event when client violates protocol', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/rooms',
+        payload: { name: 'Alice', roomId: 'proto-audit-room' },
+      });
+      const alice = JSON.parse(createRes.payload) as { token: string };
+      const ws = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/proto-audit-room`, ['collab.v1', alice.token]);
+
+      await new Promise<void>((resolve, reject) => {
+        ws.on('open', () => {
+          // Send invalid binary frame that is not SYNC_STEP1 as first frame
+          ws.send(Buffer.from([0x99, 0x88, 0x77]));
+        });
+        ws.on('close', (code) => {
+          expect(code).toBe(4009);
+          resolve();
+        });
+        ws.on('error', reject);
+      });
+
+      const events = auditRepo.getEventsAfter('proto-audit-room', 0);
+      const protoEvent = events.find((e) => e.type === 'security.protocol');
+      expect(protoEvent).toBeDefined();
+      expect(JSON.parse(protoEvent!.payload)).toEqual({ code: 4009 });
+    });
+
+    it('logs host.changed audit event with from, to, and reason on clean leave', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/rooms',
+        payload: { name: 'Alice', roomId: 'handover-audit-room' },
+      });
+      const alice = JSON.parse(createRes.payload) as { token: string; memberId: string };
+
+      const joinRes = await app.inject({
+        method: 'POST',
+        url: '/api/rooms/handover-audit-room/join',
+        payload: { name: 'Bob' },
+      });
+      const bob = JSON.parse(joinRes.payload) as { token: string; memberId: string };
+
+      const wsAlice = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/handover-audit-room`, ['collab.v1', alice.token]);
+      const wsBob = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/handover-audit-room`, ['collab.v1', bob.token]);
+
+      await Promise.all([
+        new Promise<void>((res) => wsAlice.once('open', res)),
+        new Promise<void>((res) => wsBob.once('open', res)),
+      ]);
+
+      // Alice sends clean leave
+      wsAlice.send(JSON.stringify({ t: 'leave' }));
+      await new Promise<void>((res) => wsAlice.once('close', () => res()));
+
+      // Bob should be new host
+      const events = auditRepo.getEventsAfter('handover-audit-room', 0);
+      const hostChangedEvents = events.filter((e) => e.type === 'host.changed');
+      expect(hostChangedEvents.length).toBeGreaterThanOrEqual(1);
+      const lastHostEvent = hostChangedEvents[hostChangedEvents.length - 1]!;
+      const payload = JSON.parse(lastHostEvent.payload);
+      expect(payload).toEqual({
+        from: alice.memberId,
+        to: bob.memberId,
+        reason: 'handover-leave',
+      });
+
+      wsBob.close();
     });
   });
 });

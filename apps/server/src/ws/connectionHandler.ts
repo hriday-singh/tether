@@ -145,6 +145,12 @@ export async function attachConnectionHandler(
         const frame = decodeFrame(buffer);
         const violation = protocolGuard.checkFrame(frame);
         if (violation !== null) {
+          deps.auditService.logEvent(room.id, {
+            type: 'security.protocol',
+            actorMemberId: member.id,
+            actorName: member.name,
+            payload: { code: violation },
+          });
           ws.close(violation);
           return;
         }
@@ -178,6 +184,12 @@ export async function attachConnectionHandler(
           }
         }
       } catch {
+        deps.auditService.logEvent(room.id, {
+          type: 'security.protocol',
+          actorMemberId: member.id,
+          actorName: member.name,
+          payload: { code: WS_CLOSE_CODES.PROTOCOL_VIOLATION },
+        });
         ws.close(WS_CLOSE_CODES.PROTOCOL_VIOLATION);
       }
     } else {
@@ -358,6 +370,12 @@ export async function attachConnectionHandler(
           }
         }
       } catch {
+        deps.auditService.logEvent(room.id, {
+          type: 'security.protocol',
+          actorMemberId: member.id,
+          actorName: member.name,
+          payload: { code: WS_CLOSE_CODES.PROTOCOL_VIOLATION },
+        });
         ws.close(WS_CLOSE_CODES.PROTOCOL_VIOLATION);
       }
     }

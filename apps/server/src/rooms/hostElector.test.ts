@@ -11,16 +11,16 @@ describe('HostElector', () => {
   });
 
   it('elects first joined member as host', () => {
-    let hostChange: { hostId: string | null; reason: HandoverReason } | null = null;
+    let hostChange: { hostId: string | null; reason: HandoverReason; prevHostId: string | null } | null = null;
     const elector = new HostElector({
-      onHostChanged: (h, r) => {
-        hostChange = { hostId: h, reason: r };
+      onHostChanged: (h, r, p) => {
+        hostChange = { hostId: h, reason: r, prevHostId: p };
       },
     });
 
     elector.addMember('alice', 1000);
     expect(elector.hostId).toBe('alice');
-    expect(hostChange).toEqual({ hostId: 'alice', reason: 'creator' });
+    expect(hostChange).toEqual({ hostId: 'alice', reason: 'creator', prevHostId: null });
 
     // Bob joins later -> alice remains host
     elector.addMember('bob', 2000);
@@ -30,10 +30,10 @@ describe('HostElector', () => {
   });
 
   it('performs immediate handover on clean leave', () => {
-    let hostChange: { hostId: string | null; reason: HandoverReason } | null = null;
+    let hostChange: { hostId: string | null; reason: HandoverReason; prevHostId: string | null } | null = null;
     const elector = new HostElector({
-      onHostChanged: (h, r) => {
-        hostChange = { hostId: h, reason: r };
+      onHostChanged: (h, r, p) => {
+        hostChange = { hostId: h, reason: r, prevHostId: p };
       },
     });
 
@@ -42,17 +42,17 @@ describe('HostElector', () => {
 
     elector.disconnectConnection('alice', true); // clean leave
     expect(elector.hostId).toBe('bob');
-    expect(hostChange).toEqual({ hostId: 'bob', reason: 'handover-leave' });
+    expect(hostChange).toEqual({ hostId: 'bob', reason: 'handover-leave', prevHostId: 'alice' });
 
     elector.destroy();
   });
 
   it('preserves host during grace window on abrupt disconnect, and transfers on timeout', () => {
-    let hostChange: { hostId: string | null; reason: HandoverReason } | null = null;
+    let hostChange: { hostId: string | null; reason: HandoverReason; prevHostId: string | null } | null = null;
     const elector = new HostElector({
       graceMs: 5000,
-      onHostChanged: (h, r) => {
-        hostChange = { hostId: h, reason: r };
+      onHostChanged: (h, r, p) => {
+        hostChange = { hostId: h, reason: r, prevHostId: p };
       },
     });
 
@@ -76,16 +76,16 @@ describe('HostElector', () => {
     // Advance 5s (grace expired)
     vi.advanceTimersByTime(5000);
     expect(elector.hostId).toBe('bob');
-    expect(hostChange).toEqual({ hostId: 'bob', reason: 'handover-timeout' });
+    expect(hostChange).toEqual({ hostId: 'bob', reason: 'handover-timeout', prevHostId: 'alice' });
 
     elector.destroy();
   });
 
   it('supports manual transfer to an active member', () => {
-    let hostChange: { hostId: string | null; reason: HandoverReason } | null = null;
+    let hostChange: { hostId: string | null; reason: HandoverReason; prevHostId: string | null } | null = null;
     const elector = new HostElector({
-      onHostChanged: (h, r) => {
-        hostChange = { hostId: h, reason: r };
+      onHostChanged: (h, r, p) => {
+        hostChange = { hostId: h, reason: r, prevHostId: p };
       },
     });
 
@@ -95,7 +95,7 @@ describe('HostElector', () => {
     const transferred = elector.manualTransfer('bob');
     expect(transferred).toBe(true);
     expect(elector.hostId).toBe('bob');
-    expect(hostChange).toEqual({ hostId: 'bob', reason: 'manual' });
+    expect(hostChange).toEqual({ hostId: 'bob', reason: 'manual', prevHostId: 'alice' });
 
     // Fails for non-existent member
     expect(elector.manualTransfer('charlie')).toBe(false);

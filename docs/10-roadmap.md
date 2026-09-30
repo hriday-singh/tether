@@ -65,8 +65,8 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 
 ### M6: Presence
 - [x] Awareness identity binding (clientID claim, memberId match, Zod, size cap)
-- [ ] Typing / idle / away status
-- [ ] Line highlights with relative positions
+- [x] Typing / idle / away status
+- [x] Line highlights with relative positions
 - [x] Spoofing tests
 
 ### M7: Rooms & roles
@@ -105,7 +105,7 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] Protocol: `chat.send` / `chat.msg`, `welcome.chatSeq`, chat limits in constants
 - [x] Server: `chat_messages` table (migration 0002), ChatRepo/ChatService, per-connection chat bucket, REST `GET /api/rooms/:id/chat`
 - [x] Web: generic seq store, `Textarea` primitive, Chat sidebar tab (unread badge, pending/failed states), fake client support
-- [ ] Server sync client wiring (needs connect-frontend plan Tasks 1 + 3)
+- [x] Server sync client wiring (needs connect-frontend plan Tasks 1 + 3)
 - [x] Docs 04/06/07 synced
 
 Plan: [2026-09-30-text-chat.md](superpowers/plans/2026-09-30-text-chat.md). Voice chat is out, see ADR-017.

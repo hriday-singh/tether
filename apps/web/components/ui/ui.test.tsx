@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { Button, buttonVariants } from './button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
+import { ThinkingOrb } from './thinking-orb';
+import { FormattedTime } from './formatted-time';
 
 describe('Button', () => {
   it('includes touch-target hit expansion class for icon-xs size', () => {
@@ -40,5 +42,31 @@ describe('InputOTP', () => {
     expect(screen.getByTestId('slot-1')).toHaveTextContent('2');
     expect(screen.getByTestId('slot-2')).toHaveTextContent('');
     expect(screen.getByTestId('slot-3')).toHaveTextContent('');
+  });
+});
+
+describe('ThinkingOrb', () => {
+  it('renders non-animated fallback with accessible label', () => {
+    render(<ThinkingOrb state="working" animated={false} label="Processing task" tone="primary" />);
+    const orb = screen.getByRole('img', { name: 'Processing task' });
+    expect(orb).toBeInTheDocument();
+  });
+
+  it('renders with explicit color prop', () => {
+    render(<ThinkingOrb state="connecting" animated={false} label="Connecting" color="#10b981" />);
+    const orb = screen.getByRole('img', { name: 'Connecting' });
+    expect(orb).toBeInTheDocument();
+  });
+});
+
+describe('FormattedTime', () => {
+  it('renders a time element with valid dateTime and localized content', () => {
+    const iso = '2026-09-30T12:00:00.000Z';
+    const { container } = render(<FormattedTime date={iso} className="test-time" />);
+    const timeEl = container.querySelector('time');
+    expect(timeEl).toBeInTheDocument();
+    expect(timeEl).toHaveAttribute('dateTime', iso);
+    expect(timeEl).toHaveClass('test-time');
+    expect(timeEl?.textContent).toBeTruthy();
   });
 });

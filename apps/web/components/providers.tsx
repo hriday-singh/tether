@@ -1,7 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { TooltipProvider } from '@/components/ui/controls';
 import { Toaster } from '@/components/ui/toaster';
 import {
@@ -26,23 +26,35 @@ export function usePrefs(): PrefsContextValue {
 
 function PrefsProvider({ children }: { children: ReactNode }) {
   const [prefs, setState] = useState<UserPreferences>(DEFAULT_PREFERENCES);
+  const prefsRef = useRef(prefs);
+
+  useEffect(() => {
+    prefsRef.current = prefs;
+  }, [prefs]);
 
   useEffect(() => {
     // Hydrate from storage after mount; the <head> boot script already painted the right theme.
+    const initial = loadPreferences();
+    prefsRef.current = initial;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage
-    setState(loadPreferences());
-    const onStorage = (e: StorageEvent) => e.key === PREFS_KEY && setState(loadPreferences());
+    setState(initial);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === PREFS_KEY) {
+        const loaded = loadPreferences();
+        prefsRef.current = loaded;
+        setState(loaded);
+      }
+    };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const setPrefs = useCallback((patch: Partial<UserPreferences>) => {
-    setState((prev) => {
-      const next = { ...prev, ...patch };
-      savePreferences(next);
-      applyDocumentPrefs(next);
-      return next;
-    });
+    const next = { ...prefsRef.current, ...patch };
+    prefsRef.current = next;
+    setState(next);
+    savePreferences(next);
+    applyDocumentPrefs(next);
   }, []);
 
   const value = useMemo(() => ({ prefs, setPrefs }), [prefs, setPrefs]);

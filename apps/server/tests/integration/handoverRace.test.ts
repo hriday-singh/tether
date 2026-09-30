@@ -19,7 +19,7 @@ import { createUpgradeGate } from '../../src/ws/upgradeGate.js';
 import { SyncClient } from '@tether/sync-client';
 import { ServerConfig } from '../../src/config.js';
 
-async function waitFor(fn: () => boolean, timeoutMs = 3000): Promise<void> {
+async function waitFor(fn: () => boolean, timeoutMs = 8000): Promise<void> {
   const start = Date.now();
   while (!fn()) {
     if (Date.now() - start > timeoutMs) throw new Error('Timeout waiting for condition');

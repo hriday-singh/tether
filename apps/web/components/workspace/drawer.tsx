@@ -114,7 +114,8 @@ function ConsolePanel() {
   const shown = useMemo(() => {
     let re: RegExp | null = null;
     try {
-      re = query ? new RegExp(query, 'i') : null;
+      const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      re = query ? new RegExp(escapedQuery, 'i') : null;
     } catch {
       re = null;
     }
@@ -158,7 +159,7 @@ function ConsolePanel() {
             <Icon icon={Delete02Icon} size={14} />
           </Button>
         </Tip>
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter (text or regex)" aria-label="Filter console" className="h-7 max-w-56 rounded-lg text-caption" />
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter console" aria-label="Filter console" className="h-7 max-w-56 rounded-lg text-caption" />
         <Segmented<Filter>
           aria-label="Severity"
           value={filter}

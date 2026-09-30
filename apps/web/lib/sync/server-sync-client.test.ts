@@ -41,7 +41,8 @@ describe('ServerSyncClient', () => {
     expect(client.status.get().connection).toBe('restoring');
     expect(client.room.get().room.id).toBe('test-room');
     expect(client.roster.get()).toEqual([]);
-    expect(client.presence.get().size).toBe(0);
+    expect(client.presence.get().has('mem-1')).toBe(true);
+    expect(client.presence.get().size).toBe(1);
 
     client.destroy();
   });
@@ -104,5 +105,26 @@ describe('ServerSyncClient', () => {
     unsubEvent();
     unsubChat();
     client.destroy();
+  });
+
+  it('initializes local awareness state and updates typing status on text insert', () => {
+    vi.useFakeTimers();
+    const client = new ServerSyncClient(options);
+
+    const localState = client.awareness.getLocalState();
+    expect(localState).toMatchObject({
+      memberId: 'mem-1',
+      status: 'active',
+      typing: false,
+    });
+
+    client.text.insert(0, 'A');
+    expect(client.awareness.getLocalState()?.typing).toBe(true);
+
+    vi.advanceTimersByTime(1500);
+    expect(client.awareness.getLocalState()?.typing).toBe(false);
+
+    client.destroy();
+    vi.useRealTimers();
   });
 });

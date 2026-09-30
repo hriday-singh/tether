@@ -39,16 +39,12 @@ export function ThinkingOrb({
   label: string;
   className?: string;
 }) {
-  const [resolvedColor, setResolvedColor] = useState<string | undefined>(color);
+  const [computedToneColor, setComputedToneColor] = useState<string | undefined>();
 
   useEffect(() => {
-    if (color) {
-      setResolvedColor(color);
-      return;
-    }
+    if (color) return;
     const token = tone ? TONE_TOKENS[tone] : undefined;
     if (!token || typeof document === 'undefined') {
-      setResolvedColor(undefined);
       return;
     }
     // Resolve computed color from CSS token so the canvas receives the theme-accurate RGB
@@ -57,8 +53,11 @@ export function ThinkingOrb({
     document.body.appendChild(el);
     const computed = window.getComputedStyle(el).color;
     document.body.removeChild(el);
-    setResolvedColor(computed);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync computed CSS variable from DOM
+    setComputedToneColor(computed);
   }, [tone, color]);
+
+  const resolvedColor = color ?? computedToneColor;
 
   if (!animated) {
     return (
