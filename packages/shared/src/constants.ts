@@ -15,6 +15,9 @@ export const FLOOD_FRAMES_PER_SEC = 30;
 export const FLOOD_WINDOW_SEC = 3;
 export const MAX_FRAME_BYTES = 512 * 1024; // 512 KB
 export const MAX_DOC_BYTES = 2 * 1024 * 1024; // 2 MB
+// Codec bound. Sync/resync frames carry the whole doc, which may overshoot MAX_DOC_BYTES by one update.
+// Inbound client frames are still held to MAX_FRAME_BYTES by the server.
+export const MAX_SYNC_FRAME_BYTES = MAX_DOC_BYTES + MAX_FRAME_BYTES;
 export const MAX_AWARENESS_STATE_BYTES = 2 * 1024; // 2 KB
 export const SLOW_CONSUMER_BYTES = 4 * 1024 * 1024; // 4 MB
 export const MAX_MEMBERS_PER_ROOM = 32;

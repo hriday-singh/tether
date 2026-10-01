@@ -95,6 +95,7 @@ export class JoinService {
   public async verifyRoomToken(token: string, expectedRoomId: string): Promise<RoomTokenClaims> {
     const { payload } = await jose.jwtVerify(token, this.jwtSecretBytes, {
       audience: `room:${expectedRoomId}`,
+      algorithms: ['HS256'],
     });
 
     return {

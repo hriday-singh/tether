@@ -6,7 +6,7 @@ import {
   CodecError,
   BinaryFrame,
 } from './codec.js';
-import { FRAME_KINDS, MAX_FRAME_BYTES } from '../constants.js';
+import { FRAME_KINDS, MAX_FRAME_BYTES, MAX_SYNC_FRAME_BYTES } from '../constants.js';
 
 describe('Binary Frame Codec', () => {
   it('should roundtrip SYNC_STEP1 frame', () => {
@@ -79,9 +79,15 @@ describe('Binary Frame Codec', () => {
     expect(() => decodeFrame(new Uint8Array(0))).toThrow(CodecError);
   });
 
-  it('should reject frame exceeding MAX_FRAME_BYTES on decode', () => {
-    const oversized = new Uint8Array(MAX_FRAME_BYTES + 1);
+  it('should reject frame exceeding MAX_SYNC_FRAME_BYTES on decode', () => {
+    const oversized = new Uint8Array(MAX_SYNC_FRAME_BYTES + 1);
     expect(() => decodeFrame(oversized)).toThrow(CodecError);
+  });
+
+  it('round-trips a whole-doc sync frame larger than MAX_FRAME_BYTES', () => {
+    const update = new Uint8Array(MAX_FRAME_BYTES * 2).fill(7);
+    const decoded = decodeFrame(encodeFrame({ kind: FRAME_KINDS.SYNC_STEP2, seq: 0, update }));
+    expect(decoded.kind === FRAME_KINDS.SYNC_STEP2 && decoded.update.byteLength).toBe(update.byteLength);
   });
 
   it('should reject unknown frame kinds', () => {

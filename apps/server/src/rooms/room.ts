@@ -16,6 +16,7 @@ import {
   WS_CLOSE_CODES,
   MAX_DOC_BYTES,
   SLOW_CONSUMER_BYTES,
+  MAX_MEMBERS_PER_ROOM,
 } from '@tether/shared/constants';
 import { hashString } from '@tether/shared/checksum';
 
@@ -163,11 +164,21 @@ export class Room {
 
   /** Distinct humans connected right now (Chaos bots and departed members excluded). */
   public get humanCount(): number {
+    return this.onlineHumanIds().size;
+  }
+
+  /** The member cap counts people online now; someone already connected (another tab) always fits. */
+  public hasSeatFor(memberId: string): boolean {
+    const ids = this.onlineHumanIds();
+    return ids.has(memberId) || ids.size < MAX_MEMBERS_PER_ROOM;
+  }
+
+  private onlineHumanIds(): Set<string> {
     const ids = new Set<string>();
     for (const ctx of this.connContexts.values()) {
       if (!this.botMemberIds.has(ctx.memberId)) ids.add(ctx.memberId);
     }
-    return ids.size;
+    return ids;
   }
 
   public addConnection(

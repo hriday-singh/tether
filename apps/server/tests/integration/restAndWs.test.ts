@@ -359,6 +359,40 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       client2.destroy();
     });
 
+    it('lets a newcomer sync a doc larger than one client frame (MAX_FRAME_BYTES)', async () => {
+      const alice = JSON.parse(
+        (await app.inject({ method: 'POST', url: '/api/rooms', payload: { name: 'Alice', roomId: 'big-room' } })).payload
+      );
+      const bob = JSON.parse(
+        (await app.inject({ method: 'POST', url: '/api/rooms/big-room/join', payload: { name: 'Bob' } })).payload
+      );
+      const wsUrl = `ws://127.0.0.1:${serverPort}/ws/rooms/big-room`;
+      const until = (pred: () => boolean) =>
+        new Promise<void>((resolve) => {
+          const t = setInterval(() => pred() && (clearInterval(t), resolve()), 20);
+        });
+      const serverText = () => roomRegistry.get('big-room')?.doc.getText('codemirror').length ?? 0;
+
+      const docA = new Y.Doc();
+      const a = new SyncClient({ url: wsUrl, token: alice.token, doc: docA, webSocketFactory: (u, p) => new WebSocket(u, p) });
+      a.connect();
+      await until(() => a.connectionStatus === 'connected');
+      // Two 300 KB pastes: each frame is under the cap, the doc is not.
+      docA.getText('codemirror').insert(0, 'a'.repeat(300_000));
+      await until(() => serverText() === 300_000);
+      docA.getText('codemirror').insert(300_000, 'b'.repeat(300_000));
+      await until(() => serverText() === 600_000);
+
+      const docB = new Y.Doc();
+      const b = new SyncClient({ url: wsUrl, token: bob.token, doc: docB, webSocketFactory: (u, p) => new WebSocket(u, p) });
+      b.connect();
+      await until(() => docB.getText('codemirror').length === 600_000);
+      expect(docB.getText('codemirror').toString()).toBe(docA.getText('codemirror').toString());
+
+      a.destroy();
+      b.destroy();
+    });
+
     it('broadcasts audit events in real-time and populates welcome token and eventSeq', async () => {
       // 1. Create room
       const createRes = await app.inject({
@@ -675,13 +709,11 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       });
       const bob = JSON.parse(joinRes.payload) as { token: string; memberId: string };
 
+      // Sequential: the first socket attached becomes host, so concurrent opens race under load.
       const wsAlice = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/handover-audit-room`, ['collab.v1', alice.token]);
+      await new Promise<void>((res) => wsAlice.once('open', res));
       const wsBob = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/handover-audit-room`, ['collab.v1', bob.token]);
-
-      await Promise.all([
-        new Promise<void>((res) => wsAlice.once('open', res)),
-        new Promise<void>((res) => wsBob.once('open', res)),
-      ]);
+      await new Promise<void>((res) => wsBob.once('open', res));
 
       // Alice sends clean leave
       wsAlice.send(JSON.stringify({ t: 'leave' }));

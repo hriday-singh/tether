@@ -12,7 +12,6 @@ import { MemberRepo } from '../repo/memberRepo.js';
 import { RoomRepo } from '../repo/roomRepo.js';
 import { formatAuditEventRow } from '../repo/auditRepo.js';
 import { getIsDraining } from '../ws/upgradeGate.js';
-import { MAX_MEMBERS_PER_ROOM } from '@tether/shared/constants';
 
 import { PersistenceService } from '../services/persistenceService.js';
 import { createRateLimitHook, defaultIpKeyExtractor } from './rateLimiter.js';
@@ -128,6 +127,10 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
       return defaultIpKeyExtractor(req);
     },
   });
+  // Runs before tokenLimiter: the token key is unverified at that point, so fresh junk tokens would
+  // otherwise each get a full bucket (no limit) and a map entry.
+  const tokenIpLimiter = createRateLimitHook({ ratePerSec: 2, burst: 120 });
+  const tokenLimiters = [tokenIpLimiter, tokenLimiter];
 
   // POST /api/rooms
   const CreateRoomBodySchema = z.object({
@@ -272,7 +275,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     const existingMembers = deps.memberRepo.getMembers(roomId);
     const existingMember = deps.memberRepo.getMember(roomId, memberId);
     // Cap people online now, not room history (room_members keeps everyone who ever joined).
-    if (!existingMember && (deps.roomRegistry.get(roomId)?.humanCount ?? 0) >= MAX_MEMBERS_PER_ROOM) {
+    if (deps.roomRegistry.get(roomId)?.hasSeatFor(memberId) === false) {
       return reply.status(403).send({
         error: { code: 'full', message: 'Room is full' },
       });
@@ -329,7 +332,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   });
 
   // GET /api/rooms/:id/chat (ADR-017). Same page shape as /events.
-  app.get<{ Params: { id: string } }>('/api/rooms/:id/chat', { preHandler: tokenLimiter }, async (request, reply) => {
+  app.get<{ Params: { id: string } }>('/api/rooms/:id/chat', { preHandler: tokenLimiters }, async (request, reply) => {
     const roomId = request.params.id.toLowerCase();
     if (!(await authorizeRoom(request, reply, roomId))) return reply;
 
@@ -358,7 +361,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   });
 
   // GET /api/rooms/:id/events
-  app.get<{ Params: { id: string } }>('/api/rooms/:id/events', { preHandler: tokenLimiter }, async (request, reply) => {
+  app.get<{ Params: { id: string } }>('/api/rooms/:id/events', { preHandler: tokenLimiters }, async (request, reply) => {
     const roomId = request.params.id.toLowerCase();
     if (!(await authorizeRoom(request, reply, roomId))) return reply;
 
@@ -434,8 +437,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
       return reply.send({ status: 'locked' });
     }
 
-    const members = deps.memberRepo.getMembers(roomId);
-    if (members.length >= MAX_MEMBERS_PER_ROOM && !members.some((m) => m.member_id === claims.sub)) {
+    if (deps.roomRegistry.get(roomId)?.hasSeatFor(claims.sub) === false) {
       return reply.send({ status: 'full' });
     }
 

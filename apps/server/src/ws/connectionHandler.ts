@@ -13,6 +13,7 @@ import {
   CHAT_BURST,
   CHAT_RATE_PER_SEC,
   FRAME_KINDS,
+  MAX_FRAME_BYTES,
   MAX_MEMBERS_PER_ROOM,
   SERVER_PING_MS,
   WS_CLOSE_CODES,
@@ -35,6 +36,9 @@ export async function attachConnectionHandler(
   const protocolGuard = new ProtocolGuard();
   // Chat has its own budget so chatting never eats the 5 frames/s edit throttle (ADR-017).
   const chatBucket = new TokenBucket(CHAT_RATE_PER_SEC, CHAT_BURST);
+  // A resync answers a tiny message with the whole doc (up to ~2.5 MB): cap it so it can't be looped.
+  // Dropped requests are harmless, the next checksum broadcast re-triggers one.
+  const resyncBucket = new TokenBucket(0.2, 3);
 
   let isAlive = true;
   ws.on('pong', () => {
@@ -157,6 +161,8 @@ export async function attachConnectionHandler(
     if (isBinary) {
       const buffer = data instanceof Buffer ? data : Buffer.from(data as ArrayBuffer);
       try {
+        // The codec allows whole-doc sync frames; clients may send at most MAX_FRAME_BYTES (docs/04).
+        if (buffer.byteLength > MAX_FRAME_BYTES) throw new Error('frame too large');
         const frame = decodeFrame(buffer);
         const violation = protocolGuard.checkFrame(frame);
         if (violation !== null) {
@@ -382,6 +388,7 @@ export async function attachConnectionHandler(
           }
           case 'verify.mismatch': {
             // Client detected mismatch; reply with current full doc state
+            if (!resyncBucket.take()) break;
             const fullUpdate = Y.encodeStateAsUpdate(room.doc);
             const resyncFrame: BinaryFrame = {
               kind: FRAME_KINDS.SYNC_STEP2,

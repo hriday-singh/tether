@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { toast } from '@/components/ui/toaster';
+import { exceedsEditLimit } from '@/lib/text-edit';
 import { useStore } from '@/lib/hooks';
 import { LANGUAGES, type LanguageId } from '@/lib/languages';
 import { useWorkspace } from './context';
@@ -55,8 +56,12 @@ export function DropZoneOverlay() {
 
       try {
         const text = await file.text();
+        if (exceedsEditLimit(text)) {
+          toast.error(`"${file.name}" is too large`, { description: 'Files over ~448 KB cannot be added in one go.' });
+          return;
+        }
         const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-        
+
         // Find language by extension
         const found = Object.values(LANGUAGES).find((l) => l.ext === ext);
         const langId = found?.id ?? null;

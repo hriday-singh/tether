@@ -51,7 +51,8 @@ frame := varUint(kind) • body
 - First client frame must be `SYNC_STEP1`. Client `SYNC_STEP1` once per connection, client `SYNC_STEP2`
   once per connection and only after the server's step 1. Violation: `4009`.
 - `UPDATE` before handshake completion: `4009`.
-- Frame > 512 KB: `4009`.
+- Client frame > 512 KB: `4009` (over 1 MB, ws closes `1009` before parsing). Server sync frames carry the
+  whole doc and may exceed this, up to `MAX_SYNC_FRAME_BYTES`.
 - Client `seq` strictly increasing per connection (starts at 1). Violation: `4009`.
 - Awareness entries: see identity binding in [05](05-rooms-security-roles.md#presence-identity-binding).
 
@@ -168,6 +169,7 @@ permanent rejection.
 | `FLOOD_FRAMES_PER_SEC` / `FLOOD_WINDOW_SEC` | 30 / 3 |
 | `MAX_FRAME_BYTES` | 512 KB |
 | `MAX_DOC_BYTES` | 2 MB |
+| `MAX_SYNC_FRAME_BYTES` | 2.5 MB (codec bound for whole-doc sync frames) |
 | `MAX_AWARENESS_STATE_BYTES` | 2 KB |
 | `SLOW_CONSUMER_BYTES` | 4 MB |
 | `MAX_MEMBERS_PER_ROOM` / `MAX_CONN_PER_IP` | 32 / 20 |

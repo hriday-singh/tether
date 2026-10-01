@@ -22,10 +22,24 @@ import { usePrefs } from '@/components/providers';
 import { useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
 import { loadPreferences } from '@/lib/prefs';
+import { exceedsEditLimit } from '@/lib/text-edit';
+import { toast } from '@/components/ui/toaster';
 import { useWorkspace } from '../context';
 import { collab, peersFacet, toggleLineHighlight, type PeerInfo } from './collab';
 import { commentOnSelection } from './comment-tooltip';
 import { bracketColors, createLinterExtension, editorFontSizeTheme, loadLanguage, quietHighlight, quietTheme } from './setup';
+
+/** Refuses typed/pasted/dropped edits the server would reject as oversized. Remote (yCollab) changes pass. */
+const editSizeGuard = EditorState.transactionFilter.of((tr) => {
+  if (!tr.docChanged || !tr.isUserEvent('input')) return tr;
+  let inserted = '';
+  tr.changes.iterChanges((_fromA, _toA, _fromB, _toB, text) => {
+    inserted += text.toString();
+  });
+  if (!exceedsEditLimit(inserted)) return tr;
+  toast.error('Paste too large', { description: 'Edits over ~448 KB at once are rejected by the server.' });
+  return [];
+});
 
 function peersOf(roster: readonly Member[]): ReadonlyMap<string, PeerInfo> {
   return new Map(roster.map((m) => [m.id, { name: m.name, colorIndex: m.colorIndex }]));
@@ -82,6 +96,7 @@ export default function Editor({ readOnly = false }: { readOnly?: boolean }) {
           c.language.of([]),
           c.linter.of(createLinterExtension(languageInfo(language).id)),
           c.readOnly.of([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]),
+          editSizeGuard,
           yCollab(client.text, null, { undoManager }),
           c.peers.of(peersFacet.of(peersOf(client.roster.get()))),
           collab(

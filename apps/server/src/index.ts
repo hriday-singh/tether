@@ -1,4 +1,5 @@
 import { WebSocketServer } from 'ws';
+import { MAX_FRAME_BYTES } from '@tether/shared/constants';
 import { loadConfig } from './config.js';
 import { createDatabase } from './db/database.js';
 import { RoomRepo } from './repo/roomRepo.js';
@@ -65,7 +66,9 @@ async function main() {
   const app = buildApp(deps);
 
   // WebSocket Server on the same HTTP server
-  const wss = new WebSocketServer({ noServer: true });
+  // Memory bound before parsing (ws default is 100 MiB). Frames over MAX_FRAME_BYTES but under this get the
+  // documented 4009 from the connection handler; larger ones get ws's 1009.
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 2 * MAX_FRAME_BYTES });
   const upgradeHandler = createUpgradeGate(wss, deps);
 
   app.server.on('upgrade', (req, socket, head) => {

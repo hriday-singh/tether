@@ -73,7 +73,7 @@ pnpm typecheck
 # Run linter
 pnpm lint
 
-# Run unit and integration tests (340+ tests)
+# Run unit and integration tests (370+ tests across 70 suites)
 pnpm test
 
 # Run the chaos resilience & network partition suite

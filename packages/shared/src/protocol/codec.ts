@@ -1,6 +1,6 @@
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
-import { FRAME_KINDS, MAX_FRAME_BYTES } from '../constants.js';
+import { FRAME_KINDS, MAX_SYNC_FRAME_BYTES } from '../constants.js';
 
 export type SyncStep1Frame = {
   kind: typeof FRAME_KINDS.SYNC_STEP1;
@@ -59,8 +59,8 @@ export function encodeFrame(frame: BinaryFrame): Uint8Array {
   }
 
   const result = encoding.toUint8Array(encoder);
-  if (result.byteLength > MAX_FRAME_BYTES) {
-    throw new CodecError(`Encoded frame exceeds MAX_FRAME_BYTES (${result.byteLength} > ${MAX_FRAME_BYTES})`);
+  if (result.byteLength > MAX_SYNC_FRAME_BYTES) {
+    throw new CodecError(`Encoded frame exceeds MAX_SYNC_FRAME_BYTES (${result.byteLength} > ${MAX_SYNC_FRAME_BYTES})`);
   }
   return result;
 }
@@ -69,8 +69,8 @@ export function encodeFrame(frame: BinaryFrame): Uint8Array {
  * Decodes a Uint8Array into a typed BinaryFrame.
  */
 export function decodeFrame(buffer: Uint8Array): BinaryFrame {
-  if (buffer.byteLength > MAX_FRAME_BYTES) {
-    throw new CodecError(`Frame exceeds MAX_FRAME_BYTES (${buffer.byteLength} > ${MAX_FRAME_BYTES})`);
+  if (buffer.byteLength > MAX_SYNC_FRAME_BYTES) {
+    throw new CodecError(`Frame exceeds MAX_SYNC_FRAME_BYTES (${buffer.byteLength} > ${MAX_SYNC_FRAME_BYTES})`);
   }
 
   if (buffer.byteLength === 0) {

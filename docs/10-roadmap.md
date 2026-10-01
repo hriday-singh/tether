@@ -119,7 +119,7 @@ Voice chat is out, see ADR-017.
 - [ ] Read-only viewer role (host toggles; server rejects `SYNC_STEP2`/`UPDATE` doc part for viewers)
 - [ ] Version history: named Yjs snapshots + time-travel view
 - [ ] Deploy to AWS: ALB + ECS Fargate + RDS, SSM secrets, public demo URL
-- [ ] Multi-instance: room-affinity routing + Redis rate limits ([09](09-operations.md#scale-path))
+- [ ] Multi-instance: room-affinity routing + Redis rate limits ([09](09-operations.md#scale-path-documented-not-built-in-v1))
 - [ ] Load test at scale (k6 or custom): 100 rooms × 10 clients, publish numbers
 - [ ] Playwright E2E for critical flows (only after explicit go-ahead)
 - [ ] P3 public chaos report: CI publishes seeds, faults, invariant results, latency histogram as a static page

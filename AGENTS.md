@@ -108,7 +108,7 @@ Environment configuration is read from `.env` in the repository root.
 
 Always execute verification before claiming completion:
 
-1. **Unit & Integration Tests (367 tests across 69 suites)**:
+1. **Unit & Integration Tests (370+ tests across 70 suites)**:
    ```bash
    pnpm test
    ```

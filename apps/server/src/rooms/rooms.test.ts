@@ -2,7 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as Y from 'yjs';
 import WebSocket from 'ws';
 import * as encoding from 'lib0/encoding';
-import { WS_CLOSE_CODES, FRAME_KINDS, SLOW_CONSUMER_BYTES, COMPACT_AFTER_ROWS } from '@tether/shared/constants';
+import {
+  WS_CLOSE_CODES,
+  FRAME_KINDS,
+  SLOW_CONSUMER_BYTES,
+  COMPACT_AFTER_ROWS,
+  MAX_MEMBERS_PER_ROOM,
+} from '@tether/shared/constants';
 import { decodeFrame } from '@tether/shared/protocol/codec';
 import { createDatabase, DatabaseSession } from '../db/database.js';
 import { RoomRepo } from '../repo/roomRepo.js';
@@ -121,6 +127,23 @@ describe('Rooms & RoomRegistry', () => {
       expect(bobWs1.closedCode).toBe(WS_CLOSE_CODES.KICKED);
       expect(bobWs2.closedCode).toBe(WS_CLOSE_CODES.KICKED);
       expect(aliceWs.closedCode).toBeNull();
+
+      room.destroy();
+    });
+
+    it('caps seats by people online now: a full room turns away newcomers but not open tabs', () => {
+      roomRepo.create({ id: 'test-seat-room', epoch: 'epoch-1', createdBy: 'm0' });
+      const room = new Room('test-seat-room', 'epoch-1', null, [], persistenceService, auditService);
+
+      for (let i = 0; i < MAX_MEMBERS_PER_ROOM - 1; i++) {
+        room.addConnection(new MockSocket() as unknown as WebSocket, { id: `m${i}`, name: `M${i}`, colorIndex: 0 });
+      }
+      room.addConnection(new MockSocket() as unknown as WebSocket, { id: 'bot', name: 'Bot', colorIndex: 0 }, true);
+      expect(room.hasSeatFor('newcomer')).toBe(true); // bots don't take seats
+
+      room.addConnection(new MockSocket() as unknown as WebSocket, { id: 'last', name: 'Last', colorIndex: 0 });
+      expect(room.hasSeatFor('newcomer')).toBe(false);
+      expect(room.hasSeatFor('m0')).toBe(true);
 
       room.destroy();
     });

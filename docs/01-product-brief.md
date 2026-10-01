@@ -70,7 +70,7 @@ Text chat was added later as a sidebar tab ([ADR-017](11-decisions.md#adr-017-te
   4 people, audio paths the chaos harness cannot test), not money. See
   [ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015). Text chat is in scope,
   and the audit feed is still not a chat.
-- Multi-instance horizontal scaling. Designed for it in [09](09-operations.md#scale-path), not built.
+- Multi-instance horizontal scaling. Designed for it in [09](09-operations.md#scale-path-documented-not-built-in-v1), not built.
 - Server-side user accounts and OAuth (guest identity with signed JWT tokens).
 - Playwright E2E (off until explicitly requested).
 

@@ -18,7 +18,7 @@ All bodies are Zod-validated and all errors use one shape: `{ error: { code, mes
 | POST | `/api/rooms` | `{ roomId?, passcode?, name, language? }` + header `Idempotency-Key` | `201 { room, token, memberId }`. Creator becomes host | 10/min/IP |
 | GET | `/api/rooms/:id` | - | `{ id, hasPasscode, locked, memberCount }` (for the join gate) | 60/min/IP |
 | POST | `/api/rooms/:id/join` | `{ name, passcode?, memberId? }` | `200 { room, token, memberId }` | **5/min per IP+room** (brute force) |
-| GET | `/api/rooms/:id/events?before=<seq>` or `?after=<seq>`, `&limit=50` | - (token in `Authorization: Bearer`) | `{ items, nextBefore \| nextAfter }`, max limit 100. `after` returns ascending (gap-fill) | 60/min/token |
+| GET | `/api/rooms/:id/events?before=<seq>` or `?after=<seq>`, `&limit=50` | - (token in `Authorization: Bearer`) | `{ items, nextBefore \| nextAfter }`, max limit 100. `after` returns ascending (gap-fill) | 60/min/token (plus 120/min/IP backstop) |
 | GET | `/api/rooms/:id/admission` | - (Bearer token) | `{ status: ok \| reauth \| banned \| locked \| full \| draining }`, 404 if the room is gone. Runs admission checks 3-8 without opening anything | 30/min/IP |
 | GET | `/health/live`, `/health/ready`, `/metrics` | - | liveness / readiness (DB + buffer) / Prometheus | internal |
 

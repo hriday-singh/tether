@@ -14,6 +14,7 @@ import { Icon } from '@/components/ui/icon';
 import { MorphIcon } from '@/components/ui/motion';
 import { toast } from '@/components/ui/toaster';
 import { useFlag, useStore } from '@/lib/hooks';
+import { diffText, exceedsEditLimit } from '@/lib/text-edit';
 import { useWorkspace } from './context';
 
 export function Scratchpad() {
@@ -38,13 +39,18 @@ export function Scratchpad() {
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const next = e.target.value;
+    // Only the changed span: rewriting the whole text duplicates concurrent edits and grows the doc per keystroke.
+    const { index, deleteCount, insert } = diffText(scratchpad.toString(), next);
+    if (exceedsEditLimit(insert)) {
+      toast.error('Paste too large', { description: 'Edits over ~448 KB at once are rejected by the server.' });
+      return;
+    }
     isLocalEdit.current = true;
     setText(next);
 
-    // Apply change to Y.Text
     ws.client.doc.transact(() => {
-      scratchpad.delete(0, scratchpad.length);
-      scratchpad.insert(0, next);
+      if (deleteCount > 0) scratchpad.delete(index, deleteCount);
+      if (insert) scratchpad.insert(index, insert);
     });
 
     isLocalEdit.current = false;

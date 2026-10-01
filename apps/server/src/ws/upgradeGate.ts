@@ -9,7 +9,7 @@ import { AuditRepo } from '../repo/auditRepo.js';
 import { AuditService } from '../services/auditService.js';
 import { ChatService } from '../services/chatService.js';
 import { RoomRegistry } from '../rooms/roomRegistry.js';
-import { PROTOCOL_VERSION, MAX_MEMBERS_PER_ROOM, MAX_CONN_PER_IP } from '@tether/shared/constants';
+import { PROTOCOL_VERSION, MAX_CONN_PER_IP } from '@tether/shared/constants';
 import { attachConnectionHandler } from './connectionHandler.js';
 
 import { PersistenceService } from '../services/persistenceService.js';
@@ -141,8 +141,7 @@ export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDepende
       return reject(429, 'Too Many Requests: IP Connection Limit Reached');
     }
 
-    const members = deps.memberRepo.getMembers(roomId);
-    if (members.length >= MAX_MEMBERS_PER_ROOM && !members.some((m) => m.member_id === claims.sub)) {
+    if (deps.roomRegistry.get(roomId)?.hasSeatFor(claims.sub) === false) {
       return reject(429, 'Too Many Requests: Room Member Limit Reached');
     }
 

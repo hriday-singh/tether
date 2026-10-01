@@ -14,7 +14,7 @@ This file provides project-specific context and commands for Anthropic Claude Co
 - **Docker Compose**: `docker compose up -d`
 
 ### Verification & Testing
-- **Run All Tests**: `pnpm test` (367 tests across 69 suites)
+- **Run All Tests**: `pnpm test` (370+ tests across 70 suites)
 - **Database Migrations (SQLite)**: `pnpm db:migrate`
 - **Typecheck**: `pnpm typecheck`
 - **Lint**: `pnpm lint`
