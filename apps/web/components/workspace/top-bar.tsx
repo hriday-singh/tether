@@ -211,7 +211,7 @@ export function InviteButton({ roomId }: { roomId: string }) {
     }
     await navigator.clipboard.writeText(url);
     flash();
-    toast.success('Invite link copied', { description: 'The passcode is not included. Share it separately.' });
+    toast.success('Invite link copied', { description: 'The password is not included. Share it separately.' });
   };
   return (
     <Button size="sm" variant="ghost" onClick={() => void share()}>
@@ -227,7 +227,7 @@ function AvatarStack() {
   const shown = roster.slice(0, 4);
   const extra = roster.length - shown.length;
   return (
-    <div className="flex items-center pr-1" aria-label={`${roster.length} people in this room`} role="img">
+    <div className="flex items-center pr-1" aria-label={`${roster.filter((m) => !m.isBot).length} people in this room`} role="img">
       {shown.map((m) => (
         <Avatar key={m.id} name={m.name} colorIndex={m.colorIndex} isBot={m.isBot} size="sm" dimmed={m.status === 'reconnecting'} className="-ml-1.5 first:ml-0" />
       ))}

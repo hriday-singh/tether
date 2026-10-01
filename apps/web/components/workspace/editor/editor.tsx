@@ -24,6 +24,7 @@ import { languageInfo } from '@/lib/languages';
 import { loadPreferences } from '@/lib/prefs';
 import { useWorkspace } from '../context';
 import { collab, peersFacet, toggleLineHighlight, type PeerInfo } from './collab';
+import { commentOnSelection } from './comment-tooltip';
 import { bracketColors, createLinterExtension, editorFontSizeTheme, loadLanguage, quietHighlight, quietTheme } from './setup';
 
 function peersOf(roster: readonly Member[]): ReadonlyMap<string, PeerInfo> {
@@ -91,6 +92,7 @@ export default function Editor({ readOnly = false }: { readOnly?: boolean }) {
               onOffscreen: (list) => ws.offscreen.set(list),
             },
           ),
+          commentOnSelection(() => ws.commentOnSelection()),
           keymap.of([
             { key: 'Alt-h', run: (v) => (toggleLineHighlight(v, client.awareness, client.text), true) },
             ...closeBracketsKeymap,

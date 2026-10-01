@@ -1,5 +1,6 @@
 import {
   type AuditEvent,
+  type ChatCodeRef,
   type ChatMessage,
   type ClientControlMessage,
   type Member,
@@ -45,6 +46,9 @@ export interface ServerSyncOptions {
 const TYPING_MS = 1500;
 /** After a storm ends, this browser's replica must match a server checksum within this window to count as converged. */
 const STORM_VERIFY_MS = 5000;
+
+const withHost = (members: readonly Member[], hostId: string | null): Member[] =>
+  members.map((m) => (m.isHost === (m.id === hostId) ? m : { ...m, isHost: m.id === hostId }));
 
 export class ServerSyncClient implements SyncClient {
   readonly doc = new Y.Doc();
@@ -263,13 +267,15 @@ export class ServerSyncClient implements SyncClient {
         });
       },
       onRosterChange: (members) => {
-        this.roster.set(members);
+        this.roster.set(withHost(members, this.room.get().hostId));
       },
       onHostChange: (hostId) => {
         this.room.set({
           ...this.room.get(),
           hostId,
         });
+        // Server stamps isHost once at join; keep the roster in step with live host changes.
+        this.roster.set(withHost(this.roster.get(), hostId));
       },
       onRoomUpdate: (settings) => {
         const current = this.room.get();
@@ -452,12 +458,13 @@ export class ServerSyncClient implements SyncClient {
     return () => this.chatListeners.delete(listener);
   }
 
-  async sendChat(clientMsgId: string, text: string): Promise<void> {
+  async sendChat(clientMsgId: string, text: string, ref?: ChatCodeRef): Promise<void> {
     try {
       await this.protocolClient.command({
         t: 'chat.send',
         rid: clientMsgId,
         text,
+        ...(ref ? { ref } : {}),
       });
     } catch (err) {
       throw new CommandError((err as Error).message);

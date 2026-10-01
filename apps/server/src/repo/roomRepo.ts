@@ -100,6 +100,11 @@ export class RoomRepo {
     stmt.run(snapshot, snapshotAt, snapshotAt, id);
   }
 
+  /** Deletes rooms idle since before `cutoffIso`; children go with them via ON DELETE CASCADE. */
+  public deleteIdleBefore(cutoffIso: string): number {
+    return Number(this.db.prepare(`DELETE FROM rooms WHERE last_active_at < ?`).run(cutoffIso).changes);
+  }
+
   public touchLastActive(id: string): void {
     const stmt = this.db.prepare(
       `UPDATE rooms SET last_active_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`

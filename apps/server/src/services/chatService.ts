@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@tether/shared/protocol/schemas';
+import type { ChatCodeRef, ChatMessage } from '@tether/shared/protocol/schemas';
 import { ChatRepo } from '../repo/chatRepo.js';
 
 export interface ChatPost {
@@ -7,6 +7,7 @@ export interface ChatPost {
   name: string;
   colorIndex: number;
   text: string;
+  ref?: ChatCodeRef | null;
 }
 
 /** Room chat (ADR-017). Own gapless per-room seq, same delivery rules as the audit feed (docs/04). */

@@ -1,9 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as Y from 'yjs';
+import type { Member } from '@tether/shared';
 import { ServerSyncClient } from './server-sync-client';
 import { CommandError } from './types';
 
 interface MockSyncClientOpts {
+  onRosterChange?: (members: Member[]) => void;
+  onHostChange?: (hostId: string | null) => void;
   onEvent?: (event: unknown) => void;
   onChecksum?: (result: { hash: string; matched: boolean }) => void;
   onSyncStateChange?: (state: string) => void;
@@ -143,6 +146,18 @@ describe('ServerSyncClient', () => {
 
     client.destroy();
     vi.useRealTimers();
+  });
+
+  it('moves the roster host flag on a live host change', () => {
+    const client = new ServerSyncClient(options);
+    const member = (id: string, isHost: boolean): Member => ({ id, name: id, colorIndex: 0, joinedAt: '', isHost, isBot: false, status: 'active' });
+    lastCreatedOpts?.onHostChange?.('a');
+    lastCreatedOpts?.onRosterChange?.([member('a', true), member('b', false)]);
+    lastCreatedOpts?.onHostChange?.('b');
+    expect(client.roster.get().map((m) => [m.id, m.isHost])).toEqual([
+      ['a', false],
+      ['b', true],
+    ]);
   });
 
   it('updates storm store on demo.storm and demo.storm_completed events', () => {

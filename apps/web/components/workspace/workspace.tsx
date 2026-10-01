@@ -463,6 +463,7 @@ function ShortcutsDialog() {
     ['Shift Alt F', 'Format document'],
     [`${m} Shift F`, 'Toggle Zen mode'],
     ['Alt H', 'Highlight current lines for everyone'],
+    [`${m} Shift M`, 'Comment on selection in chat'],
     ['Ctrl `', 'Toggle diagnostics drawer'],
     ['Esc', 'Exit Zen mode / Restore panel / Back to editor'],
     ['Esc then Tab', 'Move focus out of the editor'],

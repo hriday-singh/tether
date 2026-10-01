@@ -301,6 +301,23 @@ describe('Rooms & RoomRegistry', () => {
 
       expect(room.isBot('u1')).toBe(false);
       expect(room.isBot('bot-1')).toBe(true);
+      expect(room.humanCount).toBe(1);
+
+      room.destroy();
+    });
+
+    it('never elects a bot, and names the new host in the feed', () => {
+      roomRepo.create({ id: 'bot-host-room', epoch: 'epoch-1', createdBy: 'u1' });
+      const room = new Room('bot-host-room', 'epoch-1', null, [], persistenceService, auditService);
+
+      room.addConnection(new MockSocket() as unknown as WebSocket, { id: 'bot-1', name: 'Bot Alpha', colorIndex: 1 }, true);
+      expect(room.hostElector.hostId).toBeNull();
+      room.addConnection(new MockSocket() as unknown as WebSocket, { id: 'u1', name: 'Alice', colorIndex: 0 }, false);
+      expect(room.hostElector.hostId).toBe('u1');
+      expect(room.hostElector.manualTransfer('bot-1')).toBe(false);
+
+      const hostEvent = auditService.getEventsAfter('bot-host-room', 0).find((e) => e.type === 'host.changed');
+      expect(JSON.parse(String(hostEvent?.payload))).toMatchObject({ to: 'u1', toName: 'Alice' });
 
       room.destroy();
     });
@@ -361,6 +378,24 @@ describe('Rooms & RoomRegistry', () => {
       const unloaded = registry.unloadIdleRooms(now);
       expect(unloaded).toBe(1);
       expect(registry.activeRoomCount).toBe(0);
+
+      registry.destroy();
+    });
+
+    it('expires rooms idle past the limit but never a loaded one', () => {
+      roomRepo.create({ id: 'r-old', epoch: 'e1', createdBy: 'u1' });
+      roomRepo.create({ id: 'r-live', epoch: 'e1', createdBy: 'u1' });
+      roomRepo.create({ id: 'r-recent', epoch: 'e1', createdBy: 'u1' });
+      const longAgo = '2000-01-01T00:00:00.000Z';
+      db.prepare(`UPDATE rooms SET last_active_at = ? WHERE id IN ('r-old', 'r-live')`).run(longAgo);
+
+      const registry = new RoomRegistry(roomRepo, updateRepo, persistenceService, auditService, 5000);
+      registry.getOrCreate('r-live');
+
+      expect(registry.expireIdleRooms()).toBe(1);
+      expect(roomRepo.findById('r-old')).toBeUndefined();
+      expect(roomRepo.findById('r-live')).toBeDefined();
+      expect(roomRepo.findById('r-recent')).toBeDefined();
 
       registry.destroy();
     });

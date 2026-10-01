@@ -40,6 +40,8 @@ export class Room {
   private connContexts = new Map<WebSocket, RoomConnectionContext>();
   private claimedClientIDs = new Map<number, string>();
   private botMemberIds = new Set<string>();
+  /** memberId -> display name, so feed events never fall back to raw ids once the socket is gone. */
+  private memberNames = new Map<string, string>();
   private checksumQuietTimer: NodeJS.Timeout | null = null;
   private editCoalescer: EditSummaryCoalescer;
   // Upper-bound estimate of the encoded doc size; Infinity forces an exact measure on the first update.
@@ -97,7 +99,12 @@ export class Room {
         });
         this.auditService.logEvent(this.id, {
           type: 'host.changed',
-          payload: { from: previousHostId, to: newHostId, reason },
+          payload: {
+            from: previousHostId,
+            to: newHostId,
+            toName: newHostId ? this.memberNames.get(newHostId) ?? null : null,
+            reason,
+          },
         });
       },
       onMemberRemoved: (memberId, reason) => {
@@ -109,6 +116,7 @@ export class Room {
         this.auditService.logEvent(this.id, {
           type: 'member.left',
           actorMemberId: memberId,
+          actorName: this.memberNames.get(memberId) ?? null,
           payload: { reason },
         });
       },
@@ -153,6 +161,15 @@ export class Room {
     return this.botMemberIds.has(memberId);
   }
 
+  /** Distinct humans connected right now (Chaos bots and departed members excluded). */
+  public get humanCount(): number {
+    const ids = new Set<string>();
+    for (const ctx of this.connContexts.values()) {
+      if (!this.botMemberIds.has(ctx.memberId)) ids.add(ctx.memberId);
+    }
+    return ids.size;
+  }
+
   public addConnection(
     ws: WebSocket,
     member: { id: string; name: string; colorIndex: number },
@@ -163,6 +180,7 @@ export class Room {
     if (isBot) {
       this.botMemberIds.add(member.id);
     }
+    this.memberNames.set(member.id, member.name);
 
     const awarenessBinding = new AwarenessBinding(member.id, this.claimedClientIDs);
     const floodGuard = new FloodGuard();
@@ -212,7 +230,7 @@ export class Room {
     };
 
     this.connContexts.set(ws, ctx);
-    const { isNew } = this.hostElector.addMember(member.id);
+    const { isNew } = this.hostElector.addMember(member.id, undefined, !isBot);
 
     return { ctx, isNew };
   }

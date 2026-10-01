@@ -47,6 +47,14 @@ describe('ChatService', () => {
     });
   });
 
+  it('round-trips a quoted code ref and defaults plain messages to null', () => {
+    const ref = { from: 'AQID', to: 'BAUG', line: 2, endLine: 4, snippet: 'const x = 1;' };
+    const quoted = chat.post('room-a', { ...post(1), ref }).message;
+    expect(quoted.ref).toEqual(ref);
+    expect(chat.post('room-a', post(2)).message.ref).toBeNull();
+    expect(chat.getAfter('room-a', 0, 10)[0]?.ref).toEqual(ref);
+  });
+
   it('treats a resend with the same clientMsgId as a no-op', () => {
     const first = chat.post('room-a', post(1));
     const again = chat.post('room-a', post(1, 'different text'));

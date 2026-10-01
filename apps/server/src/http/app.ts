@@ -172,13 +172,13 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
       });
     }
 
-    const members = deps.memberRepo.getMembers(roomId);
     return reply.send({
       id: room.id,
       hasPasscode: room.passcode_hash !== null,
       locked: room.locked === 1,
       language: room.language,
-      memberCount: members.length,
+      // Online humans only; an unloaded room has nobody connected.
+      memberCount: deps.roomRegistry.get(roomId)?.humanCount ?? 0,
     });
   });
 
@@ -209,13 +209,13 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     if (room.passcode_hash !== null) {
       if (!parsed.data.passcode) {
         return reply.status(401).send({
-          error: { code: 'passcode_required', message: 'Room requires a passcode' },
+          error: { code: 'passcode_required', message: 'Room requires a password' },
         });
       }
       const valid = await deps.joinService.verifyPasscode(parsed.data.passcode, room.passcode_hash);
       if (!valid) {
         return reply.status(401).send({
-          error: { code: 'invalid_passcode', message: 'Incorrect passcode' },
+          error: { code: 'invalid_passcode', message: 'Incorrect password' },
         });
       }
     }

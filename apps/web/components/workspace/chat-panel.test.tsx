@@ -1,22 +1,33 @@
-import { CHAT_MAX_CHARS } from '@tether/shared';
+import { CHAT_MAX_CHARS, type ChatCodeRef } from '@tether/shared';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { TooltipProvider } from '@/components/ui/controls';
 import { describe, expect, it, vi } from 'vitest';
 import { ChatComposer } from './chat-panel';
 
-function setup(online = true) {
+function setup(online = true, attachment: ChatCodeRef | null = null) {
   const onSend = vi.fn();
+  const onClearAttachment = vi.fn();
   render(
     <TooltipProvider>
-      <ChatComposer online={online} onSend={onSend} />
+      <ChatComposer online={online} onSend={onSend} attachment={attachment} onClearAttachment={onClearAttachment} />
     </TooltipProvider>,
   );
   const box = screen.getByRole('textbox', { name: 'Chat message' });
   const button = screen.getByRole('button', { name: 'Send message' });
-  return { onSend, box, button };
+  return { onSend, onClearAttachment, box, button };
 }
 
 describe('ChatComposer', () => {
+  it('shows quoted code, focuses the box, and lets you drop the quote', () => {
+    const ref = { from: 'AQ==', to: 'Ag==', line: 3, endLine: 5, snippet: '  const x = 1;\nreturn x;' };
+    const { box, onClearAttachment } = setup(true, ref);
+    expect(screen.getByText('L3–5')).toBeInTheDocument();
+    expect(screen.getByText('const x = 1;')).toBeInTheDocument();
+    expect(box).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove quoted code' }));
+    expect(onClearAttachment).toHaveBeenCalledTimes(1);
+  });
+
   it('sends trimmed text on Enter and clears the draft', () => {
     const { onSend, box } = setup();
     fireEvent.change(box, { target: { value: '  hello  ' } });

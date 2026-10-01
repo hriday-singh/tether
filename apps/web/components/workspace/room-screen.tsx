@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/controls';
 import { Icon } from '@/components/ui/icon';
 import { Field, Input } from '@/components/ui/input';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { ThinkingOrb } from '@/components/ui/thinking-orb';
 import { api, ApiError, DisplayNameSchema, type RoomInfo } from '@/lib/api';
 import { useMediaQuery, useMounted, useStore } from '@/lib/hooks';
@@ -146,7 +145,7 @@ function JoinGate({
   const submit = async () => {
     const parsed = DisplayNameSchema.safeParse(name);
     if (!parsed.success) return setError({ field: 'name', message: parsed.error.issues[0]?.message ?? 'Invalid name' });
-    if (info?.hasPasscode && !passcode) return setError({ field: 'passcode', message: 'This room needs a passcode' });
+    if (info?.hasPasscode && !passcode) return setError({ field: 'passcode', message: 'This room needs a password' });
     setError(null);
     setJoining(true);
     try {
@@ -256,60 +255,17 @@ function JoinPasscodeField({
   setPasscode: (pass: string) => void;
   error: string | null;
 }) {
-  const [otpMode, setOtpMode] = useState(true);
   return (
-    <Field
-      id="join-pass"
-      label="Passcode"
-      error={error}
-      hint={otpMode ? 'Entering PIN' : undefined}
-    >
-      {otpMode ? (
-        <div className="flex flex-col items-center gap-2 py-1">
-          <InputOTP
-            maxLength={6}
-            value={passcode}
-            onChange={setPasscode}
-            aria-invalid={!!error}
-            aria-describedby={error ? 'join-pass-error' : undefined}
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-          <button
-            type="button"
-            onClick={() => setOtpMode(false)}
-            className="text-micro text-muted-foreground underline underline-offset-4 hover:text-foreground"
-          >
-            Use password field
-          </button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <Input
-            id="join-pass"
-            type="password"
-            autoComplete="current-password"
-            value={passcode}
-            onChange={(e) => setPasscode(e.target.value)}
-            aria-invalid={!!error}
-            aria-describedby={error ? 'join-pass-error' : undefined}
-          />
-          <button
-            type="button"
-            onClick={() => setOtpMode(true)}
-            className="self-end text-micro text-muted-foreground underline underline-offset-4 hover:text-foreground"
-          >
-            Use PIN slots
-          </button>
-        </div>
-      )}
+    <Field id="join-pass" label="Password" error={error}>
+      <Input
+        id="join-pass"
+        type="password"
+        autoComplete="current-password"
+        value={passcode}
+        onChange={(e) => setPasscode(e.target.value)}
+        aria-invalid={!!error}
+        aria-describedby={error ? 'join-pass-error' : undefined}
+      />
     </Field>
   );
 }

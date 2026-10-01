@@ -339,6 +339,7 @@ export async function attachConnectionHandler(
               name: member.name,
               colorIndex: member.colorIndex,
               text: msg.text,
+              ref: msg.ref ?? null,
             });
             const out = JSON.stringify({ t: 'chat.msg', message });
             // A resend (same rid) was already broadcast: only the sender needs it back.

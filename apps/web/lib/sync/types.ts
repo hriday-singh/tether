@@ -1,4 +1,4 @@
-import type { AuditEvent, ChatMessage, ClientControlMessage, Member, RoomMetadata } from '@tether/shared';
+import type { AuditEvent, ChatCodeRef, ChatMessage, ClientControlMessage, Member, RoomMetadata } from '@tether/shared';
 import type { Awareness } from 'y-protocols/awareness';
 import type * as Y from 'yjs';
 import type { ReadableStore } from '../store';
@@ -125,7 +125,7 @@ export interface SyncClient {
    * Send a chat message. `clientMsgId` (a UUID) makes resends idempotent.
    * Resolves once the server stored it. Rejects with CommandError ('offline', 'rate_limited', ...).
    */
-  sendChat(clientMsgId: string, text: string): Promise<void>;
+  sendChat(clientMsgId: string, text: string, ref?: ChatCodeRef): Promise<void>;
   /** Restore the local copy (IndexedDB) first, then connect. */
   start(): Promise<void>;
   /** Stop connecting without losing state (small-screen gate). */

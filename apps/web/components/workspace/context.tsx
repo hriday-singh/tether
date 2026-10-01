@@ -1,8 +1,10 @@
 'use client';
 
 import { EditorView } from '@codemirror/view';
+import type { ChatCodeRef } from '@tether/shared';
 import { createContext, useContext } from 'react';
 import { toast } from '@/components/ui/toaster';
+import { makeCodeRef, resolveCodeRef } from '@/lib/code-ref';
 import { createConsoleStore, type ConsoleStore } from '@/lib/console-store';
 import { languageInfo } from '@/lib/languages';
 import type { RoomSession } from '@/lib/session';
@@ -47,6 +49,8 @@ export interface Workspace {
   follow: WritableStore<string | null>;
   /** Chat messages from others that arrived while the Chat tab was not visible. */
   chatUnread: WritableStore<number>;
+  /** Code quoted into the chat composer, waiting to be sent with the next message. */
+  chatRef: WritableStore<ChatCodeRef | null>;
   running: WritableStore<boolean>;
   preview: WritableStore<PreviewRun>;
   ui: WritableStore<UIState>;
@@ -56,6 +60,10 @@ export interface Workspace {
   setView(view: EditorView | null): void;
   setPreviewFrame(frame: HTMLIFrameElement | null): void;
   jumpTo(memberId: string): boolean;
+  /** Quote the editor selection into chat and open it. False when nothing is selected. */
+  commentOnSelection(): boolean;
+  /** Select and scroll to a quoted range. False when that code is gone. */
+  revealCodeRef(ref: ChatCodeRef): boolean;
   run(): Promise<void>;
   stop(): void;
   focusEditor(): void;
@@ -115,6 +123,7 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
     offscreen: createStore<readonly OffscreenCursor[]>([]),
     follow: createStore<string | null>(null),
     chatUnread,
+    chatRef: createStore<ChatCodeRef | null>(null),
     running,
     preview,
     ui,
@@ -133,6 +142,32 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
       const pos = target ? remoteHead(client.awareness, client.text, target.clientId) : null;
       if (pos === null || !view.current) return false;
       view.current.dispatch({ effects: EditorView.scrollIntoView(pos, { y: 'center' }) });
+      return true;
+    },
+
+    commentOnSelection() {
+      const sel = view.current?.state.selection.main;
+      if (!sel || sel.empty) {
+        toast.info('Select some code first');
+        return false;
+      }
+      ws.chatRef.set(makeCodeRef(client.text, sel.from, sel.to));
+      ui.update((s) => ({ ...s, sidebarOpen: true, sidebarTab: 'chat', mobileTab: 'chat', zenMode: false }));
+      return true;
+    },
+
+    revealCodeRef(ref) {
+      const range = resolveCodeRef(client.text, ref);
+      if (!range || !view.current) {
+        toast.info('That code was changed or removed', { description: 'The quote shows what it looked like.' });
+        return false;
+      }
+      ui.update((s) => ({ ...s, mobileTab: 'editor', editorView: 'code', zenMode: false }));
+      view.current.dispatch({
+        selection: { anchor: range.from, head: range.to },
+        effects: EditorView.scrollIntoView(range.from, { y: 'center' }),
+      });
+      view.current.focus();
       return true;
     },
 

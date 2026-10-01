@@ -14,6 +14,7 @@ const msg = (seq: number, memberId: string, ms: number): ChatMessage => ({
   name: memberId.toUpperCase(),
   colorIndex: 1,
   text: `m${seq}`,
+  ref: null,
   createdAt: at(ms),
 });
 const self = { id: 'me', name: 'Me', colorIndex: 4 };

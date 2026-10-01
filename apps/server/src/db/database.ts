@@ -106,10 +106,14 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   display_name  TEXT NOT NULL,
   color_index   INTEGER NOT NULL,
   body          TEXT NOT NULL,
+  code_ref      TEXT NULL,
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS chat_messages_room_id_seq_idx ON chat_messages (room_id, seq);
 CREATE UNIQUE INDEX IF NOT EXISTS chat_messages_room_id_client_msg_id_idx ON chat_messages (room_id, client_msg_id);
+
+-- Mirrors migrations/0003_chat_refs_room_expiry.sqlite.sql (new databases only; existing ones apply the file)
+CREATE INDEX IF NOT EXISTS rooms_last_active_at_idx ON rooms (last_active_at);
 `;
 
 export function createDatabase(filePath = ':memory:'): DatabaseSession {

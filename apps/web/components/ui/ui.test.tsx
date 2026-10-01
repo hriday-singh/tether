@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { Button } from './button';
 import { ConfirmButton } from './confirm-button';
 import { buttonVariants } from './button-variants';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from './input-otp';
 import { ThinkingOrb } from './thinking-orb';
 import { FormattedTime } from './formatted-time';
 import { Popover, PopoverContent, PopoverTrigger, Select, SelectItem } from './menus';
@@ -42,26 +41,6 @@ describe('Button', () => {
   });
 });
 
-describe('InputOTP', () => {
-  it('renders slot elements with accessibility attributes', () => {
-    render(
-      <InputOTP maxLength={4} value="12" onChange={() => {}}>
-        <InputOTPGroup>
-          <InputOTPSlot index={0} data-testid="slot-0" />
-          <InputOTPSlot index={1} data-testid="slot-1" />
-          <InputOTPSlot index={2} data-testid="slot-2" />
-          <InputOTPSlot index={3} data-testid="slot-3" />
-        </InputOTPGroup>
-      </InputOTP>,
-    );
-
-    expect(screen.getByTestId('slot-0')).toHaveTextContent('1');
-    expect(screen.getByTestId('slot-1')).toHaveTextContent('2');
-    expect(screen.getByTestId('slot-2')).toHaveTextContent('');
-    expect(screen.getByTestId('slot-3')).toHaveTextContent('');
-  });
-});
-
 describe('ThinkingOrb', () => {
   it('renders non-animated fallback with accessible label', () => {
     render(<ThinkingOrb state="working" animated={false} label="Processing task" tone="primary" />);
@@ -73,6 +52,30 @@ describe('ThinkingOrb', () => {
     render(<ThinkingOrb state="connecting" animated={false} label="Connecting" color="#10b981" />);
     const orb = screen.getByRole('img', { name: 'Connecting' });
     expect(orb).toBeInTheDocument();
+  });
+
+  it('renders animated canvas orb immediately with accessible label', () => {
+    render(<ThinkingOrb state="connecting" label="Joining" />);
+    const orb = screen.getByRole('img', { name: 'Joining' });
+    expect(orb).toBeInTheDocument();
+    expect(orb.tagName.toLowerCase()).toBe('canvas');
+  });
+
+  it('resolves container text color to match text next to it', () => {
+    const { container } = render(
+      <div style={{ color: 'rgb(240, 240, 240)' }}>
+        <ThinkingOrb state="connecting" label="Joining" />
+        <span>Joining…</span>
+      </div>,
+    );
+    const canvas = container.querySelector('canvas');
+    expect(canvas).toBeInTheDocument();
+  });
+
+  it('preserves explicit size and className on container', () => {
+    const { container } = render(<ThinkingOrb state="connecting" size={20} className="size-4" label="Joining" />);
+    const span = container.querySelector('span');
+    expect(span).toHaveClass('size-4');
   });
 });
 

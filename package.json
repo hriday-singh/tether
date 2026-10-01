@@ -14,6 +14,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint . && pnpm --filter @tether/web lint",
     "build:pkg": "npm run build:pkg --workspaces --if-present",
+    "db:migrate": "pnpm --filter @tether/server db:migrate",
     "build": "npm run typecheck && npm run test && npm run build:pkg",
     "dev": "pnpm --filter @tether/server --filter @tether/web --parallel dev",
     "dev:server": "pnpm --filter @tether/server dev",

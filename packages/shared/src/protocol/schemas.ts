@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CHAT_MAX_CHARS, MAX_AWARENESS_STATE_BYTES, STORM_MAX_BOTS, STORM_MAX_SECONDS } from '../constants.js';
+import { CHAT_MAX_CHARS, CHAT_REF_SNIPPET_MAX, MAX_AWARENESS_STATE_BYTES, STORM_MAX_BOTS, STORM_MAX_SECONDS } from '../constants.js';
 
 // --- Shared Primitive Schemas ---
 
@@ -38,6 +38,19 @@ export const AuditEventSchema = z.object({
 });
 export type AuditEvent = z.infer<typeof AuditEventSchema>;
 
+/**
+ * A code range quoted in chat. `from`/`to` are base64 Y.RelativePosition so the range follows later edits;
+ * lines and snippet are what the author saw (label + fallback when the code is gone).
+ */
+export const ChatCodeRefSchema = z.object({
+  from: z.string().min(1).max(256),
+  to: z.string().min(1).max(256),
+  line: z.number().int().positive(),
+  endLine: z.number().int().positive(),
+  snippet: z.string().max(CHAT_REF_SNIPPET_MAX),
+});
+export type ChatCodeRef = z.infer<typeof ChatCodeRefSchema>;
+
 export const ChatMessageSchema = z.object({
   id: z.number().int().positive(),
   roomId: z.string(),
@@ -47,6 +60,7 @@ export const ChatMessageSchema = z.object({
   name: z.string(),
   colorIndex: z.number().int().min(0),
   text: z.string().min(1).max(CHAT_MAX_CHARS),
+  ref: ChatCodeRefSchema.nullable().default(null),
   createdAt: z.string(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
@@ -146,6 +160,7 @@ export const ClientChatSendSchema = z.object({
   t: z.literal('chat.send'),
   rid: z.string().uuid(),
   text: z.string().trim().min(1).max(CHAT_MAX_CHARS),
+  ref: ChatCodeRefSchema.optional(),
 });
 
 export const ClientControlMessageSchema = z.discriminatedUnion('t', [

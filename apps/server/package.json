@@ -22,6 +22,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "db:migrate": "tsx src/db/migrate.ts",
     "build:pkg": "tsc",
     "build": "tsc"
   },

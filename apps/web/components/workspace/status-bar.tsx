@@ -18,6 +18,7 @@ export function StatusBar() {
   const roster = useStore(client.roster);
   const unread = useStore(ws.chatUnread);
   const host = roster.find((m) => m.id === room.hostId);
+  const people = roster.filter((m) => !m.isBot).length;
 
   return (
     <footer className="flex h-7 shrink-0 items-center gap-3 rounded-xl border border-border/60 bg-card/80 px-3 font-mono text-micro text-muted-foreground shadow-capsule backdrop-blur-md">
@@ -54,7 +55,7 @@ export function StatusBar() {
           className={cn('tabular transition-ui hover:text-foreground cursor-pointer', unread === 0 && 'ml-auto')}
           aria-label="Open member roster"
         >
-          {roster.length} {roster.length === 1 ? 'Peer' : 'Peers'}
+          {people} {people === 1 ? 'Peer' : 'Peers'}
         </button>
       </Tip>
       <Sep />

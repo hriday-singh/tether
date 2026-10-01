@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@tether/shared';
+import type { ChatCodeRef, ChatMessage } from '@tether/shared';
 
 /** Messages by the same author closer than this share one header (avatar + name). */
 export const CHAT_GROUP_MS = 5 * 60_000;
@@ -9,6 +9,7 @@ export const CHAT_COUNTER_FROM = 200;
 export interface PendingChat {
   clientMsgId: string;
   text: string;
+  ref?: ChatCodeRef | null;
   createdAt: string;
   state: 'sending' | 'failed';
   /** CommandError code when failed ('rate_limited', 'offline', ...). */
@@ -21,6 +22,8 @@ export interface ChatRowView {
   name: string;
   colorIndex: number;
   text: string;
+  /** Quoted code range; clicking it reveals the code in the editor. */
+  ref: ChatCodeRef | null;
   createdAt: string;
   state: 'sent' | 'sending' | 'failed';
   error?: string;
@@ -42,7 +45,7 @@ export function buildChatRows(
     ...[...confirmed].reverse().map((m) => ({ ...m, state: 'sent' as const })),
     ...pending
       .filter((p) => !sentIds.has(p.clientMsgId))
-      .map((p) => ({ ...p, memberId: self.id, name: self.name, colorIndex: self.colorIndex })),
+      .map((p) => ({ ...p, ref: p.ref ?? null, memberId: self.id, name: self.name, colorIndex: self.colorIndex })),
   ];
   return oldestFirst
     .map((row, i) => {

@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@tether/shared/protocol/schemas';
+import { ChatCodeRefSchema, type ChatCodeRef, type ChatMessage } from '@tether/shared/protocol/schemas';
 import { DatabaseSession } from '../db/database.js';
 
 export interface ChatMessageRow {
@@ -10,6 +10,7 @@ export interface ChatMessageRow {
   display_name: string;
   color_index: number;
   body: string;
+  code_ref: string | null;
   created_at: string;
 }
 
@@ -21,6 +22,7 @@ export interface NewChatMessage {
   name: string;
   colorIndex: number;
   text: string;
+  ref?: ChatCodeRef | null;
 }
 
 export function formatChatRow(row: ChatMessageRow): ChatMessage {
@@ -33,8 +35,20 @@ export function formatChatRow(row: ChatMessageRow): ChatMessage {
     name: row.display_name,
     colorIndex: row.color_index,
     text: row.body,
+    ref: parseRef(row.code_ref),
     createdAt: row.created_at,
   };
+}
+
+/** Stored as JSON; anything unreadable degrades to a plain message rather than failing the page. */
+function parseRef(raw: string | null): ChatCodeRef | null {
+  if (!raw) return null;
+  try {
+    const parsed = ChatCodeRefSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }
 
 const clampLimit = (limit: number) => Math.min(100, Math.max(1, limit));
@@ -46,10 +60,19 @@ export class ChatRepo {
     const res = this.db
       .prepare(
         `INSERT INTO chat_messages (
-          room_id, seq, client_msg_id, member_id, display_name, color_index, body
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+          room_id, seq, client_msg_id, member_id, display_name, color_index, body, code_ref
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(msg.roomId, msg.seq, msg.clientMsgId, msg.memberId, msg.name, msg.colorIndex, msg.text);
+      .run(
+        msg.roomId,
+        msg.seq,
+        msg.clientMsgId,
+        msg.memberId,
+        msg.name,
+        msg.colorIndex,
+        msg.text,
+        msg.ref ? JSON.stringify(msg.ref) : null
+      );
     const id = Number(res.lastInsertRowid);
     const row = this.db.prepare<ChatMessageRow>(`SELECT * FROM chat_messages WHERE id = ?`).get(id);
     if (!row) throw new Error(`chat message ${id} vanished after insert`);

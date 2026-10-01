@@ -169,7 +169,7 @@ export function StartPanel() {
     } catch (err) {
       const code = err instanceof ApiError ? err.code : null;
       if (code === 'bad_passcode') {
-        setJoinErr({ passcode: joinPass ? (err as ApiError).message : 'This room needs a passcode' });
+        setJoinErr({ passcode: joinPass ? (err as ApiError).message : 'This room needs a password' });
       } else if (code === 'not_found') {
         setJoinErr({ roomId: (err as ApiError).message });
       } else {
@@ -307,7 +307,7 @@ function CreateFields({
           Use <span className="font-mono">{suggestion}</span> instead
         </Button>
       )}
-      <Field id="s-pass" label="Passcode" hint="Optional. Share the link, not the passcode." error={createErr.passcode}>
+      <Field id="s-pass" label="Password" hint="Optional. Share the link, not the password." error={createErr.passcode}>
         <Input
           id="s-pass"
           type="password"
@@ -348,7 +348,7 @@ function JoinFields({
           aria-describedby={joinErr.roomId ? 's-join-error' : undefined}
         />
       </Field>
-      <Field id="s-join-pass" label="Passcode" hint="Only if the room has one." error={joinErr.passcode}>
+      <Field id="s-join-pass" label="Password" hint="Only if the room has one." error={joinErr.passcode}>
         <Input
           id="s-join-pass"
           type="password"

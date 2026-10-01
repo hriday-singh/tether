@@ -51,8 +51,8 @@ describe('StartPanel', () => {
     await user.click(screen.getByRole('button', { name: /join one instead/i }));
     await user.type(screen.getByLabelText('Room ID'), 'locked-room');
     await user.click(screen.getByRole('button', { name: /join room/i }));
-    expect(await screen.findByText('This room needs a passcode')).toBeInTheDocument();
-    await user.type(screen.getByLabelText('Passcode'), 'secret');
+    expect(await screen.findByText('This room needs a password')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Password'), 'secret');
     await user.click(screen.getByRole('button', { name: /join room/i }));
     expect(joinRoom).toHaveBeenLastCalledWith('locked-room', { name: 'Hriday', passcode: 'secret' });
     expect(await screen.findByText('Wrong passcode')).toBeInTheDocument();

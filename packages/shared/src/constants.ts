@@ -31,6 +31,9 @@ export const HOST_GRACE_MS = 5000;
 export const PERSIST_FLUSH_MS = 250;
 export const COMPACT_AFTER_ROWS = 500;
 export const ROOM_UNLOAD_IDLE_MS = 30000;
+/** Rooms with nobody connected for this long are deleted (doc, members, chat, feed). */
+export const ROOM_EXPIRE_IDLE_MS = 24 * 60 * 60 * 1000;
+export const ROOM_EXPIRE_SWEEP_MS = 60 * 60 * 1000;
 export const PERSIST_MAX_QUEUED_PER_ROOM = 64;
 export const PERSIST_MAX_BUFFERED_UPDATES = 10000;
 
@@ -42,6 +45,8 @@ export const FEED_GAP_FILL_MAX = 500;
 export const CHAT_MAX_CHARS = 2000;
 export const CHAT_RATE_PER_SEC = 1;
 export const CHAT_BURST = 5;
+/** Code quoted in a chat message is cut to this many chars; the anchor still covers the full range. */
+export const CHAT_REF_SNIPPET_MAX = 500;
 
 // Storm Demo Mode
 export const STORM_MAX_BOTS = 8;

@@ -275,6 +275,9 @@ describe('Host Handover Timing & Race Integration Tests', () => {
       payload: { name: 'Alice', roomId: 'dup-room' },
     });
     const { token: token1 } = JSON.parse(createRes.body);
+    // Welcome lists present members only, so Alice must be connected.
+    const aliceWs = new WebSocket(`ws://127.0.0.1:${serverPort}/ws/rooms/dup-room`, ['collab.v1', token1]);
+    await new Promise((resolve) => aliceWs.on('open', resolve));
 
     // 2. Second user also named "alice" joins
     const joinRes = await app.inject({
@@ -313,5 +316,6 @@ describe('Host Handover Timing & Race Integration Tests', () => {
     expect(names).toContain('alice (2)');
 
     ws.close();
+    aliceWs.close();
   });
 });

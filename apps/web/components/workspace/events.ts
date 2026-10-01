@@ -42,13 +42,13 @@ export function describeEvent(e: AuditEvent): EventView {
       return { icon: UserRemove01Icon, text, tone: reason === 'kicked' ? 'destructive' : 'neutral' };
     }
     case 'host.changed':
-      return { icon: CrownIcon, text: `${str(p.to, 'Someone')} is now host`, tone: 'warning' };
+      return { icon: CrownIcon, text: `${str(p.toName, 'Someone')} is now host`, tone: 'warning' };
     case 'room.locked':
       return { icon: LockKeyIcon, text: `${who} locked the room`, tone: 'warning' };
     case 'room.unlocked':
       return { icon: SquareUnlock01Icon, text: `${who} unlocked the room`, tone: 'neutral' };
     case 'room.passcode':
-      return { icon: Key01Icon, text: `${who} ${str(p.action, 'changed')} the passcode`, tone: 'neutral' };
+      return { icon: Key01Icon, text: `${who} ${str(p.action, 'changed')} the password`, tone: 'neutral' };
     case 'room.language':
       return {
         icon: CodeIcon,
@@ -63,8 +63,9 @@ export function describeEvent(e: AuditEvent): EventView {
     case 'throttle.applied':
       return { icon: AlertCircleIcon, text: `${who} was batched to 5 updates/s (nothing lost)`, tone: 'warning' };
     case 'security.flood':
+      return { icon: Shield01Icon, text: `${who} was disconnected for sending too much, too fast`, tone: 'destructive' };
     case 'security.protocol':
-      return { icon: Shield01Icon, text: `Connection closed for abuse (${str(p.code)})`, tone: 'destructive' };
+      return { icon: Shield01Icon, text: `${who} was disconnected after sending invalid data`, tone: 'destructive' };
     case 'demo.storm':
       return { icon: CpuIcon, text: `${who} launched Chaos: ${num(p.bots)} bots, ${num(p.seconds)} s${p.faults ? ', faults on' : ''}`, tone: 'primary' };
     default:

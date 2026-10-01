@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   ClientControlMessageSchema,
+  ServerChatMsgSchema,
   ServerControlMessageSchema,
   AwarenessStateSchema,
   StandardErrorResponseSchema,
@@ -204,7 +205,10 @@ describe('Chat schemas (ADR-017)', () => {
       text: 'hello',
       createdAt: new Date().toISOString(),
     };
-    expect(ServerControlMessageSchema.parse({ t: 'chat.msg', message })).toEqual({ t: 'chat.msg', message });
+    // Older servers omit ref: it defaults to null.
+    expect(ServerControlMessageSchema.parse({ t: 'chat.msg', message })).toEqual({ t: 'chat.msg', message: { ...message, ref: null } });
+    const ref = { from: 'AQ==', to: 'Ag==', line: 1, endLine: 2, snippet: 'x' };
+    expect(ServerChatMsgSchema.parse({ t: 'chat.msg', message: { ...message, ref } }).message.ref).toEqual(ref);
   });
 
   it('defaults welcome.chatSeq to 0 for older servers', () => {

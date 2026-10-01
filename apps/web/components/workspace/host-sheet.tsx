@@ -44,9 +44,9 @@ export function HostSheet() {
 
   const savePasscode = async () => {
     const parsed = PasscodeSchema.safeParse(passcode);
-    if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Invalid passcode');
+    if (!parsed.success) return setError(parsed.error.issues[0]?.message ?? 'Invalid password');
     setError(null);
-    if (await send('pass', { t: 'host.passcode', passcode }, room.room.hasPasscode ? 'Passcode changed' : 'Passcode set')) setPasscode('');
+    if (await send('pass', { t: 'host.passcode', passcode }, room.room.hasPasscode ? 'Password changed' : 'Password set')) setPasscode('');
   };
 
   return (
@@ -79,7 +79,7 @@ export function HostSheet() {
           <div className="flex items-start gap-2.5">
             <Icon icon={Key01Icon} className="mt-0.5 text-muted-foreground" />
             <div>
-              <p className="text-body font-medium">Passcode {room.room.hasPasscode ? '(on)' : '(off)'}</p>
+              <p className="text-body font-medium">Password {room.room.hasPasscode ? '(on)' : '(off)'}</p>
               <p className="text-caption text-muted-foreground">Connected members keep their session when it changes.</p>
             </div>
           </div>
@@ -90,7 +90,7 @@ export function HostSheet() {
             }}
             className="flex flex-col gap-2"
           >
-            <Field id="host-pass" label={room.room.hasPasscode ? 'New passcode' : 'Set passcode'} error={error}>
+            <Field id="host-pass" label={room.room.hasPasscode ? 'New password' : 'Set password'} error={error}>
               <Input
                 id="host-pass"
                 type="password"
@@ -105,7 +105,7 @@ export function HostSheet() {
                 {room.room.hasPasscode ? 'Change' : 'Set'}
               </Button>
               {room.room.hasPasscode && (
-                <Button size="sm" variant="outline" disabled={pending === 'pass'} onClick={() => void send('pass', { t: 'host.passcode', passcode: null }, 'Passcode cleared')}>
+                <Button size="sm" variant="outline" disabled={pending === 'pass'} onClick={() => void send('pass', { t: 'host.passcode', passcode: null }, 'Password cleared')}>
                   Clear
                 </Button>
               )}

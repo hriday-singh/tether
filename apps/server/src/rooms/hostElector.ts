@@ -5,6 +5,8 @@ export interface ElectorMember {
   joinedAt: number; // Unix ms timestamp
   activeConnections: number;
   graceTimerExpiresAt: number | null;
+  /** Chaos bots stay present but are never elected or handed the host role. */
+  canHost: boolean;
 }
 
 export type HandoverReason = 'creator' | 'handover-leave' | 'handover-timeout' | 'manual';
@@ -34,7 +36,7 @@ export class HostElector {
     return this.currentHostId;
   }
 
-  public addMember(memberId: string, joinedAt?: number): { isNew: boolean; isReconnecting: boolean } {
+  public addMember(memberId: string, joinedAt?: number, canHost = true): { isNew: boolean; isReconnecting: boolean } {
     const existing = this.members.get(memberId);
     if (existing) {
       existing.activeConnections++;
@@ -56,6 +58,7 @@ export class HostElector {
       joinedAt: joinedAt ?? this.clock(),
       activeConnections: 1,
       graceTimerExpiresAt: null,
+      canHost,
     };
     this.members.set(memberId, member);
 
@@ -129,7 +132,7 @@ export class HostElector {
 
   public manualTransfer(targetMemberId: string): boolean {
     const target = this.members.get(targetMemberId);
-    if (!target || target.activeConnections === 0) {
+    if (!target || !target.canHost || target.activeConnections === 0) {
       return false;
     }
     this.setHost(targetMemberId, 'manual', this.currentHostId);
@@ -144,7 +147,7 @@ export class HostElector {
     let best: ElectorMember | null = null;
 
     for (const member of this.members.values()) {
-      if (member.activeConnections > 0 || member.graceTimerExpiresAt !== null) {
+      if (member.canHost && (member.activeConnections > 0 || member.graceTimerExpiresAt !== null)) {
         if (!best) {
           best = member;
         } else if (member.joinedAt < best.joinedAt) {

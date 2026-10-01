@@ -167,8 +167,8 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Room created successfully",
+          "200": {
+            "description": "Existing room retrieved via Idempotency-Key",
             "content": {
               "application/json": {
                 "schema": {
@@ -177,8 +177,8 @@
               }
             }
           },
-          "200": {
-            "description": "Existing room retrieved via Idempotency-Key",
+          "201": {
+            "description": "Room created successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -724,7 +724,8 @@
             "type": "string"
           },
           "memberCount": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Humans connected right now (bots excluded)"
           }
         },
         "required": [
@@ -895,6 +896,35 @@
                 },
                 "text": {
                   "type": "string"
+                },
+                "ref": {
+                  "type": "object",
+                  "nullable": true,
+                  "description": "Quoted code range. from/to are base64 Y.RelativePosition anchors.",
+                  "properties": {
+                    "from": {
+                      "type": "string"
+                    },
+                    "to": {
+                      "type": "string"
+                    },
+                    "line": {
+                      "type": "integer"
+                    },
+                    "endLine": {
+                      "type": "integer"
+                    },
+                    "snippet": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to",
+                    "line",
+                    "endLine",
+                    "snippet"
+                  ]
                 },
                 "createdAt": {
                   "type": "string"

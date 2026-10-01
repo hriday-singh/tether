@@ -619,6 +619,7 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       expect(payload).toEqual({
         from: alice.memberId,
         to: bob.memberId,
+        toName: 'Bob',
         reason: 'handover-leave',
       });
 

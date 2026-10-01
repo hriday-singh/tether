@@ -23,6 +23,13 @@ describe('describeEvent', () => {
     expect(describeEvent(ev('member.left', { reason: 'timeout', name: 42 })).text).toBe('Asha timed out');
   });
 
+  it('names the new host and never shows raw ids or close codes', () => {
+    expect(describeEvent(ev('host.changed', { to: 'f3a9c2e1-uuid', toName: 'Ravi' })).text).toBe('Ravi is now host');
+    expect(describeEvent(ev('host.changed', { to: 'f3a9c2e1-uuid' })).text).toBe('Someone is now host');
+    expect(describeEvent(ev('security.flood', { code: 4008 })).text).toBe('Asha was disconnected for sending too much, too fast');
+    expect(describeEvent(ev('security.protocol', { code: 4002 })).text).not.toMatch(/\d/);
+  });
+
   it('renders unknown types instead of crashing', () => {
     expect(describeEvent(ev('future.thing', {}, null)).text).toBe('Someone: future.thing');
   });

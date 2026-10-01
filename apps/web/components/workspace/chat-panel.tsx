@@ -1,8 +1,8 @@
 'use client';
 
-import { Alert02Icon, BubbleChatIcon, SentIcon } from '@hugeicons/core-free-icons';
+import { Alert02Icon, BubbleChatIcon, Cancel01Icon, SentIcon } from '@hugeicons/core-free-icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { CHAT_MAX_CHARS, type ChatMessage } from '@tether/shared';
+import { CHAT_MAX_CHARS, type ChatCodeRef, type ChatMessage } from '@tether/shared';
 import { memo, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/icon';
 import { FormattedTime } from '@/components/ui/formatted-time';
 import { Textarea } from '@/components/ui/input';
 import { api } from '@/lib/api';
+import { codeRefLabel } from '@/lib/code-ref';
 import { buildChatRows, CHAT_COUNTER_FROM, type ChatRowView, type PendingChat } from '@/lib/chat';
 import { FeedStore, fillGaps } from '@/lib/feed-store';
 import { useStore } from '@/lib/hooks';
@@ -40,6 +41,7 @@ export function ChatPanel({ active }: { active: boolean }) {
   const room = useStore(client.room);
   const roster = useStore(client.roster);
   const connection = useStore(client.status).connection;
+  const attachment = useStore(ws.chatRef);
   const [pending, setPending] = useState<readonly PendingChat[]>([]);
   const [announcement, setAnnouncement] = useState('');
   const scroller = useRef<HTMLDivElement>(null);
@@ -91,12 +93,12 @@ export function ChatPanel({ active }: { active: boolean }) {
   const rows = useMemo(() => buildChatRows(items, pending, self), [items, pending, self.id, self.name, self.colorIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const discard = (clientMsgId: string) => setPending((p) => p.filter((x) => x.clientMsgId !== clientMsgId));
-  const send = async (text: string, clientMsgId: string = crypto.randomUUID()) => {
+  const send = async (text: string, ref: ChatCodeRef | null, clientMsgId: string = crypto.randomUUID()) => {
     const createdAt = new Date().toISOString();
-    setPending((p) => [...p.filter((x) => x.clientMsgId !== clientMsgId), { clientMsgId, text, createdAt, state: 'sending' }]);
+    setPending((p) => [...p.filter((x) => x.clientMsgId !== clientMsgId), { clientMsgId, text, ref, createdAt, state: 'sending' }]);
     scroller.current?.scrollTo({ top: 0 });
     try {
-      await client.sendChat(clientMsgId, text);
+      await client.sendChat(clientMsgId, text, ref ?? undefined);
       // chat.msg lands before ok, so the confirmed row already replaced this one.
       discard(clientMsgId);
     } catch (e) {
@@ -144,7 +146,8 @@ export function ChatPanel({ active }: { active: boolean }) {
                   key={row.clientMsgId}
                   row={row}
                   isSelf={row.memberId === self.id}
-                  onRetry={() => void send(row.text, row.clientMsgId)}
+                  onRetry={() => void send(row.text, row.ref, row.clientMsgId)}
+                  onOpenRef={ws.revealCodeRef}
                   onDiscard={() => discard(row.clientMsgId)}
                 />
               ))}
@@ -153,7 +156,15 @@ export function ChatPanel({ active }: { active: boolean }) {
           {history.isFetchingNextPage && <p className="p-2 text-center text-micro text-muted-foreground">Loading older…</p>}
         </div>
       )}
-      <ChatComposer online={connection === 'online'} onSend={(text) => void send(text)} />
+      <ChatComposer
+        online={connection === 'online'}
+        attachment={attachment}
+        onClearAttachment={() => ws.chatRef.set(null)}
+        onSend={(text) => {
+          ws.chatRef.set(null);
+          void send(text, attachment);
+        }}
+      />
     </div>
   );
 }
@@ -163,11 +174,13 @@ const ChatRow = memo(function ChatRow({
   isSelf,
   onRetry,
   onDiscard,
+  onOpenRef,
 }: {
   row: ChatRowView;
   isSelf: boolean;
   onRetry: () => void;
   onDiscard: () => void;
+  onOpenRef: (ref: ChatCodeRef) => boolean;
 }) {
   return (
     <li className={cn('flex gap-2.5 rounded-lg px-2 py-0.5 transition-ui hover:bg-accent/40', row.head && 'mt-2')}>
@@ -180,6 +193,7 @@ const ChatRow = memo(function ChatRow({
             <FormattedTime date={row.createdAt} className="ml-auto shrink-0 font-mono text-micro text-muted-foreground tabular" />
           </div>
         )}
+        {row.ref && <CodeQuote codeRef={row.ref} onOpen={onOpenRef} />}
         {/* Plain text only: React escapes it, and chat never renders HTML. */}
         {row.text.startsWith('```') && row.text.endsWith('```') ? (
           <pre className="rounded-lg border border-border/60 bg-card/80 p-2 font-mono text-micro overflow-x-auto whitespace-pre-wrap text-foreground">
@@ -213,9 +227,41 @@ const ChatRow = memo(function ChatRow({
   );
 });
 
+/** Quoted code in a message. Click selects that code in the editor (following later edits). */
+function CodeQuote({ codeRef, onOpen }: { codeRef: ChatCodeRef; onOpen: (ref: ChatCodeRef) => boolean }) {
+  const label = codeRefLabel(codeRef);
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(codeRef)}
+      aria-label={`Show ${label} in the editor`}
+      className="my-1 block w-full overflow-hidden rounded-lg border border-border/60 bg-card/80 text-left transition-ui hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="block border-b border-border/60 px-2 py-0.5 font-mono text-micro text-primary">{label}</span>
+      <pre className="line-clamp-6 whitespace-pre-wrap break-words p-2 font-mono text-micro text-muted-foreground">{codeRef.snippet}</pre>
+    </button>
+  );
+}
+
 /** Enter sends, Shift+Enter adds a line. The draft survives going offline; only sending waits. */
-export function ChatComposer({ online, onSend }: { online: boolean; onSend: (text: string) => void }) {
+export function ChatComposer({
+  online,
+  onSend,
+  attachment = null,
+  onClearAttachment,
+}: {
+  online: boolean;
+  onSend: (text: string) => void;
+  /** Code quoted from the editor, sent along with the next message. */
+  attachment?: ChatCodeRef | null;
+  onClearAttachment?: () => void;
+}) {
   const [draft, setDraft] = useState('');
+  const input = useRef<HTMLTextAreaElement>(null);
+  // Quoting code is a "start typing about this" gesture: put the caret in the box.
+  useEffect(() => {
+    if (attachment) input.current?.focus();
+  }, [attachment]);
   const text = draft.trim();
   const remaining = CHAT_MAX_CHARS - draft.length;
   const canSend = online && text.length > 0 && remaining >= 0;
@@ -235,14 +281,27 @@ export function ChatComposer({ online, onSend }: { online: boolean; onSend: (tex
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-1 border-t border-border/60 p-2">
+      {attachment && (
+        <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/80 py-0.5 pl-2 pr-0.5 animate-fade-in">
+          <span className="shrink-0 font-mono text-micro text-primary">{codeRefLabel(attachment)}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-micro text-muted-foreground">{attachment.snippet.trim().split('\n')[0]}</span>
+          <Button type="button" size="icon-xs" variant="ghost" aria-label="Remove quoted code" onClick={onClearAttachment}>
+            <Icon icon={Cancel01Icon} size={12} />
+          </Button>
+        </div>
+      )}
       <div className="flex items-end gap-1.5">
         <Textarea
+          ref={input}
           rows={1}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={onKeyDown}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && attachment && !draft) onClearAttachment?.();
+            onKeyDown(e);
+          }}
           maxLength={CHAT_MAX_CHARS}
-          placeholder={online ? 'Message the room' : 'Reconnecting… your draft is kept'}
+          placeholder={online ? (attachment ? 'Say something about this code' : 'Message the room') : 'Reconnecting… your draft is kept'}
           aria-label="Chat message"
           aria-describedby="chat-hint"
         />
