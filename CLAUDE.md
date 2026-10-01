@@ -11,10 +11,10 @@ This file provides project-specific context and commands for Anthropic Claude Co
 - **Run Both Servers (Dev)**: `pnpm dev` or `pnpm --filter @tether/server --filter @tether/web --parallel dev`
 - **Run Backend Only**: `pnpm --filter @tether/server dev` (runs on http://localhost:4000)
 - **Run Web Only**: `pnpm --filter @tether/web dev` (runs on http://localhost:3001)
-- **Docker Compose**: `docker compose up -d` (or `docker compose --profile postgres up -d`)
+- **Docker Compose**: `docker compose up -d`
 
 ### Verification & Testing
-- **Run All Tests**: `pnpm test` (364 tests across 69 suites)
+- **Run All Tests**: `pnpm test` (367 tests across 69 suites)
 - **Database Migrations (SQLite)**: `pnpm db:migrate`
 - **Typecheck**: `pnpm typecheck`
 - **Lint**: `pnpm lint`
@@ -32,7 +32,7 @@ Tether is a real-time collaborative code editor monorepo (`pnpm` workspaces):
   - Fastify 5 REST API + WebSocket server (`ws`).
   - Real-time CRDT synchronization via Yjs and lib0.
   - Session authorization with JWT tokens (HMAC SHA-256 via `jose`).
-  - Storage: embedded SQLite via `node:sqlite` (`./data/tether.db`) or PostgreSQL (`DATABASE_URL`).
+  - Storage: embedded SQLite via `node:sqlite` (`./data/tether.db`) only. Repos are synchronous; Postgres is not supported (ADR-020).
   - Listens on `PORT` (default: 4000). Health endpoints: `/health/live`, `/health/ready`.
 - **`apps/web` (`@tether/web`)**:
   - Next.js 16 (React 19 App Router), Tailwind CSS v4, CodeMirror editor with language packs.
@@ -51,9 +51,8 @@ Template: `.env.example`
 - `PORT=4000`: Backend REST + WS port.
 - `JWT_SECRET`: Minimum 32-character string.
 - `ALLOWED_ORIGINS`: Comma-separated allowed origins for CORS and WebSocket upgrade gate.
-- `DATABASE_DRIVER`: `sqlite` (default) or `postgres`.
+- `DATABASE_DRIVER`: must be `sqlite` (anything else fails at boot).
 - `SQLITE_PATH`: Path to SQLite database file (`./data/tether.db`).
-- `DATABASE_URL`: PostgreSQL connection URL (e.g. `postgres://postgres:postgres@localhost:5432/tether`).
 - `NEXT_PUBLIC_API_URL`: Web client backend target (`http://localhost:4000`).
 - `NEXT_PUBLIC_WS_URL`: Web client WebSocket target (`ws://localhost:4000`).
 - `TRUST_PROXY_HOPS`: Number of reverse proxy hops trusted for client IP (default: `0`).

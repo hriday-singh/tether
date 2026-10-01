@@ -23,6 +23,15 @@ describe('Server Config', () => {
     ).toThrow(/JWT_SECRET must be at least 32 characters long/);
   });
 
+  it('refuses DATABASE_DRIVER=postgres instead of silently using SQLite', () => {
+    expect(() =>
+      loadConfig({
+        JWT_SECRET: 'super_secret_jwt_key_that_is_at_least_32_characters_long',
+        DATABASE_DRIVER: 'postgres',
+      })
+    ).toThrow(/Only DATABASE_DRIVER=sqlite is supported/);
+  });
+
   it('parses comma-separated ALLOWED_ORIGINS and DEMO_MODE boolean', () => {
     const config = loadConfig({
       JWT_SECRET: 'super_secret_jwt_key_that_is_at_least_32_characters_long',

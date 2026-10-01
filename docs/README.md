@@ -31,7 +31,7 @@ If a feature threatens any of these four, the feature loses.
 | 03 | [Sync engine](03-sync-engine.md) | **Core.** Convergence, lossless throttle, reconnect, persistence, latency |
 | 04 | [Wire protocol](04-protocol.md) | Frames, messages, handshake, close codes, limits |
 | 05 | [Rooms, security, roles](05-rooms-security-roles.md) | Passcodes, tokens, admission, host election |
-| 06 | [Data model](06-data-model.md) | SQLite (POC) & PostgreSQL (production scale) schema, persistence strategy |
+| 06 | [Data model](06-data-model.md) | SQLite schema, persistence strategy, reference Postgres schema |
 | 07 | [Frontend](07-frontend.md) | Layout, components, tokens, render strategy, a11y |
 | 08 | [Testing & verification](08-testing-and-verification.md) | Chaos harness, property tests, latency bench |
 | 09 | [Operations](09-operations.md) | Env config, local run, observability, shutdown, scale path |
@@ -53,7 +53,7 @@ If a feature threatens any of these four, the feature loses.
 | Core pitch | Zero-loss sync + measured latency, proven by chaos tests |
 | Sync engine | Yjs (CRDT, **v13 pinned**) + **our own** WebSocket server on `y-protocols` |
 | Identity | Guest display name + signed room session token (no accounts) |
-| Database & Deployment v1 | SQLite (WAL mode, `node:sqlite`) for POC/dev and single-node Docker Compose; PostgreSQL (AWS RDS) documented for multi-node production scale |
+| Database & Deployment v1 | SQLite (WAL mode, `node:sqlite`) for POC/dev and single-node Docker Compose; Postgres not supported ([ADR-020](11-decisions.md#adr-020-sqlite-only-postgres-removed)) |
 | Host handover | 5 s grace on abrupt disconnect (env-configurable), instant on clean leave |
 | Editor scope | One shared doc per room, room-level language picker |
 | Time budget | Plan for 2 weeks, week-3 stretch list kept in roadmap |

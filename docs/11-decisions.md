@@ -60,7 +60,7 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
   cursors and per-user undo.
 - **Consequences:** fewer IDE features (no IntelliSense), which matches the non-goals.
 
-## ADR-010: Database engine & persistence (SQLite for POC, PostgreSQL for Production Scale)
+## ADR-010: Database engine & persistence (SQLite for POC, PostgreSQL for Production Scale) — amended by ADR-020
 - **Context:** The system needs durable persistence for room snapshots, merged update logs (flushed every 250 ms), member records, and gapless audit events. Keystroke sync itself is entirely in-memory (Yjs + WebSockets).
 - **Decision:** Use **SQLite** (via Node 22 built-in `node:sqlite` with Write-Ahead Logging `WAL` mode) for local development, automated testing, and single-node Docker Compose deployments. Maintain a 1:1 mapped **PostgreSQL** schema ([06](06-data-model.md)) and repository pattern abstraction (`apps/server/src/repo/`) for enterprise multi-node production scale (AWS RDS PostgreSQL).
 - **Consequences:** Zero external database dependencies for local development and CI; instant in-memory test runs; Docker Compose runs seamlessly on a single EC2 instance with a mounted volume; clean migration path to AWS RDS PostgreSQL when horizontal scaling is required. Acked edits remain 100% durable.
@@ -151,3 +151,13 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
   connection-attempt throttle + ban, not message rate)
 - Hocuspocus Redis extension: https://tiptap.dev/docs/hocuspocus/server/extensions/redis (fan-out makes
   all instances process all messages)
+
+## ADR-020: SQLite only, Postgres removed
+- **Context:** `DATABASE_DRIVER=postgres` passed config validation and Docker had a `postgres` profile, but the
+  server always opened SQLite (`createDatabase(SQLITE_PATH)`). Anyone who picked Postgres was silently
+  writing to a local SQLite file. The repository layer is built on `node:sqlite`'s synchronous API.
+- **Decision:** Support SQLite only. `DATABASE_DRIVER` accepts only `sqlite`; any other value fails at boot.
+  Removed the Postgres compose profile, setup/launch options and `DATABASE_URL`. The Postgres schema in
+  [06](06-data-model.md) and `migrations/*.postgres.sql` stay as reference.
+- **Consequences:** Config matches behaviour. One instance on SQLite is the supported deployment. Multi-instance
+  needs an async repo layer, a `pg` driver and room affinity ([09 › Scale path](09-operations.md#scale-path-documented-not-built-in-v1)).

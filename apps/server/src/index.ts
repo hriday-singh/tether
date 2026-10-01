@@ -18,10 +18,6 @@ import { createUpgradeGate, setDraining } from './ws/upgradeGate.js';
 
 async function main() {
   const config = loadConfig();
-  if (config.DATABASE_DRIVER === 'postgres') {
-    // Only the node:sqlite session exists; say so instead of silently writing somewhere unexpected.
-    console.warn(`DATABASE_DRIVER=postgres is not implemented by the server yet; using SQLite at ${config.SQLITE_PATH}.`);
-  }
 
   const db = createDatabase(config.SQLITE_PATH);
   const roomRepo = new RoomRepo(db);

@@ -12,7 +12,7 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] TypeScript strict everywhere, shared `tsconfig.base.json`
 - [x] ESLint + Prettier
 - [x] Vitest config per package
-- [x] Dockerization: `apps/server/Dockerfile`, `apps/web/Dockerfile` (standalone), `docker-compose.yml` (web + server + persistent SQLite volume + optional postgres profile), `.dockerignore`, `.env.example`
+- [x] Dockerization: `apps/server/Dockerfile`, `apps/web/Dockerfile` (standalone), `docker-compose.yml` (web + server + persistent SQLite volume; postgres profile later removed by ADR-020), `.dockerignore`, `.env.example`
 - [x] GitHub Actions: lint, typecheck, unit, integration (SQLite in-memory), `chaos:ci`
 
 ### M1: Shared protocol

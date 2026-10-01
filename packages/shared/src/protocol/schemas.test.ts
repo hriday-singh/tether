@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  DisplayNameSchema,
   ClientControlMessageSchema,
   ServerChatMsgSchema,
   ServerControlMessageSchema,
@@ -223,5 +224,17 @@ describe('Chat schemas (ADR-017)', () => {
       eventSeq: 0,
     });
     expect(welcome.t === 'welcome' && welcome.chatSeq).toBe(0);
+  });
+});
+
+describe('DisplayNameSchema', () => {
+  it('strips control, bidi and zero-width characters, then trims', () => {
+    expect(DisplayNameSchema.parse('  A\u0000l\u202Eic\u200Be\n ')).toBe('Alice');
+  });
+
+  it('enforces 1–32 characters after stripping', () => {
+    expect(DisplayNameSchema.safeParse('\u202E\u200B ').success).toBe(false);
+    expect(DisplayNameSchema.parse('x'.repeat(32))).toHaveLength(32);
+    expect(DisplayNameSchema.safeParse('x'.repeat(33)).success).toBe(false);
   });
 });

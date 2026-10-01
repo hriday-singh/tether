@@ -2,8 +2,8 @@
 # ==============================================================================
 # Tether Monorepo — Setup Wizard (POSIX Shell / Linux / macOS / WSL)
 # ==============================================================================
-# Interactive setup script to configure environment variables (.env), database
-# drivers (SQLite / PostgreSQL), generate cryptographic secrets, install dependencies,
+# Interactive setup script to configure environment variables (.env), generate
+# cryptographic secrets, install dependencies,
 # and build shared workspace packages.
 # Quick start: press Enter on every prompt to accept all recommended defaults.
 # ==============================================================================
@@ -43,8 +43,6 @@ write_err() {
 
 # CLI Flags
 MODE=""
-DATABASE=""
-DATABASE_URL=""
 BACKEND_PORT=""
 FRONTEND_PORT=""
 BACKEND_URL=""
@@ -55,12 +53,6 @@ for arg in "$@"; do
   case $arg in
     --mode=*)
       MODE="${arg#*=}"
-      ;;
-    --database=*)
-      DATABASE="${arg#*=}"
-      ;;
-    --database-url=*)
-      DATABASE_URL="${arg#*=}"
       ;;
     --backend-port=*|--port=*)
       BACKEND_PORT="${arg#*=}"
@@ -82,8 +74,6 @@ for arg in "$@"; do
       echo ""
       echo "Options:"
       echo "  --mode=local|docker|all      Setup environment (default: local)"
-      echo "  --database=sqlite|postgres   Database driver (default: sqlite)"
-      echo "  --database-url=URL           Postgres connection string"
       echo "  --backend-port=PORT          Backend API port (default: 4000)"
       echo "  --frontend-port=PORT         Frontend web client port (default: 3001)"
       echo "  --backend-url=URL            Public backend URL the browser calls (default: http://localhost:<backend-port>)"
@@ -179,34 +169,6 @@ if [ -z "$MODE" ]; then
   esac
 fi
 write_ok "Execution mode selected: $MODE"
-
-# 2. Database Selection
-if [ -z "$DATABASE" ]; then
-  db_choice=$(prompt_choice "Select database configuration:" 1 \
-    "SQLite (Embedded via Node 22, zero external setup) [Recommended]" \
-    "PostgreSQL (Docker-managed or external connection)")
-  case "$db_choice" in
-    1) DATABASE="sqlite" ;;
-    2) DATABASE="postgres" ;;
-    *) DATABASE="sqlite" ;;
-  esac
-fi
-
-if [ "$DATABASE" = "postgres" ] && [ -z "$DATABASE_URL" ]; then
-  pg_choice=$(prompt_choice "Select PostgreSQL provider:" 1 \
-    "Docker Compose PostgreSQL (runs postgres:16-alpine on :5432)" \
-    "Custom / External PostgreSQL Connection String")
-  if [ "$pg_choice" -eq 1 ]; then
-    DATABASE_URL="postgres://postgres:postgres@localhost:5432/tether"
-  else
-    DATABASE_URL=$(prompt_text "Enter PostgreSQL connection string" "postgres://postgres:postgres@localhost:5432/tether")
-  fi
-fi
-
-write_ok "Database selected: $DATABASE"
-if [ "$DATABASE" = "postgres" ]; then
-  write_ok "PostgreSQL URL: $DATABASE_URL"
-fi
 
 # 3. Port Configuration
 if [ -z "$BACKEND_PORT" ]; then
@@ -311,18 +273,9 @@ if grep -q "JWT_SECRET=development_secret_must_be_at_least_32_chars_long!!" .env
   write_ok "Generated secure 256-bit cryptographic JWT_SECRET."
 fi
 
-# Update Database settings in .env
-if [ "$DATABASE" = "sqlite" ]; then
-  sed -i.bak -e "s|^DATABASE_DRIVER=.*|DATABASE_DRIVER=sqlite|" .env && rm -f .env.bak
-  sed -i.bak -e "s|^SQLITE_PATH=.*|SQLITE_PATH=./data/tether.db|" .env && rm -f .env.bak
-else
-  sed -i.bak -e "s|^DATABASE_DRIVER=.*|DATABASE_DRIVER=postgres|" .env && rm -f .env.bak
-  if grep -q "^DATABASE_URL=" .env; then
-    sed -i.bak -e "s|^DATABASE_URL=.*|DATABASE_URL=${DATABASE_URL}|" .env && rm -f .env.bak
-  else
-    echo "DATABASE_URL=${DATABASE_URL}" >> .env
-  fi
-fi
+# Database: SQLite only (resets a stale DATABASE_DRIVER=postgres from older setups)
+sed -i.bak -e "s|^DATABASE_DRIVER=.*|DATABASE_DRIVER=sqlite|" .env && rm -f .env.bak
+sed -i.bak -e "/^DATABASE_URL=/d" .env && rm -f .env.bak
 
 # Update Ports in .env
 sed -i.bak -e "s|^PORT=.*|PORT=${BACKEND_PORT}|" .env && rm -f .env.bak
@@ -451,7 +404,7 @@ elif command -v docker.exe >/dev/null 2>&1; then
   DOCKER_CMD="docker.exe"
 fi
 
-if [ "$MODE" = "docker" ] || [ "$MODE" = "all" ] || { [ "$DATABASE" = "postgres" ] && [[ "$DATABASE_URL" == *"localhost:5432"* ]]; }; then
+if [ "$MODE" = "docker" ] || [ "$MODE" = "all" ]; then
   if [ -n "$DOCKER_CMD" ]; then
     write_ok "Docker detected: $($DOCKER_CMD --version)"
     if $DOCKER_CMD info >/dev/null 2>&1; then
@@ -492,7 +445,7 @@ fi
 write_header "Setup Complete!"
 echo -e "${GREEN}Configuration Summary:${NC}"
 echo -e "  - Mode:            ${MODE}"
-echo -e "  - Database:        ${DATABASE}"
+echo -e "  - Database:        SQLite (./data/tether.db)"
 echo -e "  - Backend Server:  http://localhost:${BACKEND_PORT} (WebSocket: ws://localhost:${BACKEND_PORT})"
 echo -e "  - Frontend Client: http://localhost:${FRONTEND_PORT} (or :3000 in Docker)"
 echo -e "  - Environment:     .env"

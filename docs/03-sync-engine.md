@@ -29,7 +29,7 @@ recovers through the **same path**: reconnect, then the state-vector handshake. 
 - **I5 Server freshness.** The server's in-memory doc applies every accepted update immediately, so
   a new joiner always receives the latest state, even while that update's broadcast is still queued.
 - **I6 Ack = durable.** A client considers a change saved only after the server acks it, and the server
-  acks only after the change is committed to the database (SQLite / PostgreSQL).
+  acks only after the change is committed to the database (SQLite).
 
 **What "zero loss" does not mean:** two people typing in the same spot concurrently (or offline)
 get both texts interleaved deterministically, which is standard CRDT behavior. We preserve every
@@ -197,7 +197,7 @@ room_updates (bytea rows)    append-only tail since last snapshot
 - **DB outage:** flush retries with backoff (cap 30 s). The room keeps working in memory, acks are
   withheld (clients show "Saving…"), and `/health/ready` reports degraded. The buffer is bounded
   (50 MB total). Past that, the server stops admitting new connections (503) instead of risking memory.
-- **Crash semantics:** acked means in durable database storage (SQLite / PostgreSQL). Unacked edits still live in the clients (memory +
+- **Crash semantics:** acked means in durable database storage (SQLite). Unacked edits still live in the clients (memory +
   IndexedDB) and come back through the handshake after restart. Only a simultaneous server crash **and**
   loss of every client that held the edit can lose it. The README states this plainly.
 

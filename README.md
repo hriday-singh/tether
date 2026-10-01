@@ -23,7 +23,7 @@ A real-time collaborative code editor built on Yjs CRDTs, a Fastify WebSocket sy
 - **Sandboxed execution and console**: Preview HTML, CSS, and JavaScript in an isolated iframe. Run JavaScript and TypeScript in a Web Worker with a 5-second watchdog. The console captures logs, warnings, errors, and results.
 - **Themes**: Choose Quiet Dark, Quiet Light, or High Contrast, and preview theme changes before switching.
 - **Command palette**: Press `Ctrl/Cmd+K` to search navigation, room and host actions, editor settings, and themes.
-- **Storage and room cleanup**: Local development uses SQLite by default, and production can use PostgreSQL. Inactive temporary rooms are deleted after 24 hours.
+- **Storage and room cleanup**: Data is stored in SQLite (single server instance). Inactive temporary rooms are deleted after 24 hours.
 
 ### Keyboard Shortcuts
 
@@ -70,12 +70,11 @@ Expand the bottom drawer to inspect real-time RTT latency, verify SHA-256 state 
                        │   Yjs CRDT Sync + Host Election         │
                        └─────────────┬─────────────┬─────────────┘
                                      │             │
-                    DATABASE_DRIVER  ▼             ▼  DATABASE_DRIVER
-                       = sqlite      │             │   = postgres
-                       ┌─────────────┴──┐       ┌──┴─────────────┐
-                       │ Embedded SQLite│       │   PostgreSQL   │
-                       │ ./data/tether.db       │ localhost:5432 │
-                       └────────────────┘       └────────────────┘
+                                     ▼
+                              ┌──────────────────┐
+                              │  Embedded SQLite │
+                              │ ./data/tether.db │
+                              └──────────────────┘
 ```
 
 | Path                   | Package               | Description                                                                        | Dev port |
@@ -120,8 +119,7 @@ chmod +x ./setup.sh ./launch.sh
 The script asks for:
 
 1. **Environment**: local (Node + pnpm), Docker Compose, or both.
-2. **Database**: SQLite (default) or PostgreSQL (Docker container on 5432 or an external URL).
-3. **Ports**: backend (default 4000) and web (default 3001). Related `.env` values are updated to match.
+2. **Ports**: backend (default 4000) and web (default 3001). Related `.env` values are updated to match.
 4. **Launch**: whether to start dev servers when setup finishes.
 
 For scripted or CI environments without prompts:
@@ -176,24 +174,20 @@ Run the stack via Docker Compose:
 
 ```bash
 docker compose up -d                      # web + server + SQLite volume
-docker compose --profile postgres up -d   # with a PostgreSQL container
 ```
 
 In Docker, the web client runs on http://localhost:3000 and the API on http://localhost:4000.
 
 ## Configuration
 
-See `.env.example` for all options. Database selection:
+See `.env.example` for all options. The server stores everything in SQLite:
 
 ```env
-# SQLite (default)
-DATABASE_DRIVER=sqlite
+DATABASE_DRIVER=sqlite   # the only supported value
 SQLITE_PATH=./data/tether.db
-
-# PostgreSQL
-DATABASE_DRIVER=postgres
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/tether
 ```
+
+PostgreSQL is not supported. Running several server instances would need an async repository layer and room affinity first; see [docs/09 › Scale path](docs/09-operations.md#scale-path-documented-not-built-in-v1).
 
 ## Benchmarks
 

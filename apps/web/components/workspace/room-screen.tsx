@@ -12,6 +12,7 @@ import { Icon } from '@/components/ui/icon';
 import { Field, Input } from '@/components/ui/input';
 import { ThinkingOrb } from '@/components/ui/thinking-orb';
 import { api, ApiError, DisplayNameSchema, type RoomInfo } from '@/lib/api';
+import { DISPLAY_NAME_MAX } from '@tether/shared';
 import { useMediaQuery, useMounted, useStore } from '@/lib/hooks';
 import { languageInfo } from '@/lib/languages';
 import { seedKey, sessions, type RoomSession } from '@/lib/session';
@@ -181,7 +182,7 @@ function JoinGate({
             id="join-name"
             autoFocus
             autoComplete="nickname"
-            maxLength={50}
+            maxLength={DISPLAY_NAME_MAX}
             value={name}
             onChange={(e) => setName(e.target.value)}
             aria-invalid={error?.field === 'name'}

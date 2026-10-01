@@ -75,9 +75,6 @@ for arg in "$@"; do
     docker)
       TARGET="docker"
       ;;
-    docker-postgres|postgres)
-      TARGET="docker-postgres"
-      ;;
     --help|-h)
       echo "Usage: ./launch.sh [TARGET]"
       echo ""
@@ -86,7 +83,6 @@ for arg in "$@"; do
       echo "  server             Start backend server only (:4000)"
       echo "  web                Start frontend web client only (:3001)"
       echo "  docker             Start Docker Compose stack"
-      echo "  docker-postgres    Start Docker Compose stack with PostgreSQL"
       exit 0
       ;;
     *)
@@ -168,39 +164,15 @@ if [ -z "$TARGET" ]; then
     "Local: Both Servers (Backend :${BACKEND_PORT} + Web :${FRONTEND_PORT}) [Recommended]" \
     "Local: Backend Server Only (Fastify + WS on :${BACKEND_PORT})" \
     "Local: Frontend Web Client Only (Next.js on :${FRONTEND_PORT})" \
-    "Docker Compose: Web + Server" \
-    "Docker Compose: Web + Server + PostgreSQL")
+    "Docker Compose: Web + Server")
 
   case "$choice" in
     1) TARGET="both" ;;
     2) TARGET="server" ;;
     3) TARGET="web" ;;
     4) TARGET="docker" ;;
-    5) TARGET="docker-postgres" ;;
     *) TARGET="both" ;;
   esac
-fi
-
-# 4. Check PostgreSQL if local mode
-if [ "$TARGET" = "both" ] || [ "$TARGET" = "server" ]; then
-  if grep -q "DATABASE_DRIVER=postgres" .env && grep -q "localhost:5432" .env; then
-    pg_reachable=false
-    if (echo > /dev/tcp/127.0.0.1/5432) >/dev/null 2>&1; then
-      pg_reachable=true
-    fi
-
-    if [ "$pg_reachable" = false ]; then
-      write_warn "PostgreSQL on localhost:5432 is not currently reachable."
-      start_pg=$(prompt_choice "Start PostgreSQL container via Docker Compose now?" 1 \
-        "Yes, start PostgreSQL in Docker [Default]" \
-        "No, continue anyway")
-      if [ "$start_pg" -eq 1 ]; then
-        write_step "Starting PostgreSQL container..."
-        $DOCKER_CMD compose --profile postgres up -d postgres
-        sleep 3
-      fi
-    fi
-  fi
 fi
 
 # 5. Database Migrations
@@ -250,15 +222,6 @@ case "$TARGET" in
     echo -e "  * Backend API: http://localhost:4000"
     echo ""
     $DOCKER_CMD compose up
-    ;;
-
-  docker-postgres)
-    write_step "Launching Docker Compose with PostgreSQL..."
-    echo -e "  * Web App:     http://localhost:3000"
-    echo -e "  * Backend API: http://localhost:4000"
-    echo -e "  * PostgreSQL:  localhost:5432"
-    echo ""
-    $DOCKER_CMD compose --profile postgres up
     ;;
 
   *)

@@ -53,8 +53,8 @@ export function applyMigrations(db: DatabaseSession, dir: string = MIGRATIONS_DI
 // CLI: `pnpm db:migrate` (stop the server first).
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   await import('../config.js'); // loads .env
-  if (process.env.DATABASE_DRIVER === 'postgres') {
-    console.error('Postgres: run each pending file yourself, e.g. psql "$DATABASE_URL" -f migrations/0003_chat_refs_room_expiry.postgres.sql');
+  if (process.env.DATABASE_DRIVER && process.env.DATABASE_DRIVER !== 'sqlite') {
+    console.error('Only DATABASE_DRIVER=sqlite is supported.');
     process.exit(1);
   }
   const file = process.env.SQLITE_PATH ?? './data/tether.db';

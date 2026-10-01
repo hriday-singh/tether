@@ -1,10 +1,10 @@
-import type { AuditEvent, ChatMessage, RoomMetadata } from '@tether/shared';
+import { DisplayNameSchema, type AuditEvent, type ChatMessage, type RoomMetadata } from '@tether/shared';
 import { z } from 'zod';
 import { LANGUAGE_IDS } from '../languages';
 
 // Mirrors the docs/05 REST contract. TODO(server M2): move these input schemas into @tether/shared once apps/server defines them.
 export const ROOM_ID_RE = /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/;
-export const DisplayNameSchema = z.string().trim().min(1, 'Enter a display name').max(50, 'Max 50 characters');
+export { DisplayNameSchema };
 export const RoomIdSchema = z
   .string()
   .trim()

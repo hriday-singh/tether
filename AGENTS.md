@@ -80,10 +80,6 @@ pnpm --filter @tether/server --filter @tether/web --parallel dev
   ```bash
   docker compose up -d
   ```
-- **With PostgreSQL Container**:
-  ```bash
-  docker compose --profile postgres up -d
-  ```
 
 ---
 
@@ -91,16 +87,11 @@ pnpm --filter @tether/server --filter @tether/web --parallel dev
 
 Environment configuration is read from `.env` in the repository root.
 
-### Database Drivers:
-- **`sqlite` (Default)**: Embedded storage via Node 22 built-in `node:sqlite`. Stores SQLite database in `./data/tether.db`. Zero external setup required.
+### Database:
+- **SQLite only**: Embedded storage via Node 22 built-in `node:sqlite` in `./data/tether.db`. Zero external setup. Any `DATABASE_DRIVER` other than `sqlite` stops the server at boot (ADR-020). The repo layer is synchronous, so Postgres needs an async rewrite, not just an adapter.
   ```env
   DATABASE_DRIVER=sqlite
   SQLITE_PATH=./data/tether.db
-  ```
-- **`postgres`**: Used with Docker Compose PostgreSQL container or external database instance.
-  ```env
-  DATABASE_DRIVER=postgres
-  DATABASE_URL=postgres://postgres:postgres@localhost:5432/tether
   ```
 
 ### Critical Keys:
@@ -117,7 +108,7 @@ Environment configuration is read from `.env` in the repository root.
 
 Always execute verification before claiming completion:
 
-1. **Unit & Integration Tests (364 tests across 69 suites)**:
+1. **Unit & Integration Tests (367 tests across 69 suites)**:
    ```bash
    pnpm test
    ```

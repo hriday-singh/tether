@@ -11,9 +11,8 @@ refuses to start on invalid config).
 | `HOST` | server | `0.0.0.0` | Listening host |
 | `JWT_SECRET` | server | — | required, ≥ 32 bytes |
 | `ALLOWED_ORIGINS` | server | `http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001` | comma-separated, checked on upgrade + CORS |
-| `DATABASE_DRIVER` | server | `sqlite` | `sqlite` (embedded via `node:sqlite`) or `postgres` |
+| `DATABASE_DRIVER` | server | `sqlite` | Must be `sqlite` (embedded via `node:sqlite`). Any other value stops the server at boot ([ADR-020](11-decisions.md#adr-020-sqlite-only-postgres-removed)) |
 | `SQLITE_PATH` | server | `./data/tether.db` | SQLite database file location (or `:memory:` for tests) |
-| `DATABASE_URL` | server | `postgres://postgres:postgres@localhost:5432/tether` | PostgreSQL connection string (when running in Postgres mode) |
 | `HOST_GRACE_MS` | server | `5000` | host handover grace |
 | `PERSIST_FLUSH_MS` | server | `250` | persistence flush interval |
 | `ROOM_UNLOAD_IDLE_MS`| server | `30000` | idle delay before room memory unload |
@@ -41,7 +40,6 @@ For one-command deployment to an AWS EC2 instance:
 ```bash
 docker compose up -d                  # runs web + server with mounted SQLite volume
 ```
-*(If testing or running with PostgreSQL, invoke `docker compose --profile postgres up -d` to launch the managed PostgreSQL container alongside).*
 
 ## Observability
 
@@ -72,7 +70,19 @@ The process never crashes on client input. A true process-level fault → crash 
 
 v1: one process owns every room, backed by SQLite (WAL mode). To scale:
 
-1. **Database migration (SQLite → PostgreSQL / AWS RDS):** The repository layer (`apps/server/src/repo/`) strictly abstracts all queries and the schema has a 1:1 PostgreSQL counterpart ([06](06-data-model.md)). Scaling to multi-instance simply points the connection to AWS RDS PostgreSQL using the `pg` driver with zero changes to business logic.
+1. **Shared database (SQLite → PostgreSQL / AWS RDS).** Several instances can't share one SQLite file, so
+   multi-instance needs Postgres. That is more than plugging in a `pg` adapter:
+   - `node:sqlite` is synchronous and `pg` is async. Every repo method in `apps/server/src/repo/` returns
+     values directly today, so each one becomes `async` and every caller (services, the persistence flush,
+     join/admission, bot storms; about 15 files) has to `await` it.
+   - Code that relies on synchronous SQLite transactions (room creation, the per-room `seq` counters for
+     updates, audit and chat) needs real Postgres transactions or `SELECT … FOR UPDATE` to stay gapless.
+   - `DATABASE_DRIVER` / `DATABASE_URL` config, a `pg` pool, applying `migrations/*.postgres.sql`, and
+     running the integration suite against both drivers.
+
+   Postgres alone does **not** give horizontal scale: each room's Y.Doc lives in one process's memory, so
+   step 2 is what lets extra instances help. One instance on SQLite handles a lot (see
+   [08](08-testing-and-verification.md) benchmarks). Do this only when one box is the measured limit.
 2. **Room affinity, not fan-out.** Route every connection for a room to the same instance (consistent
    hash on `roomId` at the load balancer / a tiny router, or an ownership lease row in PostgreSQL with
    heartbeat). One room = one authoritative Y.Doc = no cross-node merging. Hocuspocus's Redis docs note

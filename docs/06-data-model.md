@@ -1,10 +1,10 @@
-# 06 — Data Model (SQLite & PostgreSQL)
+# 06 — Data Model (SQLite)
 
-## Strategy: SQLite for POC, PostgreSQL for Production Scale
+## Strategy: SQLite only ([ADR-020](11-decisions.md#adr-020-sqlite-only-postgres-removed))
 
-To minimize setup complexity and eliminate external service dependencies during prototyping, local development, and single-instance deployments, the **active implementation uses SQLite** (via Node 22 built-in `node:sqlite` with Write-Ahead Logging `WAL` mode).
+To minimize setup complexity and eliminate external service dependencies during prototyping, local development, and single-instance deployments, the server **only supports SQLite** (via Node 22 built-in `node:sqlite` with Write-Ahead Logging `WAL` mode). `DATABASE_DRIVER` accepts only `sqlite`; any other value stops the server at boot.
 
-For enterprise multi-node deployments requiring horizontal scaling, shared instances, or cloud-managed high availability (e.g. AWS RDS), the system defines a 1:1 mapped **PostgreSQL** schema. The repository layer (`apps/server/src/repo/`) strictly abstracts all queries so switching to PostgreSQL requires zero business-logic changes.
+A 1:1 **PostgreSQL** schema is kept below and in `migrations/*.postgres.sql` as a reference for a future driver. Nothing in the server reads it. Adding Postgres is not a drop-in adapter: the repositories (`apps/server/src/repo/`) use `node:sqlite`'s synchronous API, so every repo method and the roughly 15 files that call them would have to become async first. See [09 › Scale path](09-operations.md#scale-path-documented-not-built-in-v1).
 
 Migrations are written as SQL files in `migrations/` and **applied by the user, never by Claude or CI**.
 
@@ -65,7 +65,7 @@ CREATE UNIQUE INDEX audit_events_room_id_seq_idx ON audit_events (room_id, seq);
 
 ---
 
-## 2. Production Scale Schema: PostgreSQL (AWS RDS / Multi-Instance)
+## 2. Reference Schema: PostgreSQL (not wired up)
 
 ```sql
 CREATE TABLE rooms (
@@ -115,7 +115,7 @@ CREATE TABLE audit_events (
 CREATE UNIQUE INDEX audit_events_room_id_seq_idx ON audit_events (room_id, seq);
 ```
 
-| Type Concept | SQLite (POC) | PostgreSQL (Production Scale) |
+| Type Concept | SQLite (active) | PostgreSQL (reference) |
 |---|---|---|
 | Binary Yjs payload | `BLOB` | `bytea` |
 | JSON Audit payload | `TEXT` (parsed in app) | `jsonb` |
@@ -125,7 +125,7 @@ CREATE UNIQUE INDEX audit_events_room_id_seq_idx ON audit_events (room_id, seq);
 
 ## Chat messages ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015), [ADR-018](11-decisions.md#adr-018-chat-code-references-via-yjs-relative-positions))
 
-Migration `migrations/0002_chat.{sqlite,postgres}.sql` & `migrations/0003_chat_refs_room_expiry.{sqlite,postgres}.sql` (generated, apply manually). Table `chat_messages`:
+Migration `migrations/0002_chat.{sqlite,postgres}.sql` & `migrations/0003_chat_refs_room_expiry.{sqlite,postgres}.sql` (generated, apply manually; the `.postgres.sql` files are reference only). Table `chat_messages`:
 `id`, `room_id` (FK, cascade), `seq` (per-room gapless, own counter), `client_msg_id` (the `chat.send`
 `rid`), `member_id`, `display_name` + `color_index` (denormalized snapshot), `body` (1–2000 chars),
 `code_ref` (JSON string or null for quoted code reference: `{from, to, line, endLine, snippet}`),

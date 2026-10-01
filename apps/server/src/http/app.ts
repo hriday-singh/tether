@@ -1,6 +1,7 @@
 import fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import { z } from 'zod';
+import { DisplayNameSchema } from '@tether/shared/protocol/schemas';
 import { ServerConfig } from '../config.js';
 import { RoomService } from '../services/roomService.js';
 import { JoinService } from '../services/joinService.js';
@@ -136,7 +137,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
       .regex(/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/i, 'Invalid roomId format. Must be 3-32 lowercase alphanumeric characters or hyphens.')
       .optional(),
     passcode: z.string().min(4).max(64).nullable().optional(),
-    name: z.string().trim().min(1).max(50),
+    name: DisplayNameSchema,
     language: z.string().min(1).max(50).optional(),
   });
 
@@ -198,7 +199,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
 
   // POST /api/rooms/:id/join
   const JoinRoomBodySchema = z.object({
-    name: z.string().trim().min(1).max(50),
+    name: DisplayNameSchema,
     passcode: z.string().max(64).optional(),
     memberId: z.string().max(64).optional(),
   });

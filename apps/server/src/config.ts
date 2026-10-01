@@ -23,9 +23,11 @@ export const ServerConfigSchema = z.object({
     .string()
     .default('http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001')
     .transform((s) => s.split(',').map((o) => o.trim()).filter(Boolean)),
-  DATABASE_DRIVER: z.enum(['sqlite', 'postgres']).default('sqlite'),
+  // ponytail: SQLite only. Postgres needs an async repo layer; old postgres SQL kept in migrations/.
+  DATABASE_DRIVER: z
+    .literal('sqlite', { errorMap: () => ({ message: 'Only DATABASE_DRIVER=sqlite is supported' }) })
+    .default('sqlite'),
   SQLITE_PATH: z.string().default('./data/tether.db'),
-  DATABASE_URL: z.string().optional(),
   HOST_GRACE_MS: z.coerce.number().int().positive().default(5000),
   PERSIST_FLUSH_MS: z.coerce.number().int().positive().default(250),
   ROOM_UNLOAD_IDLE_MS: z.coerce.number().int().positive().default(30000),

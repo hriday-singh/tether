@@ -90,7 +90,7 @@ effect.
 |-----|--------|------|
 | `welcome` | `self: Member, members: Member[], hostId, room: {id, language, locked, hasPasscode, epoch}, token, eventSeq, chatSeq` | After handshake. `eventSeq` / `chatSeq` = latest committed feed / chat seq |
 | `pong` | `id, ts, serverQueueMs` | Reply to ping |
-| `ack` | `seq` | After the update containing `seq` is committed to the database (SQLite / PostgreSQL) |
+| `ack` | `seq` | After the update containing `seq` is committed to the database (SQLite) |
 | `member.joined` / `member.left` / `member.status` | `member` / `memberId, reason` / `memberId, status` | Roster changes. `reason`: `leave \| timeout \| kicked` |
 | `host.changed` | `hostId, reason: "creator" \| "handover-leave" \| "handover-timeout" \| "manual"` | Host election result |
 | `room.updated` | partial room settings | lock / passcode / language change |

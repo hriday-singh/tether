@@ -23,7 +23,6 @@ A clear and concise description of what you expected to happen.
 - OS: [e.g. macOS 14, Ubuntu 22.04, Windows 11]
 - Browser [e.g. Chrome 124, Firefox 125, Safari 17]
 - Node version: [e.g. v22.1.0]
-- Database Driver: [e.g. sqlite (default) or postgres]
 
 **Screenshots / Logs / Terminal Output**
 If applicable, add terminal or browser console logs to help explain your problem.

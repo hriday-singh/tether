@@ -9,7 +9,7 @@ runs green in CI.
 |-------|------|------|
 | Unit | Vitest | Pure units with fake clocks: token bucket, HostElector, OutboundThrottle, client batcher, frame codec, Zod schemas, backoff calculator, edit-summary coalescer |
 | Property | Vitest + `fast-check` | Codec round-trip; batcher never emits > 5 frames in any 1 s window; merge-then-apply ≡ apply-each; election always picks min `joinedAt` |
-| Integration (server) | Vitest + SQLite (in-memory `:memory:` or test file; PostgreSQL optional) + in-process server | REST, admission checklist, persistence/compaction, host handover timing, kick/ban, throttle, flood close |
+| Integration (server) | Vitest + SQLite (in-memory `:memory:` or test file) + in-process server | REST, admission checklist, persistence/compaction, host handover timing, kick/ban, throttle, flood close |
 | Chaos | Vitest, `tests/chaos/`, N × `SyncClient` in Node against the real server | Convergence + no-loss invariants under random faults |
 | Frontend | Vitest + React Testing Library | StatusPill states, Roster rendering from store, ActivityFeed pagination merge, join form validation, host-only UI gating |
 | Bench | Node script `tests/chaos/bench.ts` | Edit propagation latency distribution |
@@ -112,5 +112,5 @@ All measured numbers comfortably meet the targets in [01](01-product-brief.md#su
 
 ## Done means
 
-Lint (ESLint + Prettier), `tsc --noEmit`, unit + integration + `chaos:ci` all green (364 tests across 69 test suites). CI (GitHub Actions) runs them on every PR. With SQLite in-memory mode, tests run fast without waiting on external database container spin-up. If PostgreSQL integration is enabled, CI can optionally run against a Postgres service container.
+Lint (ESLint + Prettier), `tsc --noEmit`, unit + integration + `chaos:ci` all green (367 tests across 69 test suites). CI (GitHub Actions) runs them on every PR. With SQLite in-memory mode, tests run fast without waiting on external database container spin-up.
 

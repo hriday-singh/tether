@@ -3,6 +3,14 @@ import { CHAT_MAX_CHARS, CHAT_REF_SNIPPET_MAX, MAX_AWARENESS_STATE_BYTES, STORM_
 
 // --- Shared Primitive Schemas ---
 
+// Control, bidi-override and zero-width characters can spoof or garble names in the member list (docs/05).
+const NAME_STRIP_RE = /[\p{Cc}\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/gu;
+export const DISPLAY_NAME_MAX = 32;
+export const DisplayNameSchema = z
+  .string()
+  .transform((s) => s.replace(NAME_STRIP_RE, '').trim())
+  .pipe(z.string().min(1, 'Enter a display name').max(DISPLAY_NAME_MAX, `Max ${DISPLAY_NAME_MAX} characters`));
+
 export const MemberStatusSchema = z.enum(['active', 'idle', 'away', 'reconnecting']);
 export type MemberStatus = z.infer<typeof MemberStatusSchema>;
 

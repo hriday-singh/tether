@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/icon';
 import { Field, Input } from '@/components/ui/input';
 import { Select, SelectItem } from '@/components/ui/menus';
 import { api, ApiError, CreateRoomInputSchema, DisplayNameSchema, RoomIdSchema } from '@/lib/api';
+import { DISPLAY_NAME_MAX } from '@tether/shared';
 import { useMounted } from '@/lib/hooks';
 import { LANGUAGE_IDS, LANGUAGES, type LanguageId } from '@/lib/languages';
 import { seedKey, sessions, type RecentSession } from '@/lib/session';
@@ -204,7 +205,7 @@ export function StartPanel() {
           <Input
             id="s-name"
             autoComplete="nickname"
-            maxLength={50}
+            maxLength={DISPLAY_NAME_MAX}
             value={name}
             placeholder="Laasya"
             onChange={(e) => setNameInput(e.target.value)}

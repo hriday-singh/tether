@@ -652,7 +652,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 50
+            "maxLength": 32,
+            "description": "Control, bidi and zero-width characters are stripped, then trimmed."
           },
           "language": {
             "type": "string"
@@ -742,7 +743,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 50
+            "maxLength": 32,
+            "description": "Control, bidi and zero-width characters are stripped, then trimmed."
           },
           "passcode": {
             "type": "string",

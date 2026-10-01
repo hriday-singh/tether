@@ -3,19 +3,12 @@
     Tether Monorepo - Setup Wizard (Windows PowerShell)
 
 .DESCRIPTION
-    Interactive setup script to configure environment variables (.env), database drivers
-    (SQLite / PostgreSQL), generate cryptographic secrets, install dependencies, and build
+    Interactive setup script to configure environment variables (.env), generate cryptographic secrets, install dependencies, and build
     shared workspace packages.
     Supports quick-start by pressing Enter to accept all recommended defaults.
 
 .PARAMETER Mode
     Setup mode: 'local' (default), 'docker', or 'all'.
-
-.PARAMETER Database
-    Database driver: 'sqlite' (default) or 'postgres'.
-
-.PARAMETER DatabaseUrl
-    PostgreSQL connection string (when Database is postgres).
 
 .PARAMETER BackendUrl
     Public backend URL the browser calls (default: http://localhost:<BackendPort>). WebSocket URL is derived (http->ws, https->wss).
@@ -31,11 +24,6 @@
 param(
     [ValidateSet('local', 'docker', 'all', '')]
     [string]$Mode = '',
-
-    [ValidateSet('sqlite', 'postgres', '')]
-    [string]$Database = '',
-
-    [string]$DatabaseUrl = '',
 
     [string]$BackendPort = '',
 
@@ -160,37 +148,6 @@ if ([string]::IsNullOrEmpty($Mode)) {
 }
 Write-Success "Execution mode selected: $Mode"
 
-# 2. Database Selection
-if ([string]::IsNullOrEmpty($Database)) {
-    $dbChoice = Prompt-Choice `
-        -PromptText "Select database configuration:" `
-        -Options @("SQLite (Embedded via Node 22, zero external setup) [Recommended]", "PostgreSQL (Docker-managed or external connection)") `
-        -DefaultIndex 1
-
-    switch ($dbChoice) {
-        "1" { $Database = "sqlite" }
-        "2" { $Database = "postgres" }
-        default { $Database = "sqlite" }
-    }
-}
-
-if ($Database -eq "postgres" -and [string]::IsNullOrEmpty($DatabaseUrl)) {
-    $pgSource = Prompt-Choice `
-        -PromptText "Select PostgreSQL provider:" `
-        -Options @("Docker Compose PostgreSQL (runs postgres:16-alpine on :5432)", "Custom / External PostgreSQL Connection String") `
-        -DefaultIndex 1
-
-    if ($pgSource -eq "1") {
-        $DatabaseUrl = "postgres://postgres:postgres@localhost:5432/tether"
-    } else {
-        $DatabaseUrl = Prompt-Text -PromptText "Enter PostgreSQL connection string" -DefaultValue "postgres://postgres:postgres@localhost:5432/tether"
-    }
-}
-Write-Success "Database selected: $Database"
-if ($Database -eq "postgres") {
-    Write-Success "PostgreSQL URL: $DatabaseUrl"
-}
-
 # 3. Port Configuration
 if ([string]::IsNullOrEmpty($BackendPort)) {
     $defaultBp = "4000"
@@ -293,18 +250,9 @@ if ($envContent -notmatch "JWT_SECRET=[a-zA-Z0-9_\-]{32,}" -or $envContent -matc
     Write-Success "Generated secure 256-bit cryptographic JWT_SECRET."
 }
 
-# Update Database settings in .env
-if ($Database -eq "sqlite") {
-    $envContent = $envContent -replace "DATABASE_DRIVER=.*", "DATABASE_DRIVER=sqlite"
-    $envContent = $envContent -replace "SQLITE_PATH=.*", "SQLITE_PATH=./data/tether.db"
-} else {
-    $envContent = $envContent -replace "DATABASE_DRIVER=.*", "DATABASE_DRIVER=postgres"
-    if ($envContent -match "DATABASE_URL=.*") {
-        $envContent = $envContent -replace "DATABASE_URL=.*", "DATABASE_URL=$DatabaseUrl"
-    } else {
-        $envContent += "`nDATABASE_URL=$DatabaseUrl"
-    }
-}
+# Database: SQLite only (resets a stale DATABASE_DRIVER=postgres from older setups)
+$envContent = $envContent -replace "(?m)^DATABASE_DRIVER=[^\r\n]*", "DATABASE_DRIVER=sqlite"
+$envContent = $envContent -replace "(?m)^DATABASE_URL=.*\r?\n?", ""
 
 # Update Ports in .env
 $envContent = $envContent -replace "(?m)^PORT=.*", "PORT=$BackendPort"
@@ -408,7 +356,7 @@ if (-not $pnpmInstalled -and ($Mode -eq "local" -or $Mode -eq "all")) {
 }
 
 # Docker check
-if ($Mode -eq "docker" -or $Mode -eq "all" -or ($Database -eq "postgres" -and $DatabaseUrl -match "localhost:5432")) {
+if ($Mode -eq "docker" -or $Mode -eq "all") {
     $dockerInstalled = $false
     try {
         $dockerVer = & docker --version 2>$null
@@ -472,7 +420,7 @@ if ($Mode -eq "docker" -or $Mode -eq "all") {
 Write-Header "Setup Complete!"
 Write-Host "Summary of Configuration:" -ForegroundColor Green
 Write-Host "  - Mode:            $Mode"
-Write-Host "  - Database:        $Database"
+Write-Host "  - Database:        SQLite (./data/tether.db)"
 Write-Host "  - Backend Server:  http://localhost:$BackendPort (WebSocket: ws://localhost:$BackendPort)"
 Write-Host "  - Frontend Client: http://localhost:$FrontendPort (or :3000 in Docker)"
 Write-Host "  - Environment:     .env"

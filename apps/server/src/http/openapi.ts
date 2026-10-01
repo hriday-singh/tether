@@ -500,7 +500,7 @@ export const openApiSpec = {
         properties: {
           roomId: { type: 'string' },
           passcode: { type: ['string', 'null'] },
-          name: { type: 'string', minLength: 1, maxLength: 50 },
+          name: { type: 'string', minLength: 1, maxLength: 32, description: 'Control, bidi and zero-width characters are stripped, then trimmed.' },
           language: { type: 'string' },
         },
         required: ['name'],
@@ -539,7 +539,7 @@ export const openApiSpec = {
       JoinRoomRequest: {
         type: 'object',
         properties: {
-          name: { type: 'string', minLength: 1, maxLength: 50 },
+          name: { type: 'string', minLength: 1, maxLength: 32, description: 'Control, bidi and zero-width characters are stripped, then trimmed.' },
           passcode: { type: 'string', maxLength: 64 },
           memberId: {
             type: 'string',
