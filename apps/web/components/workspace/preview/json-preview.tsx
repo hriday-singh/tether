@@ -213,9 +213,11 @@ function JsonNode({ name, value, depth, filter, forceExpand, isRoot = false }: J
 
   return (
     <div className="py-0.5">
-      <div
+      <button
+        type="button"
+        aria-expanded={expanded}
         onClick={() => setExpanded((prev) => !prev)}
-        className="flex cursor-pointer items-baseline gap-1.5 hover:bg-muted/30 rounded px-1 -mx-1 select-none"
+        className="flex w-full cursor-pointer items-baseline gap-1.5 text-left hover:bg-muted/30 rounded px-1 -mx-1 select-none outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="text-muted-foreground hover:text-foreground">
           <Icon icon={expanded ? ArrowDown01Icon : ArrowRight01Icon} size={12} className="inline align-middle" />
@@ -238,7 +240,7 @@ function JsonNode({ name, value, depth, filter, forceExpand, isRoot = false }: J
             {countLabel}
           </Badge>
         )}
-      </div>
+      </button>
 
       {expanded && (
         <div className="ml-3.5 border-l border-border/40 pl-2 space-y-0.5">

@@ -13,10 +13,12 @@ export async function formatCode(code: string, languageId: LanguageId): Promise<
     switch (languageId) {
       case 'javascript':
       case 'typescript': {
-        const prettier = await import('prettier/standalone');
-        const parserBabel = await import('prettier/plugins/babel');
-        const parserEstree = await import('prettier/plugins/estree');
-        const parserTs = await import('prettier/plugins/typescript');
+        const [prettier, parserBabel, parserEstree, parserTs] = await Promise.all([
+          import('prettier/standalone'),
+          import('prettier/plugins/babel'),
+          import('prettier/plugins/estree'),
+          import('prettier/plugins/typescript'),
+        ]);
         return await prettier.format(code, {
           parser: languageId === 'typescript' ? 'typescript' : 'babel',
           plugins: [parserBabel.default, parserEstree.default, parserTs.default],
@@ -27,8 +29,7 @@ export async function formatCode(code: string, languageId: LanguageId): Promise<
         });
       }
       case 'html': {
-        const prettier = await import('prettier/standalone');
-        const parserHtml = await import('prettier/plugins/html');
+        const [prettier, parserHtml] = await Promise.all([import('prettier/standalone'), import('prettier/plugins/html')]);
         return await prettier.format(code, {
           parser: 'html',
           plugins: [parserHtml.default],
@@ -36,8 +37,7 @@ export async function formatCode(code: string, languageId: LanguageId): Promise<
         });
       }
       case 'css': {
-        const prettier = await import('prettier/standalone');
-        const parserPostcss = await import('prettier/plugins/postcss');
+        const [prettier, parserPostcss] = await Promise.all([import('prettier/standalone'), import('prettier/plugins/postcss')]);
         return await prettier.format(code, {
           parser: 'css',
           plugins: [parserPostcss.default],
@@ -45,8 +45,7 @@ export async function formatCode(code: string, languageId: LanguageId): Promise<
         });
       }
       case 'markdown': {
-        const prettier = await import('prettier/standalone');
-        const parserMarkdown = await import('prettier/plugins/markdown');
+        const [prettier, parserMarkdown] = await Promise.all([import('prettier/standalone'), import('prettier/plugins/markdown')]);
         return await prettier.format(code, {
           parser: 'markdown',
           plugins: [parserMarkdown.default],

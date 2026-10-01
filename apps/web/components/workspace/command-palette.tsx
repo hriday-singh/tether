@@ -46,9 +46,10 @@ function ThemePick({ onClose }: { onClose: () => void }) {
   const committed = useRef(false);
   const [active, setActive] = useState<string>(prefs.themeId);
 
-  useEffect(() => {
-    if (THEMES.some((t) => t.id === active)) applyTheme(active as ThemeId); // live preview on highlight
-  }, [active]);
+  const highlight = (id: string) => {
+    setActive(id);
+    if (THEMES.some((t) => t.id === id)) applyTheme(id as ThemeId); // live preview on highlight
+  };
   useEffect(
     () => () => {
       if (!committed.current) applyTheme(initial); // Esc / click-away reverts
@@ -57,7 +58,7 @@ function ThemePick({ onClose }: { onClose: () => void }) {
   );
 
   return (
-    <Command value={active} onValueChange={setActive} loop>
+    <Command value={active} onValueChange={highlight} loop>
       <CommandInput autoFocus placeholder="Select Color Theme (Up/Down to preview, Enter to select)" />
       <CommandList>
         <CommandEmpty>No theme found.</CommandEmpty>
