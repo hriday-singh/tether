@@ -4,13 +4,16 @@ A real-time collaborative code editor built on Yjs CRDTs, a Fastify WebSocket sy
 
 ## Features
 
-- **CRDT sync**: Yjs v13 over a custom WebSocket protocol, with token-bucket throttling on updates. Peers converge on identical documents after disconnects, dropped frames, or throttling.
-- **Live latency readout**: keystroke-to-peer latency (p50 / p95) shown in the UI.
-- **Chaos testing**: 275+ unit, property-based, and chaos tests across 60 suites covering network partitions, duplicated frames, and reconnect storms.
-- **Chaos mode**: the room host can spawn bot clients that edit under simulated network faults, then roll the document back to its pre-run state with `Y.UndoManager`.
-- **Room chat**: per-room text chat with ordered sequence numbers, optimistic updates, unread indicators, and persistence.
-- **Sandboxed runs**: JavaScript, HTML, and Python run in a sandboxed iframe or Web Worker with a 5-second watchdog.
-- **Storage**: embedded SQLite via Node 22 (`node:sqlite`) by default, PostgreSQL for production.
+- **Real-time collaboration**: Peers can edit together. Yjs merges concurrent edits, and rate-limited broadcasts combine pending updates instead of dropping them.
+- **Sync verification**: When editing pauses, clients compare document checksums with the server. The interface shows when they match, and a mismatch triggers automatic recovery.
+- **Latency and sync status**: View round-trip and peer-delivery latency, including p50 and p95 measurements. The status indicators show whether edits are pending, syncing, or saved.
+- **Network Lab and bot storms**: Use the diagnostics drawer to add latency, take the client offline, or drop its socket. Hosts can configure bot storms, review convergence, and restore the document afterward.
+- **Presence and host controls**: See collaborators' cursors, selections, and activity. Hosts can lock rooms, rotate passcodes, remove participants, and change the room's syntax mode.
+- **Room chat with code quotes**: Quote a selected code snippet in chat with `Ctrl/Cmd+Shift+M`. The reference follows the code as it changes.
+- **Sandboxed execution and console**: Preview HTML, CSS, and JavaScript in an isolated iframe. Run JavaScript and TypeScript in a Web Worker with a 5-second watchdog. The console captures logs, warnings, errors, and results.
+- **Themes**: Choose Quiet Dark, Quiet Light, or High Contrast, and preview theme changes before switching.
+- **Command palette**: Press `Ctrl/Cmd+K` to search navigation, room and host actions, editor settings, and themes.
+- **Storage and room cleanup**: Local development uses SQLite by default, and production can use PostgreSQL. Inactive temporary rooms are deleted after 24 hours.
 
 ## Architecture
 
@@ -37,13 +40,13 @@ A real-time collaborative code editor built on Yjs CRDTs, a Fastify WebSocket sy
                        └────────────────┘       └────────────────┘
 ```
 
-| Path | Package | Description | Dev port |
-|------|---------|-------------|----------|
-| `apps/server` | `@tether/server` | REST API, WebSocket server, Yjs sync, room persistence (Fastify 5, ws, Yjs) | 4000 |
-| `apps/web` | `@tether/web` | Editor, console, room management (Next.js 16, React 19, CodeMirror 6, Tailwind v4) | 3001 |
-| `packages/shared` | `@tether/shared` | Protocol codecs, Zod schemas, rate limiter, backoff, checksums | |
-| `packages/sync-client` | `@tether/sync-client` | Client-side WebSocket sync driver | |
-| `tests/chaos` | `@tether/chaos` | Network chaos, convergence, and invariant tests (Vitest, fast-check) | |
+| Path                   | Package               | Description                                                                        | Dev port |
+| ---------------------- | --------------------- | ---------------------------------------------------------------------------------- | -------- |
+| `apps/server`          | `@tether/server`      | REST API, WebSocket server, Yjs sync, room persistence (Fastify 5, ws, Yjs)        | 4000     |
+| `apps/web`             | `@tether/web`         | Editor, console, room management (Next.js 16, React 19, CodeMirror 6, Tailwind v4) | 3001     |
+| `packages/shared`      | `@tether/shared`      | Protocol codecs, Zod schemas, rate limiter, backoff, checksums                     |          |
+| `packages/sync-client` | `@tether/sync-client` | Client-side WebSocket sync driver                                                  |          |
+| `tests/chaos`          | `@tether/chaos`       | Network chaos, convergence, and invariant tests (Vitest, fast-check)               |          |
 
 ## Getting started
 
@@ -113,10 +116,10 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/tether
 
 From `pnpm bench`, 5 concurrent clients on localhost:
 
-| Scenario | Samples | Min | p50 | p95 | p99 | Max | Mean |
-|----------|---------|-----|-----|-----|-----|-----|------|
-| Isolated edits (1 edit/s per client) | 200 | 0.67 ms | 1.60 ms | 6.27 ms | 13.06 ms | 13.26 ms | 2.50 ms |
-| Burst typing (15 chars/s per client) | 500 | 1.41 ms | 8.33 ms | 124.26 ms | 142.71 ms | 143.31 ms | 37.46 ms |
+| Scenario                             | Samples | Min     | p50     | p95       | p99       | Max       | Mean     |
+| ------------------------------------ | ------- | ------- | ------- | --------- | --------- | --------- | -------- |
+| Isolated edits (1 edit/s per client) | 200     | 0.67 ms | 1.60 ms | 6.27 ms   | 13.06 ms  | 13.26 ms  | 2.50 ms  |
+| Burst typing (15 chars/s per client) | 500     | 1.41 ms | 8.33 ms | 124.26 ms | 142.71 ms | 143.31 ms | 37.46 ms |
 
 Burst latency is bounded by the 200 ms batching window and the token-bucket throttle.
 
@@ -126,8 +129,9 @@ Burst latency is bounded by the 200 ms batching window and the token-bucket thro
 pnpm dev          # server + web
 pnpm dev:server   # backend only
 pnpm dev:web      # frontend only
+pnpm db:migrate   # run sqlite database migrations
 pnpm test         # all tests
-pnpm chaos:ci     # chaos suite
+pnpm chaos:ci     # network partition and convergence tests
 pnpm bench        # latency benchmark
 pnpm typecheck
 pnpm lint
@@ -148,6 +152,14 @@ pnpm build
 - [Operations](docs/09-operations.md)
 - [UI / UX](docs/12-ui-ux.md)
 
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md) before submitting pull requests.
+
+## Security
+
+For security vulnerability reports, please review our [Security Policy](SECURITY.md) and report responsibly to [hridaysingh2207@gmail.com](mailto:hridaysingh2207@gmail.com).
+
 ## License
 
-MIT
+[MIT](LICENSE) © 2026 Hriday Singh

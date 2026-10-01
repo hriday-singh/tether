@@ -407,6 +407,17 @@ export async function attachConnectionHandler(
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;
           }
+          case 'demo.storm_stop': {
+            if (room.hostElector.hostId !== member.id) {
+              ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'forbidden', message: 'Not host' }));
+              return;
+            }
+            if (deps.botStormManager) {
+              void deps.botStormManager.stopStorm(room.id);
+            }
+            ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
+            break;
+          }
         }
       } catch {
         deps.auditService.logEvent(room.id, {

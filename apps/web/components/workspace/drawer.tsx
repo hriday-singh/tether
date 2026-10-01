@@ -321,6 +321,18 @@ function ChaosLab() {
     }
   };
 
+  const stop = async () => {
+    setPending(true);
+    try {
+      await client.command({ t: 'demo.storm_stop' });
+      toast.info('Stopping chaos storm...');
+    } catch (e) {
+      toast.error('Could not stop storm', { description: e instanceof CommandError ? e.code : String(e) });
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
     <div className="grid h-full min-h-0 grid-cols-[minmax(0,18rem)_minmax(0,1fr)] gap-3 overflow-y-auto p-3">
       <StormControls
@@ -335,6 +347,7 @@ function ChaosLab() {
         pending={pending}
         activeBots={storm.bots}
         onLaunch={() => void launch()}
+        onStop={() => void stop()}
       />
       <div className="flex min-w-0 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border p-4 text-center">
         <StormStatusDisplay storm={storm} now={now} ambientAnimations={prefs.ambientAnimations} />
@@ -355,6 +368,7 @@ function StormControls({
   pending,
   activeBots,
   onLaunch,
+  onStop,
 }: {
   isHost: boolean;
   running: boolean;
@@ -367,29 +381,35 @@ function StormControls({
   pending: boolean;
   activeBots: number;
   onLaunch: () => void;
+  onStop: () => void;
 }) {
   return (
-    <fieldset disabled={!isHost || running} className="flex flex-col gap-3 rounded-xl border border-border p-3 disabled:opacity-70">
+    <fieldset disabled={!isHost} className="flex flex-col gap-3 rounded-xl border border-border p-3 disabled:opacity-70">
       <legend className="px-1 text-caption font-medium">Chaos</legend>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="storm-bots">
           Bots <span className="font-mono tabular">{bots}</span>
         </Label>
-        <Slider id="storm-bots" min={1} max={STORM_MAX_BOTS} step={1} value={[bots]} onValueChange={([v]) => setBots(v ?? 1)} aria-label="Number of bots" />
+        <Slider id="storm-bots" min={1} max={STORM_MAX_BOTS} step={1} value={[bots]} onValueChange={([v]) => setBots(v ?? 1)} aria-label="Number of bots" disabled={running} />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="storm-secs">
           Duration <span className="font-mono tabular">{seconds}s</span>
         </Label>
-        <Slider id="storm-secs" min={1} max={STORM_MAX_SECONDS} step={1} value={[seconds]} onValueChange={([v]) => setSeconds(v ?? 1)} aria-label="Duration in seconds" />
+        <Slider id="storm-secs" min={1} max={STORM_MAX_SECONDS} step={1} value={[seconds]} onValueChange={([v]) => setSeconds(v ?? 1)} aria-label="Duration in seconds" disabled={running} />
       </div>
       <label className="flex items-center justify-between gap-2 text-caption">
         Inject faults (jitter, reorder, stalls)
-        <Switch checked={faults} onCheckedChange={setFaults} />
+        <Switch checked={faults} onCheckedChange={setFaults} disabled={running} />
       </label>
-      <Button onClick={onLaunch} disabled={pending || running || !isHost}>
+      <Button
+        onClick={running ? onStop : onLaunch}
+        disabled={pending || !isHost}
+        variant={running ? 'outline' : 'primary'}
+        className={cn(running && 'border-destructive/50 text-destructive hover:bg-destructive/10')}
+      >
         <MorphIcon icon={running ? BotIcon : CpuIcon} size={14} />
-        <TextMorph>{running ? `${activeBots} Bots Active` : 'Launch Chaos'}</TextMorph>
+        <TextMorph>{running ? `Stop Chaos (${activeBots} Active)` : 'Launch Chaos'}</TextMorph>
       </Button>
       {!isHost && <p className="text-micro text-muted-foreground">Only the host can launch Chaos.</p>}
     </fieldset>

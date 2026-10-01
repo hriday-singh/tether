@@ -155,6 +155,11 @@ export const ClientDemoStormSchema = z.object({
   faults: z.boolean(),
 });
 
+export const ClientDemoStormStopSchema = z.object({
+  t: z.literal('demo.storm_stop'),
+  rid: z.string().uuid(),
+});
+
 // rid doubles as the message's idempotency key: a resend after reconnect returns the stored message.
 export const ClientChatSendSchema = z.object({
   t: z.literal('chat.send'),
@@ -173,6 +178,7 @@ export const ClientControlMessageSchema = z.discriminatedUnion('t', [
   ClientRoomLanguageSchema,
   ClientVerifyMismatchSchema,
   ClientDemoStormSchema,
+  ClientDemoStormStopSchema,
   ClientChatSendSchema,
 ]);
 export type ClientControlMessage = z.infer<typeof ClientControlMessageSchema>;

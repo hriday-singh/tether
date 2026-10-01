@@ -1,4 +1,5 @@
 import {
+  Activity01Icon,
   KeyboardIcon,
   PaintBoardIcon,
   Settings01Icon,
@@ -15,7 +16,7 @@ export function buildPreferenceAndDiagnosticCommands(
   act: (fn: () => void) => () => void,
   ui: (patch: Partial<UIState>) => void,
 ): PaletteCommand[] {
-  const { prefs, setPrefs, mod } = args;
+  const { ws, prefs, setPrefs, mod } = args;
 
   const togglePref = <
     K extends
@@ -35,6 +36,8 @@ export function buildPreferenceAndDiagnosticCommands(
     setPrefs({ [key]: next });
     toast.success(`${name}: ${next ? 'Enabled' : 'Disabled'}`);
   };
+
+  const isOffline = ws.client.status?.get?.()?.connection === 'offline';
 
   return [
     // Preferences & Appearance
@@ -202,6 +205,7 @@ export function buildPreferenceAndDiagnosticCommands(
       priority: 48,
       onSelect: act(() => {
         setPrefs({ simulatedLatencyMs: 0 });
+        ws.client.lab?.setLatency?.(0);
         toast.success('Simulated latency reset to 0ms');
       }),
     },
@@ -214,6 +218,7 @@ export function buildPreferenceAndDiagnosticCommands(
       priority: 42,
       onSelect: act(() => {
         setPrefs({ simulatedLatencyMs: 50 });
+        ws.client.lab?.setLatency?.(50);
         toast.success('Simulated latency set to 50ms');
       }),
     },
@@ -226,7 +231,57 @@ export function buildPreferenceAndDiagnosticCommands(
       priority: 42,
       onSelect: act(() => {
         setPrefs({ simulatedLatencyMs: 150 });
+        ws.client.lab?.setLatency?.(150);
         toast.success('Simulated latency set to 150ms');
+      }),
+    },
+    {
+      id: 'net:latency-300',
+      category: 'Advanced & Diagnostics',
+      icon: Wifi01Icon,
+      label: 'Simulated Latency: 300 ms (High latency / Satellite)',
+      keywords: ['simulated latency 300ms', 'latency', 'network', 'delay', 'satellite', 'settings'],
+      priority: 40,
+      onSelect: act(() => {
+        setPrefs({ simulatedLatencyMs: 300 });
+        ws.client.lab?.setLatency?.(300);
+        toast.success('Simulated latency set to 300ms');
+      }),
+    },
+    {
+      id: 'net:offline-toggle',
+      category: 'Advanced & Diagnostics',
+      icon: Wifi01Icon,
+      label: isOffline ? 'Network Lab: Go Online' : 'Network Lab: Go Offline',
+      keywords: ['offline', 'disconnect', 'network lab', 'reconnect', 'simulate offline', 'airplane mode'],
+      priority: 46,
+      onSelect: act(() => {
+        const nextOffline = !isOffline;
+        ws.client.lab?.setOffline?.(nextOffline);
+        toast.info(nextOffline ? 'Simulating offline mode' : 'Reconnecting to room');
+      }),
+    },
+    {
+      id: 'net:kill-socket',
+      category: 'Advanced & Diagnostics',
+      icon: Wifi01Icon,
+      label: 'Network Lab: Kill WebSocket (Abrupt Drop)',
+      keywords: ['kill socket', 'drop connection', 'disconnect abrupt', 'network lab', 'crash socket'],
+      priority: 44,
+      onSelect: act(() => {
+        ws.client.lab?.killSocket?.();
+        toast.info('Socket dropped (reconnecting...)');
+      }),
+    },
+    {
+      id: 'chaos:launch',
+      category: 'Advanced & Diagnostics',
+      icon: Activity01Icon,
+      label: 'Chaos Lab: Open Bot Storm Panel',
+      keywords: ['chaos launch', 'bot storm', 'stress test', 'network lab', 'simulate load'],
+      priority: 45,
+      onSelect: act(() => {
+        ui({ drawerOpen: true, drawerTab: 'chaos' });
       }),
     },
 

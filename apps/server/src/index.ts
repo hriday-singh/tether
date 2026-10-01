@@ -44,6 +44,7 @@ async function main() {
     roomRepo,
     auditService,
     roomRegistry,
+    chatService,
   });
 
   const deps = {

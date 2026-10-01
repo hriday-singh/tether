@@ -214,5 +214,17 @@ describe('buildPaletteCommands feature completeness', () => {
     expect(ids).toContain('editor:maximize');
     expect(ids).toContain('room:leave');
     expect(ids).toContain('room:copy-id');
+
+    // New additions: Editor helpers
+    expect(ids).toContain('editor:insert-template');
+    expect(ids).toContain('editor:clear-doc');
+
+    // New additions: Network Lab & Diagnostics
+    expect(ids).toContain('net:latency-300');
+    expect(ids).toContain('net:offline-toggle');
+    expect(ids).toContain('net:kill-socket');
+    expect(ids).toContain('console:clear');
+    expect(ids).toContain('console:share');
+    expect(ids).toContain('chaos:launch');
   });
 });

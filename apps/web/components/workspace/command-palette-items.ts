@@ -6,6 +6,7 @@ import {
   CodeIcon,
   Copy01Icon,
   CrownIcon,
+  Delete02Icon,
   Download04Icon,
   FlashIcon,
   FullScreenIcon,
@@ -17,14 +18,16 @@ import {
   MinimizeScreenIcon,
   PlayIcon,
   Search01Icon,
+  Share08Icon,
   SidebarBottomIcon,
   UserGroupIcon,
   ViewIcon,
 } from '@hugeicons/core-free-icons';
 import { openSearchPanel } from '@codemirror/search';
 import { toast } from '@/components/ui/toaster';
+import { DEMO_MODE } from '@/lib/api';
 import { formatCode } from '@/lib/formatter';
-import { LANGUAGE_IDS, LANGUAGES, languageInfo, type LanguageId } from '@/lib/languages';
+import { LANGUAGE_IDS, LANGUAGES, STARTER_CODE, languageInfo, type LanguageId } from '@/lib/languages';
 import { CommandError } from '@/lib/sync';
 import type { UIState } from './context';
 import { toggleLineHighlight } from './editor/collab';
@@ -263,6 +266,49 @@ export function buildPaletteCommands(args: BuildPaletteCommandsArgs): PaletteCom
         ui({ maximizedPanel: uiState.maximizedPanel === 'editor' ? null : 'editor' });
       }),
     },
+    {
+      id: 'editor:insert-template',
+      category: 'Editor & Actions',
+      icon: CodeIcon,
+      label: `Insert Starter Template (${lang.label})`,
+      keywords: ['template', 'starter template', 'insert template', 'boilerplate', 'sample code'],
+      priority: 75,
+      onSelect: act(() => {
+        if (!isHost && room.room.locked) {
+          toast.info('Room is locked. Only the host can modify.');
+          return;
+        }
+        const template = STARTER_CODE[lang.id];
+        if (!template) return;
+        client.doc.transact(() => {
+          const sep = client.text.length > 0 ? '\n\n' : '';
+          client.text.insert(client.text.length, `${sep}${template}`);
+        });
+        toast.success(`Inserted ${lang.label} template`);
+      }),
+    },
+    {
+      id: 'editor:clear-doc',
+      category: 'Editor & Actions',
+      icon: Delete02Icon,
+      label: 'Clear Document',
+      keywords: ['clear document', 'clear editor', 'empty document', 'reset code'],
+      priority: 55,
+      onSelect: act(() => {
+        if (!isHost && room.room.locked) {
+          toast.info('Room is locked. Only the host can clear the document.');
+          return;
+        }
+        if (client.text.length === 0) {
+          toast.info('Document is already empty');
+          return;
+        }
+        client.doc.transact(() => {
+          client.text.delete(0, client.text.length);
+        });
+        toast.success('Document cleared');
+      }),
+    },
 
     // 2. Navigation & Views
     {
@@ -375,6 +421,41 @@ export function buildPaletteCommands(args: BuildPaletteCommandsArgs): PaletteCom
       priority: 82,
       onSelect: act(() => ui({ drawerOpen: true, drawerTab: 'chaos' })),
     },
+    {
+      id: 'console:clear',
+      category: 'Advanced & Diagnostics',
+      icon: Delete02Icon,
+      label: 'Clear Console Output',
+      keywords: ['clear console', 'terminal clear', 'clear logs', 'cls', 'console'],
+      priority: 78,
+      onSelect: act(() => {
+        ws.console?.clear?.();
+        toast.success('Console cleared');
+      }),
+    },
+    {
+      id: 'console:share',
+      category: 'Advanced & Diagnostics',
+      icon: Share08Icon,
+      label: 'Share Recent Logs to Room Chat',
+      keywords: ['share console', 'share logs', 'export logs', 'console chat'],
+      priority: 77,
+      onSelect: act(async () => {
+        const shown = ws.console?.get?.() ?? [];
+        if (shown.length === 0) {
+          toast.info('No console logs to share');
+          return;
+        }
+        const lines = shown.slice(-10).map((e) => `[${e.level.toUpperCase()}] ${e.text}`).join('\n');
+        const msg = `\`\`\`text\n[Console Export (${shown.length} logs)]\n${lines}\n\`\`\``;
+        try {
+          await client.sendChat(crypto.randomUUID(), msg);
+          toast.success('Recent logs shared to room chat');
+        } catch {
+          toast.error('Failed to share to chat');
+        }
+      }),
+    },
 
     // 3. Room & Collaboration
     {
@@ -435,6 +516,51 @@ export function buildPaletteCommands(args: BuildPaletteCommandsArgs): PaletteCom
             priority: 90,
             onSelect: act(() => ui({ hostSheet: true })),
           },
+          ...(DEMO_MODE
+            ? [
+                {
+                  id: 'chaos:launch',
+                  category: 'Room & Collaboration' as const,
+                  icon: FlashIcon,
+                  label: 'Launch Chaos Storm (4 Bots, 15s)',
+                  keywords: ['launch chaos', 'bot storm', 'chaos storm', 'stress test', 'bots', 'collaborators'],
+                  priority: 85,
+                  onSelect: act(async () => {
+                    ui({ drawerOpen: true, drawerTab: 'chaos' });
+                    try {
+                      await client.command({ t: 'demo.storm', bots: 4, seconds: 15, faults: true });
+                      toast.success('Chaos storm launched');
+                    } catch (e) {
+                      toast.error('Chaos did not start', {
+                        description: e instanceof CommandError ? e.code : String(e),
+                      });
+                    }
+                  }),
+                },
+                ...(client.storm?.get?.()?.running
+                  ? [
+                      {
+                        id: 'chaos:stop',
+                        category: 'Room & Collaboration' as const,
+                        icon: FlashIcon,
+                        label: 'Stop Active Chaos Storm',
+                        keywords: ['stop chaos', 'cancel storm', 'abort storm', 'halt storm'],
+                        priority: 86,
+                        onSelect: act(async () => {
+                          try {
+                            await client.command({ t: 'demo.storm_stop' });
+                            toast.info('Stopping chaos storm...');
+                          } catch (e) {
+                            toast.error('Could not stop storm', {
+                              description: e instanceof CommandError ? e.code : String(e),
+                            });
+                          }
+                        }),
+                      },
+                    ]
+                  : []),
+              ]
+            : []),
           ...LANGUAGE_IDS.map((id) => ({
             id: `room:lang:${id}`,
             category: 'Room & Collaboration' as const,

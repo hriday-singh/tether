@@ -2,6 +2,12 @@
   "name": "@tether/web",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hriday-singh/tether.git",
+    "directory": "apps/web"
+  },
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg && node scripts/dev.js",

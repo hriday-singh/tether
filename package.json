@@ -2,6 +2,15 @@
   "name": "tether-monorepo",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hriday-singh/tether.git"
+  },
+  "homepage": "https://github.com/hriday-singh/tether#readme",
+  "bugs": {
+    "url": "https://github.com/hriday-singh/tether/issues"
+  },
   "type": "module",
   "workspaces": [
     "packages/*",

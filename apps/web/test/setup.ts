@@ -20,6 +20,31 @@ if (typeof Element !== 'undefined' && !Element.prototype.getAnimations) {
   Element.prototype.getAnimations = () => [];
 }
 
+const mockAnimate = () => ({
+  onfinish: null,
+  cancel: () => {},
+  play: () => {},
+  pause: () => {},
+  finish: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+} as unknown as Animation);
+
+if (typeof Element !== 'undefined') {
+  Element.prototype.animate = mockAnimate;
+}
+if (typeof HTMLElement !== 'undefined') {
+  HTMLElement.prototype.animate = mockAnimate;
+}
+if (typeof SVGElement !== 'undefined') {
+  SVGElement.prototype.animate = mockAnimate;
+}
+if (typeof window !== 'undefined') {
+  if (window.Element) window.Element.prototype.animate = mockAnimate;
+  if (window.HTMLElement) window.HTMLElement.prototype.animate = mockAnimate;
+  if (window.SVGElement) window.SVGElement.prototype.animate = mockAnimate;
+}
+
 if (typeof HTMLCanvasElement !== 'undefined') {
   HTMLCanvasElement.prototype.getContext = function (contextId: string) {
     if (contextId === '2d') {

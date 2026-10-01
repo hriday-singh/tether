@@ -33,6 +33,20 @@ export const ServerConfigSchema = z.object({
     .string()
     .default('false')
     .transform((s) => s === 'true' || s === '1'),
+}).superRefine((data, ctx) => {
+  if (data.NODE_ENV === 'production') {
+    const knownInsecure = [
+      'development_secret_must_be_at_least_32_chars_long!!',
+      'production_secret_must_be_at_least_32_characters_long!',
+    ];
+    if (knownInsecure.includes(data.JWT_SECRET)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['JWT_SECRET'],
+        message: 'JWT_SECRET cannot use an insecure default placeholder in production',
+      });
+    }
+  }
 });
 
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;

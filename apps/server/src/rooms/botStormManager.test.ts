@@ -86,6 +86,7 @@ describe('BotStormManager', () => {
       roomRepo,
       auditService,
       roomRegistry,
+      chatService,
     });
 
     app = buildApp(deps);

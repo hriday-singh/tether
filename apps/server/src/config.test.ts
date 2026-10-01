@@ -36,4 +36,13 @@ describe('Server Config', () => {
     ]);
     expect(config.DEMO_MODE).toBe(true);
   });
+
+  it('rejects known placeholder JWT_SECRET in production mode', () => {
+    expect(() =>
+      loadConfig({
+        NODE_ENV: 'production',
+        JWT_SECRET: 'development_secret_must_be_at_least_32_chars_long!!',
+      })
+    ).toThrow(/JWT_SECRET cannot use an insecure default placeholder in production/);
+  });
 });

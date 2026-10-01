@@ -281,4 +281,35 @@ describe('ServerSyncClient', () => {
 
     client.destroy();
   });
+
+  it('preserves configured latencyMs when onStatsChange emits new RTT samples', () => {
+    const client = new ServerSyncClient({ ...options, latencyMs: 120 });
+    expect(client.stats.get().latencyMs).toBe(120);
+
+    const onStatsChange = (lastCreatedOpts as { onStatsChange?: (stats: unknown) => void })?.onStatsChange;
+    expect(onStatsChange).toBeDefined();
+
+    onStatsChange!({
+      rtt: { latestMs: 35, p50Ms: 30, p95Ms: 40 },
+      ackLatency: { latestMs: 20, p50Ms: 18, p95Ms: 25 },
+    });
+
+    // RTT updates, but latencyMs must remain 120 (not overwritten by 35)
+    expect(client.stats.get().rtt).toBe(35);
+    expect(client.stats.get().latencyMs).toBe(120);
+
+    client.lab.setLatency(0);
+    expect(client.stats.get().latencyMs).toBe(0);
+
+    onStatsChange!({
+      rtt: { latestMs: 15, p50Ms: 15, p95Ms: 18 },
+      ackLatency: { latestMs: 10, p50Ms: 10, p95Ms: 12 },
+    });
+
+    // Still 0 even after new stats arrive
+    expect(client.stats.get().rtt).toBe(15);
+    expect(client.stats.get().latencyMs).toBe(0);
+
+    client.destroy();
+  });
 });

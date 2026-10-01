@@ -96,6 +96,12 @@ function ConnectedRoom({ roomId, session, onReauth }: { roomId: string; session:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, session]);
 
+  useEffect(() => {
+    if (client) {
+      client.lab.setLatency(prefs.simulatedLatencyMs);
+    }
+  }, [client, prefs.simulatedLatencyMs]);
+
   if (!client) return <div className="min-h-dvh bg-background" />;
   return (
     <>

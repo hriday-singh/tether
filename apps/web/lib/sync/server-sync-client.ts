@@ -263,7 +263,6 @@ export class ServerSyncClient implements SyncClient {
           ackP50: clientStats.ackLatency.p50Ms,
           ackP95: clientStats.ackLatency.p95Ms,
           samples,
-          latencyMs: clientStats.rtt.latestMs,
         });
       },
       onRosterChange: (members) => {

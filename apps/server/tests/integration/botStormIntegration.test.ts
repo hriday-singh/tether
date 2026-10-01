@@ -76,6 +76,7 @@ describe('Bot Storm Spawner WebSocket Integration', () => {
       roomRepo,
       auditService,
       roomRegistry,
+      chatService,
     });
 
     const deps = {
@@ -321,5 +322,52 @@ describe('Bot Storm Spawner WebSocket Integration', () => {
 
     hostClient.destroy();
     mockConfig.DEMO_MODE = true;
+  });
+
+  it('stops a running storm via demo.storm_stop', async () => {
+    const { room, token: hostToken } = await roomService.createRoom({
+      roomId: 'stop-storm-room',
+      creatorName: 'HostUser',
+    });
+
+    const hostDoc = new Y.Doc();
+    const hostClient = new SyncClient({
+      url: `ws://127.0.0.1:${serverPort}/ws/rooms/${room.id}`,
+      token: hostToken,
+      doc: hostDoc,
+      webSocketFactory: (url, protocols) => new WebSocket(url, protocols),
+    });
+    await hostClient.connect();
+
+    await new Promise<void>((resolve) => {
+      const interval = setInterval(() => {
+        if (hostClient.status === 'connected') {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 25);
+    });
+
+    // Start a 10s storm
+    await hostClient.command({
+      t: 'demo.storm',
+      rid: crypto.randomUUID(),
+      bots: 2,
+      seconds: 10,
+      faults: false,
+    });
+
+    expect(botStormManager.isStormActive(room.id)).toBe(true);
+
+    // Stop storm via command
+    await hostClient.command({
+      t: 'demo.storm_stop',
+      rid: crypto.randomUUID(),
+    });
+
+    // Storm is stopped
+    expect(botStormManager.isStormActive(room.id)).toBe(false);
+
+    hostClient.destroy();
   });
 });

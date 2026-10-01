@@ -123,7 +123,12 @@ export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDepende
     }
 
     // Check 7: IP and Member Caps
-    const ip = (request.headers['x-forwarded-for'] as string) || request.socket.remoteAddress || 'unknown';
+    let ip = request.socket.remoteAddress || 'unknown';
+    const forwarded = request.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.length > 0) {
+      const first = forwarded.split(',')[0]?.trim();
+      if (first) ip = first;
+    }
     const currentIpConns = ipConnectionCounts.get(ip) ?? 0;
     if (currentIpConns >= MAX_CONN_PER_IP) {
       return reject(429, 'Too Many Requests: IP Connection Limit Reached');
