@@ -259,7 +259,7 @@ export const openApiSpec = {
             },
           },
           '401': {
-            description: 'Missing or incorrect passcode',
+            description: 'Missing or incorrect passcode, or memberId sent without a Bearer token for that member',
             content: {
               'application/json': {
                 schema: { $ref: '#/components/schemas/ErrorResponse' },
@@ -267,7 +267,7 @@ export const openApiSpec = {
             },
           },
           '403': {
-            description: 'Room is locked or user is banned',
+            description: 'Room is locked, user is banned, or room is full (code: full)',
             content: {
               'application/json': {
                 schema: { $ref: '#/components/schemas/ErrorResponse' },
@@ -540,8 +540,12 @@ export const openApiSpec = {
         type: 'object',
         properties: {
           name: { type: 'string', minLength: 1, maxLength: 50 },
-          passcode: { type: 'string' },
-          memberId: { type: 'string' },
+          passcode: { type: 'string', maxLength: 64 },
+          memberId: {
+            type: 'string',
+            maxLength: 64,
+            description: 'Rejoin as an existing member; requires Authorization: Bearer <that member token>',
+          },
         },
         required: ['name'],
       },

@@ -14,7 +14,7 @@ This file provides project-specific context and commands for Anthropic Claude Co
 - **Docker Compose**: `docker compose up -d` (or `docker compose --profile postgres up -d`)
 
 ### Verification & Testing
-- **Run All Tests**: `pnpm test` (340+ tests across 66 suites)
+- **Run All Tests**: `pnpm test` (364 tests across 69 suites)
 - **Database Migrations (SQLite)**: `pnpm db:migrate`
 - **Typecheck**: `pnpm typecheck`
 - **Lint**: `pnpm lint`
@@ -56,6 +56,7 @@ Template: `.env.example`
 - `DATABASE_URL`: PostgreSQL connection URL (e.g. `postgres://postgres:postgres@localhost:5432/tether`).
 - `NEXT_PUBLIC_API_URL`: Web client backend target (`http://localhost:4000`).
 - `NEXT_PUBLIC_WS_URL`: Web client WebSocket target (`ws://localhost:4000`).
+- `TRUST_PROXY_HOPS`: Number of reverse proxy hops trusted for client IP (default: `0`).
 
 ---
 

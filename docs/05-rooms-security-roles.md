@@ -23,8 +23,7 @@ All bodies are Zod-validated and all errors use one shape: `{ error: { code, mes
 | GET | `/health/live`, `/health/ready`, `/metrics` | — | liveness / readiness (DB + buffer) / Prometheus | internal |
 
 `memberId` on join: the client re-sends its previous `memberId` (from localStorage) so a returning
-browser keeps the same identity and color. The server accepts it only if no **active** connection
-holds it with a different session, otherwise it issues a new one. Banned member IDs get 403.
+browser keeps the same identity and color. Reclaiming an existing identity requires a valid room session token in `Authorization: Bearer <token>` where `claims.sub === memberId`, preventing unauthorized identity hijacking. Otherwise, the server generates a fresh UUID. If a new member attempts to join a room at maximum capacity (`MAX_MEMBERS_PER_ROOM`), the server returns `403` with code `full`. Banned member IDs get 403 (`banned`).
 
 **Create is retry-safe.** The client sends `Idempotency-Key: <uuid>`, one per form submit. If a create
 succeeds but the response is lost and the client retries, the server finds the key on the room row and
@@ -134,6 +133,7 @@ it clears its local copy (see [03](03-sync-engine.md#7-edge-cases)).
 | Socket flooding | Outbound throttle + inbound flood guard + frame cap |
 | Memory exhaustion | Frame/doc/awareness caps, slow-consumer close, bounded persistence buffer, connection caps |
 | XSS via names / feed | Names 1–32 chars, control chars stripped, rendered as text only (React escaping), strict CSP |
+| XSS via Markdown preview | DOMPurify HTML sanitization in the parent origin; preview iframes use opaque origin (`null`) without `allow-same-origin` |
 | Malformed binary | Decoder in try/catch, `4009`, never crashes the process |
 | Non-host admin actions | Server-side host check per command |
 | SQL injection | Parameterized queries only |

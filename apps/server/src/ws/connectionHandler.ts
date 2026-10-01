@@ -213,11 +213,26 @@ export async function attachConnectionHandler(
         ws.close(WS_CLOSE_CODES.PROTOCOL_VIOLATION);
       }
     } else {
-      // JSON control messages
+      // JSON control messages. Only a bad message is the client's fault; a failure while handling a valid
+      // one is ours and must not be logged as a security event or cost the client its connection.
+      let msg: ClientControlMessage;
       try {
-        const text = data.toString('utf-8');
-        const msg: ClientControlMessage = ClientControlMessageSchema.parse(JSON.parse(text));
+        msg = ClientControlMessageSchema.parse(JSON.parse(data.toString('utf-8')));
+      } catch {
+        if (ws.readyState !== WebSocket.OPEN) {
+          return;
+        }
+        deps.auditService.logEvent(room.id, {
+          type: 'security.protocol',
+          actorMemberId: member.id,
+          actorName: member.name,
+          payload: { code: WS_CLOSE_CODES.PROTOCOL_VIOLATION },
+        });
+        ws.close(WS_CLOSE_CODES.PROTOCOL_VIOLATION);
+        return;
+      }
 
+      try {
         switch (msg.t) {
           case 'ping': {
             ws.send(JSON.stringify({ t: 'pong', id: msg.id, ts: msg.ts, serverQueueMs: 0 }));
@@ -237,6 +252,10 @@ export async function attachConnectionHandler(
           case 'host.kick': {
             if (room.hostElector.hostId !== member.id) {
               ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'forbidden', message: 'Not host' }));
+              return;
+            }
+            if (msg.memberId === member.id) {
+              ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'bad_request', message: 'Cannot kick yourself' }));
               return;
             }
             deps.memberRepo.banMember(room.id, msg.memberId);
@@ -390,8 +409,8 @@ export async function attachConnectionHandler(
               return;
             }
 
-            const currentMemberCount = deps.memberRepo.getMembers(room.id).length;
-            if (currentMemberCount + msg.bots > MAX_MEMBERS_PER_ROOM) {
+            // People online now; room_members also holds everyone who has ever left.
+            if (room.humanCount + msg.bots > MAX_MEMBERS_PER_ROOM) {
               ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'bad_request', message: 'Room capacity exceeded' }));
               return;
             }
@@ -432,17 +451,12 @@ export async function attachConnectionHandler(
             break;
           }
         }
-      } catch {
-        if (ws.readyState !== WebSocket.OPEN) {
-          return;
+      } catch (err) {
+        console.error(`[ws] Failed to handle '${msg.t}' in room ${room.id}:`, err);
+        if (ws.readyState === WebSocket.OPEN) {
+          const rid = 'rid' in msg ? msg.rid : undefined;
+          ws.send(JSON.stringify({ t: 'error', rid, code: 'internal', message: 'Request failed' }));
         }
-        deps.auditService.logEvent(room.id, {
-          type: 'security.protocol',
-          actorMemberId: member.id,
-          actorName: member.name,
-          payload: { code: WS_CLOSE_CODES.PROTOCOL_VIOLATION },
-        });
-        ws.close(WS_CLOSE_CODES.PROTOCOL_VIOLATION);
       }
     }
   });

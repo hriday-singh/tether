@@ -49,6 +49,7 @@ describe('Server HTTP REST & WebSocket Integration', () => {
     HOST_GRACE_MS: 5000,
     PERSIST_FLUSH_MS: 100,
     ROOM_UNLOAD_IDLE_MS: 30000,
+    TRUST_PROXY_HOPS: 0,
     DEMO_MODE: false,
   };
 
@@ -231,14 +232,40 @@ describe('Server HTTP REST & WebSocket Integration', () => {
         payload: { name: 'Charlie' },
       });
 
-      // Bob rejoins with same memberId
+      // Bob rejoins with same memberId, proving it with his token
       await app.inject({
         method: 'POST',
         url: '/api/rooms/color-test/join',
+        headers: { authorization: `Bearer ${bob1.token}` },
         payload: { name: 'Bob', memberId: bob1.memberId },
       });
       const member2 = memberRepo.getMember('color-test', bob1.memberId);
       expect(member2?.color_index).toBe(originalColor);
+    });
+
+    it('refuses to rejoin as another member without that member token', async () => {
+      const create = await app.inject({
+        method: 'POST',
+        url: '/api/rooms',
+        payload: { name: 'Alice', roomId: 'impersonation-test' },
+      });
+      const alice = JSON.parse(create.payload);
+      const join = await app.inject({
+        method: 'POST',
+        url: '/api/rooms/impersonation-test/join',
+        payload: { name: 'Mallory' },
+      });
+      const mallory = JSON.parse(join.payload);
+
+      for (const headers of [{}, { authorization: `Bearer ${mallory.token}` }]) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/rooms/impersonation-test/join',
+          headers,
+          payload: { name: 'Alice', memberId: alice.memberId },
+        });
+        expect(res.statusCode).toBe(401);
+      }
     });
   });
 

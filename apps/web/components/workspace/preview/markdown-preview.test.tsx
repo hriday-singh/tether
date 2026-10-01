@@ -41,7 +41,22 @@ describe('MarkdownPreview', () => {
     const { container } = render(<MarkdownPreview content={malicious} />);
     expect(container.querySelector('iframe')).toBeNull();
     const link = container.querySelector('a');
-    expect(link?.getAttribute('href')).toBe('#');
+    expect(link?.getAttribute('href') ?? '').not.toMatch(/javascript/i);
+  });
+
+  it('blocks payloads that evade regex filters (encoded schemes, slash-separated handlers, SVG links)', () => {
+    const malicious = [
+      '<a href="jav&#x61;script:alert(1)">a</a>',
+      '<img/src=x/onerror=alert(1)>',
+      '<svg><a xlink:href="javascript:alert(1)"><text y="20">b</text></a></svg>',
+    ].join('\n\n');
+    const { container } = render(<MarkdownPreview content={malicious} />);
+    for (const el of container.querySelectorAll('*')) {
+      for (const attr of el.attributes) {
+        expect(attr.name).not.toMatch(/^on/i);
+        expect(attr.value).not.toMatch(/javascript:/i);
+      }
+    }
   });
 
   it('applies zoom in style on the content container', () => {

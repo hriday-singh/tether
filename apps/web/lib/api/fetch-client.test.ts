@@ -108,6 +108,17 @@ describe('fetchApi', () => {
       code: 'banned',
       status: 403,
     });
+
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: { code: 'full', message: 'Room is full' } }),
+    } as Response);
+
+    await expect(fetchApi.joinRoom('room-1', { name: 'Bob' })).rejects.toMatchObject({
+      code: 'full',
+      status: 403,
+    });
   });
 
   it('events and chat send Authorization Bearer header and query params', async () => {

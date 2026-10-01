@@ -35,6 +35,8 @@ export interface AppDependencies {
 export function buildApp(deps: AppDependencies): FastifyInstance {
   const app = fastify({
     logger: false,
+    // Trust the first TRUST_PROXY_HOPS hops (our proxies); 0 = request.ip is the socket peer.
+    trustProxy: (_address, hop) => hop < deps.config.TRUST_PROXY_HOPS,
   });
 
   // Enable CORS
@@ -47,10 +49,17 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   // Centralized standard error handler
   app.setErrorHandler((error: Error & { statusCode?: number; code?: string }, _request, reply) => {
     const statusCode = error.statusCode ?? 500;
-    reply.status(statusCode).send({
+    if (statusCode >= 500) {
+      // Server faults: log the detail, never send it (DB/stack messages leak internals).
+      console.error('[http] Unhandled error:', error);
+      return reply.status(statusCode).send({
+        error: { code: 'internal_server_error', message: 'An unexpected error occurred' },
+      });
+    }
+    return reply.status(statusCode).send({
       error: {
-        code: error.code ?? 'internal_server_error',
-        message: error.message || 'An unexpected error occurred',
+        code: error.code ?? 'bad_request',
+        message: error.message || 'Invalid request',
       },
     });
   });
@@ -127,7 +136,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
       .regex(/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/i, 'Invalid roomId format. Must be 3-32 lowercase alphanumeric characters or hyphens.')
       .optional(),
     passcode: z.string().min(4).max(64).nullable().optional(),
-    name: z.string().min(1).max(50),
+    name: z.string().trim().min(1).max(50),
     language: z.string().min(1).max(50).optional(),
   });
 
@@ -144,24 +153,14 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     }
 
     const idempotencyKey = (request.headers['idempotency-key'] as string | undefined) ?? null;
-    let result;
-    try {
-      result = await deps.roomService.createRoom({
-        roomId: parsed.data.roomId,
-        passcode: parsed.data.passcode,
-        creatorName: parsed.data.name,
-        language: parsed.data.language,
-        createKey: idempotencyKey,
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Invalid room request';
-      return reply.status(400).send({
-        error: {
-          code: 'bad_request',
-          message: msg,
-        },
-      });
-    }
+    // Input is fully validated above; anything thrown here is a server fault (500 via the error handler).
+    const result = await deps.roomService.createRoom({
+      roomId: parsed.data.roomId,
+      passcode: parsed.data.passcode,
+      creatorName: parsed.data.name,
+      language: parsed.data.language,
+      createKey: idempotencyKey,
+    });
 
     if ('error' in result) {
       return reply.status(409).send({
@@ -199,9 +198,9 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
 
   // POST /api/rooms/:id/join
   const JoinRoomBodySchema = z.object({
-    name: z.string().min(1).max(50),
-    passcode: z.string().optional(),
-    memberId: z.string().optional(),
+    name: z.string().trim().min(1).max(50),
+    passcode: z.string().max(64).optional(),
+    memberId: z.string().max(64).optional(),
   });
 
   app.post<{ Params: { id: string } }>('/api/rooms/:id/join', { preHandler: joinLimiter }, async (request, reply) => {
@@ -235,7 +234,21 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
       }
     }
 
-    const memberId = parsed.data.memberId ?? crypto.randomUUID();
+    let memberId: string = crypto.randomUUID();
+    if (parsed.data.memberId) {
+      // Reclaiming an identity takes that identity's token. Member IDs are visible to everyone in the
+      // room, so trusting a bare ID would let any member rejoin as the host.
+      const auth = request.headers['authorization'];
+      const claims = auth?.startsWith('Bearer ')
+        ? await deps.joinService.verifyRoomToken(auth.slice('Bearer '.length), roomId).catch(() => null)
+        : null;
+      if (claims?.sub !== parsed.data.memberId) {
+        return reply.status(401).send({
+          error: { code: 'unauthorized', message: 'A valid token for this member is required to rejoin as them' },
+        });
+      }
+      memberId = parsed.data.memberId;
+    }
 
     // Check ban
     if (deps.memberRepo.isBanned(roomId, memberId)) {
@@ -257,6 +270,12 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     // Upsert member
     const existingMembers = deps.memberRepo.getMembers(roomId);
     const existingMember = deps.memberRepo.getMember(roomId, memberId);
+    // Cap people online now, not room history (room_members keeps everyone who ever joined).
+    if (!existingMember && (deps.roomRegistry.get(roomId)?.humanCount ?? 0) >= MAX_MEMBERS_PER_ROOM) {
+      return reply.status(403).send({
+        error: { code: 'full', message: 'Room is full' },
+      });
+    }
     const colorIndex = existingMember?.color_index ?? (existingMembers.length % 12);
     deps.memberRepo.upsertMember({
       roomId,

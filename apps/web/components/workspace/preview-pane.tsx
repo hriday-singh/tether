@@ -102,13 +102,13 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
 
     // Subscribe to preview store so Run Page / refresh / resets rebuild the doc
     // without tearing down the text observer.
-    const unsub = (mode === 'html' || mode === 'css')
-      ? ws.preview.subscribe(buildDoc)
-      : undefined;
+    const unsub = ws.preview.subscribe(() => {
+      if (mode === 'html' || mode === 'css') buildDoc();
+    });
 
     return () => {
       client.text.unobserve(onChange);
-      unsub?.();
+      unsub();
       if (timer) clearTimeout(timer);
     };
   }, [client, mode, ws.preview]);

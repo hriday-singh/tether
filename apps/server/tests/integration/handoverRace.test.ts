@@ -57,6 +57,7 @@ describe('Host Handover Timing & Race Integration Tests', () => {
     HOST_GRACE_MS: 300, // 300ms grace window for fast and deterministic test runs
     PERSIST_FLUSH_MS: 100,
     ROOM_UNLOAD_IDLE_MS: 30000,
+    TRUST_PROXY_HOPS: 0,
     DEMO_MODE: false,
   };
 

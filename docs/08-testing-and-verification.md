@@ -112,5 +112,5 @@ All measured numbers comfortably meet the targets in [01](01-product-brief.md#su
 
 ## Done means
 
-Lint (ESLint + Prettier), `tsc --noEmit`, unit + integration + `chaos:ci` all green (275+ tests across 60 test suites). CI (GitHub Actions) runs them on every PR. With SQLite in-memory mode, tests run fast without waiting on external database container spin-up. If PostgreSQL integration is enabled, CI can optionally run against a Postgres service container.
+Lint (ESLint + Prettier), `tsc --noEmit`, unit + integration + `chaos:ci` all green (364 tests across 69 test suites). CI (GitHub Actions) runs them on every PR. With SQLite in-memory mode, tests run fast without waiting on external database container spin-up. If PostgreSQL integration is enabled, CI can optionally run against a Postgres service container.
 

@@ -17,6 +17,7 @@ refuses to start on invalid config).
 | `HOST_GRACE_MS` | server | `5000` | host handover grace |
 | `PERSIST_FLUSH_MS` | server | `250` | persistence flush interval |
 | `ROOM_UNLOAD_IDLE_MS`| server | `30000` | idle delay before room memory unload |
+| `TRUST_PROXY_HOPS` | server | `0` | number of trusted reverse proxy hops (0 = socket peer IP, client-controlled X-Forwarded-For ignored) |
 | `DEMO_MODE` | server | `false` | enables server-side bot storm spawner (`demo.storm`) |
 | `NEXT_PUBLIC_API_URL` | web | `http://localhost:4000` | backend REST API URL |
 | `NEXT_PUBLIC_WS_URL` | web | `ws://localhost:4000` | backend WebSocket URL |
@@ -29,7 +30,7 @@ pnpm install
 cp .env.example .env                 # fill JWT_SECRET
 pnpm build:pkg                        # build @tether/shared and @tether/sync-client
 pnpm dev                              # web :3001, server :4000 (SQLite created automatically in data/)
-pnpm test                             # all 275+ unit, integration, and chaos tests (60 suites)
+pnpm test                             # all 364 unit, integration, and chaos tests (69 suites)
 pnpm chaos:ci                         # chaos:ci resilience suite
 pnpm bench                            # latency benchmark harness
 ```

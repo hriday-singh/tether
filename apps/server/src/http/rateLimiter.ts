@@ -22,12 +22,8 @@ export function clearAllRateLimiters(): void {
   }
 }
 
+/** Fastify's `trustProxy` (TRUST_PROXY_HOPS) decides whether X-Forwarded-For counts; never read it raw. */
 export function defaultIpKeyExtractor(request: FastifyRequest): string {
-  const forwarded = request.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.length > 0) {
-    const first = forwarded.split(',')[0]?.trim();
-    if (first) return first;
-  }
   return request.ip || request.socket.remoteAddress || 'unknown';
 }
 

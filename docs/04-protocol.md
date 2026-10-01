@@ -21,9 +21,9 @@ Origin: <must be in ALLOWED_ORIGINS>
 |------|--------|
 | 400 | Bad room ID format / missing subprotocol |
 | 401 | Token missing, bad signature, expired, `aud` ≠ roomId |
-| 403 | Origin not allowed, member banned (kicked), stale `passcodeVersion`, room locked and member never admitted |
+| 403 | Origin not allowed, member banned (kicked), stale `passcodeVersion`, room locked and member never admitted, or room capacity exceeded |
 | 404 | Room does not exist |
-| 429 | Per-IP connection cap (20) or room member cap (32) |
+| 429 | Per-IP connection cap (20) |
 | 503 | Server draining or persistence buffer full |
 
 ## Binary frames

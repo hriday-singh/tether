@@ -109,6 +109,7 @@ Environment configuration is read from `.env` in the repository root.
 - `ALLOWED_ORIGINS`: Comma-separated CORS origins (e.g. `http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001`)
 - `NEXT_PUBLIC_API_URL`: Backend URL for Web client (default: `http://localhost:4000`)
 - `NEXT_PUBLIC_WS_URL`: WebSocket URL for Web client (default: `ws://localhost:4000`)
+- `TRUST_PROXY_HOPS`: Number of reverse proxy hops trusted for client IP resolution (default: `0`)
 
 ---
 
@@ -116,7 +117,7 @@ Environment configuration is read from `.env` in the repository root.
 
 Always execute verification before claiming completion:
 
-1. **Unit & Integration Tests (340+ tests across 66 suites)**:
+1. **Unit & Integration Tests (364 tests across 69 suites)**:
    ```bash
    pnpm test
    ```

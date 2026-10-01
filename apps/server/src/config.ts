@@ -29,6 +29,8 @@ export const ServerConfigSchema = z.object({
   HOST_GRACE_MS: z.coerce.number().int().positive().default(5000),
   PERSIST_FLUSH_MS: z.coerce.number().int().positive().default(250),
   ROOM_UNLOAD_IDLE_MS: z.coerce.number().int().positive().default(30000),
+  // Reverse proxies in front of the server. 0 = ignore X-Forwarded-For (it is client-controlled).
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
   DEMO_MODE: z
     .string()
     .default('false')

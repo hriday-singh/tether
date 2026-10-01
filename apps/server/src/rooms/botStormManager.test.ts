@@ -49,6 +49,7 @@ describe('BotStormManager', () => {
     HOST_GRACE_MS: 5000,
     PERSIST_FLUSH_MS: 50,
     ROOM_UNLOAD_IDLE_MS: 30000,
+    TRUST_PROXY_HOPS: 0,
     DEMO_MODE: true,
   };
 

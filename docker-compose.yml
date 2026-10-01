@@ -13,6 +13,7 @@ services:
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET environment variable is required (min 32 chars)}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:4000}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-0}
       DATABASE_DRIVER: ${DATABASE_DRIVER:-sqlite}
       SQLITE_PATH: /data/tether.db
       DATABASE_URL: ${DATABASE_URL:-}

@@ -50,6 +50,12 @@ export class RoomService {
       throw new Error('Invalid roomId format. Must be 3-32 lowercase alphanumeric characters or hyphens.');
     }
 
+    // Hash first: the only await before the insert. Everything from the lookups below to roomRepo.create
+    // runs synchronously (node:sqlite), so two concurrent creates cannot both pass the "is it free" checks.
+    // Not trimmed: join and host.passcode compare the passcode exactly as typed.
+    const passcodeHash =
+      params.passcode && params.passcode.trim().length > 0 ? await this.joinService.hashPasscode(params.passcode) : null;
+
     // Check Idempotency-Key
     if (params.createKey) {
       const existingByKey = this.roomRepo.findByCreateKey(params.createKey);
@@ -87,11 +93,6 @@ export class RoomService {
 
     const epoch = crypto.randomUUID();
     const creatorMemberId = crypto.randomUUID();
-    let passcodeHash: string | null = null;
-
-    if (params.passcode && params.passcode.trim().length > 0) {
-      passcodeHash = await this.joinService.hashPasscode(params.passcode.trim());
-    }
 
     const language = params.language ?? 'javascript';
 

@@ -46,6 +46,18 @@ export function resetUpgradeGateState(): void {
   ipConnectionCounts.clear();
 }
 
+/**
+ * Same rule as Fastify's numeric `trustProxy`: only the last `hops` X-Forwarded-For entries were
+ * appended by our own proxies; anything left of them is whatever the client sent.
+ */
+export function clientIp(request: IncomingMessage, hops: number): string {
+  const remote = request.socket.remoteAddress || 'unknown';
+  const forwarded = request.headers['x-forwarded-for'];
+  if (hops <= 0 || typeof forwarded !== 'string') return remote;
+  const chain = forwarded.split(',').map((p) => p.trim()).filter(Boolean);
+  return chain[chain.length - hops] ?? chain[0] ?? remote;
+}
+
 export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDependencies) {
   return async function handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
     function reject(status: number, reason: string) {
@@ -123,12 +135,7 @@ export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDepende
     }
 
     // Check 7: IP and Member Caps
-    let ip = request.socket.remoteAddress || 'unknown';
-    const forwarded = request.headers['x-forwarded-for'];
-    if (typeof forwarded === 'string' && forwarded.length > 0) {
-      const first = forwarded.split(',')[0]?.trim();
-      if (first) ip = first;
-    }
+    const ip = clientIp(request, deps.config.TRUST_PROXY_HOPS);
     const currentIpConns = ipConnectionCounts.get(ip) ?? 0;
     if (currentIpConns >= MAX_CONN_PER_IP) {
       return reject(429, 'Too Many Requests: IP Connection Limit Reached');

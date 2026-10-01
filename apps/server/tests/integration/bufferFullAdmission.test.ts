@@ -44,6 +44,7 @@ describe('Admission Check 8 & Buffer Full Protection', () => {
     HOST_GRACE_MS: 5000,
     PERSIST_FLUSH_MS: 100,
     ROOM_UNLOAD_IDLE_MS: 30000,
+    TRUST_PROXY_HOPS: 0,
     DEMO_MODE: false,
   };
 

@@ -2,7 +2,7 @@
 
 import { marked } from 'marked';
 import { useMemo } from 'react';
-import { stripScripts } from '@/lib/preview';
+import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 
 // Configure marked with GFM (tables, task lists, line breaks)
@@ -29,7 +29,9 @@ export function MarkdownPreview({ content, className, zoom = 1 }: MarkdownPrevie
 
     try {
       const rawHtml = marked.parse(content) as string;
-      return stripScripts(rawHtml);
+      // Peer-authored HTML rendered in our own origin: needs a real sanitizer, not regexes
+      // (entity-encoded javascript: URLs, `<img/onerror>` and SVG links all slip past those).
+      return DOMPurify.sanitize(rawHtml);
     } catch {
       return '<p class="text-destructive">Failed to parse Markdown.</p>';
     }

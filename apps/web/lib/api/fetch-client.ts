@@ -47,7 +47,7 @@ async function request<T>(
     } else if (res.status === 401) {
       code = serverCode === 'invalid_passcode' || serverCode === 'passcode_required' ? 'bad_passcode' : 'unauthorized';
     } else if (res.status === 403) {
-      code = serverCode === 'banned' ? 'banned' : serverCode === 'locked' ? 'locked' : 'unauthorized';
+      code = serverCode === 'banned' || serverCode === 'locked' || serverCode === 'full' ? serverCode : 'unauthorized';
     } else if (res.status === 429) {
       code = 'rate_limited';
     } else if (res.status === 400) {
