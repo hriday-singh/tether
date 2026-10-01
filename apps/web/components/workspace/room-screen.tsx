@@ -106,7 +106,7 @@ function ConnectedRoom({ roomId, session, onReauth }: { roomId: string; session:
 }
 
 function ReauthWatcher({ client, onReauth }: { client: SyncClient; onReauth: () => void }) {
-  const connection = useStore(client.status).connection;
+  const connection = useStore(client.status, (s) => s.connection);
   useEffect(() => {
     if (connection === 'reauth') onReauth();
   }, [connection, onReauth]);

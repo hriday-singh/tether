@@ -101,25 +101,27 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] `docker compose up` full-stack path verified from clean clone
 - [x] Docs re-synced with code
 
-### M11: Text chat (after M10, [ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015))
+### M11: Text chat & Code References ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015) & [ADR-018](11-decisions.md#adr-018-chat-code-references-via-yjs-relative-positions)) — [COMPLETE]
 - [x] Protocol: `chat.send` / `chat.msg`, `welcome.chatSeq`, chat limits in constants
-- [x] Server: `chat_messages` table (migration 0002), ChatRepo/ChatService, per-connection chat bucket, REST `GET /api/rooms/:id/chat`
-- [x] Web: generic seq store, `Textarea` primitive, Chat sidebar tab (unread badge, pending/failed states), fake client support
-- [x] Server sync client wiring (needs connect-frontend plan Tasks 1 + 3)
+- [x] Server: `chat_messages` table (migration 0002 & 0003), ChatRepo/ChatService, per-connection chat bucket, REST `GET /api/rooms/:id/chat`
+- [x] Web: generic seq store, `Textarea` primitive, Chat sidebar tab (unread badge, pending/failed states)
+- [x] Server sync client wiring & real-time delivery
+- [x] Chat code references: selection comment tooltip (`Ctrl/Cmd+Shift+M`), anchor tracking via Yjs relative positions (`ChatCodeRefSchema`), jump-to-code
 - [x] Docs 04/06/07 synced
 
 Voice chat is out, see ADR-017.
 
 ## Week 3: stretch (in priority order)
 
+- [x] Multi-Theme Engine: Quiet Dark (default), Quiet Light, High-Contrast modes with VS Code-style `⌘K` QuickPick ([ADR-016](11-decisions.md#adr-016-client-side-sandboxed-preview-devtools-console-multi-theme-engine-and-dual-morphing))
+- [x] Room expiry job: hourly sweep deleting rooms inactive > 24 hours + indexed cleanup + cascading deletes ([ADR-019](11-decisions.md#adr-019-inactive-room-expiry--cascading-garbage-collection))
+- [x] Cross-platform setup & launcher wizards: interactive + non-interactive PowerShell and Bash scripts with automated pre-launch migration runner (`pnpm db:migrate`)
 - [ ] Read-only viewer role (host toggles; server rejects `SYNC_STEP2`/`UPDATE` doc part for viewers)
 - [ ] Version history: named Yjs snapshots + time-travel view
-- [ ] Room expiry job (inactive 30 days) + audit retention (90 days)
 - [ ] Deploy to AWS: ALB + ECS Fargate + RDS, SSM secrets, public demo URL
 - [ ] Multi-instance: room-affinity routing + Redis rate limits ([09](09-operations.md#scale-path))
 - [ ] Load test at scale (k6 or custom): 100 rooms × 10 clients, publish numbers
 - [ ] Playwright E2E for critical flows (only after explicit go-ahead)
-- [ ] Dark mode (tokens already semantic)
 - [ ] P3 public chaos report: CI publishes seeds, faults, invariant results, latency histogram as a static page
 
 ## Adopted additions (decided 2026-09-29)

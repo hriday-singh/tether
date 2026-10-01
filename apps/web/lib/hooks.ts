@@ -3,8 +3,33 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { ReadableStore } from './store';
 
-export function useStore<T>(store: ReadableStore<T>): T {
-  return useSyncExternalStore(store.subscribe, store.get, store.get);
+export function useStore<T, S = T>(
+  store: ReadableStore<T>,
+  selector?: (state: T) => S,
+  equals: (a: S, b: S) => boolean = Object.is,
+): S {
+  const cacheRef = useRef<{ raw: T; slice: S; selector: ((state: T) => S) | undefined } | null>(null);
+
+  const getSnapshot = useCallback(() => {
+    const raw = store.get();
+    if (!selector) {
+      return raw as unknown as S;
+    }
+    const cache = cacheRef.current;
+    if (cache && cache.selector === selector && Object.is(cache.raw, raw)) {
+      return cache.slice;
+    }
+    const nextSlice = selector(raw);
+    if (cache && equals(cache.slice, nextSlice)) {
+      cache.raw = raw;
+      cache.selector = selector;
+      return cache.slice;
+    }
+    cacheRef.current = { raw, slice: nextSlice, selector };
+    return nextSlice;
+  }, [store, selector, equals]);
+
+  return useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
 }
 
 const subscribeNoop = () => () => {};

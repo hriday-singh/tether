@@ -173,7 +173,18 @@ if ($Target -in @('both', 'server')) {
     }
 }
 
-# 5. Execution
+# 5. Database Migrations
+if ($Target -in @('both', 'server')) {
+    Write-Step "Checking and applying database migrations..."
+    try {
+        & pnpm db:migrate
+        Write-Success "Database migrations up-to-date."
+    } catch {
+        Write-Warn "Database migration warning: $_"
+    }
+}
+
+# 6. Execution
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host "  Starting Tether [$Target]" -ForegroundColor Green

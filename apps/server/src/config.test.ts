@@ -7,7 +7,7 @@ describe('Server Config', () => {
       JWT_SECRET: 'super_secret_jwt_key_that_is_at_least_32_characters_long',
     });
 
-    expect(config.PORT).toBe(3000);
+    expect(config.PORT).toBe(4000);
     expect(config.HOST).toBe('0.0.0.0');
     expect(config.DATABASE_DRIVER).toBe('sqlite');
     expect(config.HOST_GRACE_MS).toBe(5000);

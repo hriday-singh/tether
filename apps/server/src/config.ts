@@ -15,7 +15,7 @@ function initEnv(): void {
 initEnv();
 
 export const ServerConfigSchema = z.object({
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: z.coerce.number().int().positive().default(4000),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long'),

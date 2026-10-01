@@ -70,6 +70,7 @@ export interface Workspace {
   togglePanel(panel: 'sidebar' | 'preview' | 'drawer'): void;
   maximizePanel(panel: 'editor' | null): void;
   openDrawerTab(tab: 'console' | 'sync' | 'chaos'): void;
+  destroy(): void;
 }
 
 const Ctx = createContext<Workspace | null>(null);
@@ -108,7 +109,7 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
   );
 
   const chatUnread = createStore(0);
-  client.onChat((m) => {
+  const unsubChat = client.onChat((m) => {
     const s = ui.get();
     const visible = (s.sidebarOpen && s.sidebarTab === 'chat') || s.mobileTab === 'chat';
     if (!visible && m.memberId !== client.room.get().selfId) chatUnread.update((n) => n + 1);
@@ -231,6 +232,11 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
 
     openDrawerTab(tab) {
       ui.update((s) => ({ ...s, drawerOpen: true, drawerTab: tab }));
+    },
+
+    destroy() {
+      unsubChat();
+      runner.stop();
     },
   };
   return ws;

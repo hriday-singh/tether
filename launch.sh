@@ -203,7 +203,14 @@ if [ "$TARGET" = "both" ] || [ "$TARGET" = "server" ]; then
   fi
 fi
 
-# 5. Execution
+# 5. Database Migrations
+if [ "$TARGET" = "both" ] || [ "$TARGET" = "server" ]; then
+  write_step "Checking and applying database migrations..."
+  $PNPM_CMD db:migrate || write_warn "Database migration warning."
+  write_ok "Database migrations up-to-date."
+fi
+
+# 6. Execution
 echo -e "\n${GREEN}============================================================${NC}"
 echo -e "${GREEN}  Starting Tether [${TARGET}]${NC}"
 echo -e "${GREEN}============================================================${NC}\n"

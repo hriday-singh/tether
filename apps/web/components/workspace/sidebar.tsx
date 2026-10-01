@@ -428,7 +428,7 @@ function ActivityFeed() {
   const feed = useMemo(() => new FeedStore(), []);
   const { items } = useStore(feed.snapshot);
   const eventSeq = useStore(client.room).eventSeq;
-  const connection = useStore(client.status).connection;
+  const connection = useStore(client.status, (s) => s.connection);
   const [announcement, setAnnouncement] = useState('');
 
   // History pages (newest first), scrolled into view lazily.

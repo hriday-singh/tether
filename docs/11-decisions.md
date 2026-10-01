@@ -129,6 +129,16 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
 - **Consequences:** One new table, two control messages, one REST route and one sidebar tab. The audit
   feed stays an audit feed, and chat messages do not create audit events.
 
+## ADR-018: Chat Code References via Yjs Relative Positions
+- **Context:** When discussing code in chat, members need to quote specific line ranges ("check lines 12–15"). If quoted line numbers are static integers, subsequent edits by other members immediately invalidate the reference.
+- **Decision:** Use Yjs Relative Positions (`Y.createRelativePositionFromTypeIndex`, `Y.encodeRelativePosition`). When quoting code in chat, the client captures base64 `from` and `to` relative positions alongside snapshot metadata (`line`, `endLine`, `snippet`). In the chat feed, clicking a quoted code reference resolves the current absolute positions in the active editor (`Y.createAbsolutePositionFromRelativePosition`), highlighting the target text and scrolling it into view even after surrounding insertions or deletions. If the target text is deleted entirely, the UI gracefully falls back to the original line numbers and stored snippet.
+- **Consequences:** Quoted code references remain robust across concurrent edits with zero server overhead (stored as an optional JSON column `code_ref` in `chat_messages`, Migration 0003).
+
+## ADR-019: Inactive Room Expiry & Cascading Garbage Collection
+- **Context:** Public sandbox environments accumulate abandoned ephemeral rooms over time, consuming database storage and memory if left unchecked.
+- **Decision:** Implement an automated 24-hour idle expiration policy (`ROOM_EXPIRE_IDLE_MS = 24 * 60 * 60 * 1000`). The room registry runs an hourly sweep (`ROOM_EXPIRE_SWEEP_MS = 60 * 60 * 1000`) checking `last_active_at`. Any room with zero active connections whose last activity exceeds 24 hours is deleted. Foreign keys on `room_updates`, `room_members`, `chat_messages`, and `audit_events` specify `ON DELETE CASCADE`, ensuring immediate atomic cleanup across all child tables. The query is indexed via `rooms_last_active_at_idx` (Migration 0003).
+- **Consequences:** Bounded storage growth for public deployments with zero manual maintenance required.
+
 ## Research sources (fetched 2026-09-29)
 
 - y-protocols spec: https://github.com/yjs/y-protocols/blob/master/PROTOCOL.md (sync handshake,

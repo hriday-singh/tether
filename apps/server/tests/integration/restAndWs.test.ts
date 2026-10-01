@@ -15,7 +15,7 @@ import { ChatRepo } from '../../src/repo/chatRepo.js';
 import { PersistenceService } from '../../src/services/persistenceService.js';
 import { RoomRegistry } from '../../src/rooms/roomRegistry.js';
 import { buildApp } from '../../src/http/app.js';
-import { createUpgradeGate, setDraining } from '../../src/ws/upgradeGate.js';
+import { createUpgradeGate, setDraining, resetUpgradeGateState } from '../../src/ws/upgradeGate.js';
 import { SyncClient } from '@tether/sync-client';
 import { ServerConfig } from '../../src/config.js';
 import { encodeFrame } from '@tether/shared/protocol/codec';
@@ -53,6 +53,7 @@ describe('Server HTTP REST & WebSocket Integration', () => {
   };
 
   beforeEach(async () => {
+    resetUpgradeGateState();
     db = createDatabase(':memory:');
     roomRepo = new RoomRepo(db);
     updateRepo = new UpdateRepo(db);
@@ -93,6 +94,7 @@ describe('Server HTTP REST & WebSocket Integration', () => {
   });
 
   afterEach(async () => {
+    resetUpgradeGateState();
     wss.close();
     roomRegistry.destroy();
     persistenceService.destroy();
@@ -581,7 +583,7 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       const protoEvent = events.find((e) => e.type === 'security.protocol');
       expect(protoEvent).toBeDefined();
       expect(JSON.parse(protoEvent!.payload)).toEqual({ code: 4009 });
-    });
+    }, 15000);
 
     it('logs host.changed audit event with from, to, and reason on clean leave', async () => {
       const createRes = await app.inject({

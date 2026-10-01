@@ -55,6 +55,11 @@ const storage = typeof window === 'undefined' ? undefined : window.localStorage;
 
 export function Workspace({ client, roomId, session }: { client: SyncClient; roomId: string; session: RoomSession }) {
   const ws = useMemo(() => createWorkspace(client, roomId, session), [client, roomId, session]);
+  useEffect(() => {
+    return () => {
+      ws.destroy();
+    };
+  }, [ws]);
   return (
     <WorkspaceProvider value={ws}>
       <Shell />
@@ -64,13 +69,12 @@ export function Workspace({ client, roomId, session }: { client: SyncClient; roo
 
 function Shell() {
   const ws = useWorkspace();
-  const status = useStore(ws.client.status);
+  const kicked = useStore(ws.client.status, (s) => s.connection === 'kicked');
   const ui = useStore(ws.ui);
   const room = useStore(ws.client.room);
   const language = languageInfo(room.room.language);
   const wide = useMediaQuery('(min-width: 1280px)');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
-  const kicked = status.connection === 'kicked';
   const hasPreview = language.preview !== null;
   const showPreviewPane = ui.zenMode ? hasPreview : wide && hasPreview && ui.previewOpen;
   const showSidebar = !ui.zenMode && ui.sidebarOpen;
@@ -496,7 +500,7 @@ function ShortcutsDialog() {
 /** Close 4003: the editor goes read-only and the local buffer is one click away (never lost). */
 function KickedBanner() {
   const ws = useWorkspace();
-  const unsaved = useStore(ws.client.status).unsavedAtClose;
+  const unsaved = useStore(ws.client.status, (s) => s.unsavedAtClose);
   const text = () => ws.client.text.toString();
   const ext = languageInfo(ws.client.room.get().room.language).ext;
   return (

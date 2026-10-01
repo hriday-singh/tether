@@ -30,10 +30,16 @@ function interceptor(runId: string): string {
   return `<script type="application/json" id="__tether_run__">${safeRunId}</script><script>(function(){var el=document.getElementById('__tether_run__');var R=el?JSON.parse(el.textContent||'""'):"";function fmt(a){if(typeof a==='string')return a;try{return JSON.stringify(a)}catch(e){return String(a)}}function emit(t,args){try{parent.postMessage({source:'sandboxed-console',type:t,timestamp:Date.now(),payload:Array.prototype.map.call(args,fmt),runId:R},'*')}catch(e){}}['log','info','warn','error'].forEach(function(m){var o=console[m];console[m]=function(){emit(m,arguments);if(o)o.apply(console,arguments)}});window.onerror=function(msg,src,line){emit('error',[msg+' (Line '+line+')'])};window.onunhandledrejection=function(e){emit('error',['Unhandled rejection: '+fmt(e.reason)])};setInterval(function(){emit('heartbeat',[])},500);addEventListener('message',function(e){var d=e.data;if(!d||d.source!=='tether-repl')return;try{emit('result',[fmt((0,eval)(d.code))])}catch(err){emit('error',[String(err)])}});addEventListener('load',function(){emit('done',[])})})();<\/script>`;
 }
 
-const SCRIPT_RE = /<script\b[^>]*>[\s\S]*?(?:<\/script\s*>|$)/gi;
+const UNSAFE_TAGS_RE = /<(script|iframe|object|embed|form|base|meta)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi;
+const UNSAFE_SELF_CLOSING_RE = /<(script|iframe|object|embed|form|base|meta)\b[^>]*\/?>/gi;
+const DANGEROUS_PROTOCOLS_RE = /\s(?:href|src|action|formaction)\s*=\s*(?:"\s*(?:javascript|vbscript|data:\s*text\/html)[^"]*"|'\s*(?:javascript|vbscript|data:\s*text\/html)[^']*')/gi;
 
 export function stripScripts(html: string): string {
-  return html.replace(SCRIPT_RE, '').replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+  return html
+    .replace(UNSAFE_TAGS_RE, '')
+    .replace(UNSAFE_SELF_CLOSING_RE, '')
+    .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(DANGEROUS_PROTOCOLS_RE, ' href="#"');
 }
 
 const CSS_SAMPLE = `<h1>Heading</h1><p>Paragraph with <a href="#">a link</a> and <code>code</code>.</p><button>Button</button><ul><li>List item</li><li>List item</li></ul>`;

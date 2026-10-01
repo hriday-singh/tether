@@ -116,27 +116,31 @@ Environment configuration is read from `.env` in the repository root.
 
 Always execute verification before claiming completion:
 
-1. **Unit & Integration Tests (275+ tests across 60 suites)**:
+1. **Unit & Integration Tests (340+ tests across 66 suites)**:
    ```bash
    pnpm test
    ```
-2. **TypeScript Compilation & Typechecking**:
+2. **Database Migrations (SQLite)**:
+   ```bash
+   pnpm db:migrate
+   ```
+3. **TypeScript Compilation & Typechecking**:
    ```bash
    pnpm typecheck
    ```
-3. **Linting**:
+4. **Linting**:
    ```bash
    pnpm lint
    ```
-4. **Chaos & Resilience Tests**:
+5. **Chaos & Resilience Tests**:
    ```bash
    pnpm chaos:ci
    ```
-5. **Latency Benchmarks**:
+6. **Latency Benchmarks**:
    ```bash
    pnpm bench
    ```
-6. **Live Health Check Endpoints**:
+7. **Live Health Check Endpoints**:
    - Liveness: `GET http://localhost:4000/health/live`
    - Readiness: `GET http://localhost:4000/health/ready`
 

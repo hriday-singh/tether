@@ -165,5 +165,31 @@ describe('UIState mobileTab behavior', () => {
     expect(ws.ui.get().editorView).toBe('preview');
     expect(ws.preview.get().scripts).toBe(true);
   });
+
+  it('ws.destroy() calls the onChat unsubscribe handler', () => {
+    let unsubsCalled = 0;
+    const doc = new Y.Doc();
+    const mockClient = {
+      room: createStore({
+        room: { id: 'room-1', name: 'Room', language: 'html', locked: false, maxMembers: 10, createdAt: 0 },
+        selfId: 'self',
+        hostId: 'self',
+        members: [],
+        version: 1,
+      }),
+      presence: createStore(new Map()),
+      awareness: {} as unknown,
+      text: doc.getText('content'),
+      status: createStore({ connection: 'connected' as const, latencyMs: 10, rtt: 10, bytesSent: 0, bytesReceived: 0, pendingOps: 0 }),
+      onChat: () => () => {
+        unsubsCalled++;
+      },
+    } as unknown as SyncClient;
+
+    const ws = createWorkspace(mockClient, 'room-1', { memberId: 'self', token: 'tok', name: 'Tester', epoch: '1' });
+    expect(unsubsCalled).toBe(0);
+    ws.destroy();
+    expect(unsubsCalled).toBe(1);
+  });
 });
 

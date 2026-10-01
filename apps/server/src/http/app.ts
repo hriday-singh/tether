@@ -322,41 +322,38 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   });
 
   // GET /api/rooms/:id/events
-  app.get<{
-    Params: { id: string };
-    Querystring: { before?: string; after?: string; limit?: string };
-  }>(
-    '/api/rooms/:id/events',
-    { preHandler: tokenLimiter },
-    async (request, reply) => {
-      const roomId = request.params.id.toLowerCase();
-      if (!(await authorizeRoom(request, reply, roomId))) return reply;
+  app.get<{ Params: { id: string } }>('/api/rooms/:id/events', { preHandler: tokenLimiter }, async (request, reply) => {
+    const roomId = request.params.id.toLowerCase();
+    if (!(await authorizeRoom(request, reply, roomId))) return reply;
 
-      const limit = Math.min(100, Math.max(1, request.query.limit ? parseInt(request.query.limit, 10) : 50));
-
-      if (request.query.after !== undefined) {
-        const afterSeq = parseInt(request.query.after, 10);
-        const rows = deps.auditService.getEventsAfter(roomId, afterSeq, limit);
-        const items = rows.map(formatAuditEventRow);
-        const nextAfter = items.length === limit && items.length > 0 ? items[items.length - 1]!.seq : null;
-        return reply.send({
-          items,
-          nextBefore: null,
-          nextAfter,
-        });
-      }
-
-      const beforeSeq = request.query.before ? parseInt(request.query.before, 10) : undefined;
-      const rows = deps.auditService.getEventsBefore(roomId, beforeSeq, limit);
-      const items = rows.map(formatAuditEventRow);
-      const nextBefore = items.length === limit && items.length > 0 ? items[items.length - 1]!.seq : null;
-      return reply.send({
-        items,
-        nextBefore,
-        nextAfter: null,
+    const query = PageQuerySchema.safeParse(request.query);
+    if (!query.success) {
+      return reply.status(400).send({
+        error: { code: 'invalid', message: 'Invalid pagination query', details: query.error.flatten() },
       });
     }
-  );
+    const { before, after, limit } = query.data;
+
+    if (after !== undefined) {
+      const rows = deps.auditService.getEventsAfter(roomId, after, limit);
+      const items = rows.map(formatAuditEventRow);
+      const nextAfter = items.length === limit && items.length > 0 ? items[items.length - 1]!.seq : null;
+      return reply.send({
+        items,
+        nextBefore: null,
+        nextAfter,
+      });
+    }
+
+    const rows = deps.auditService.getEventsBefore(roomId, before, limit);
+    const items = rows.map(formatAuditEventRow);
+    const nextBefore = items.length === limit && items.length > 0 ? items[items.length - 1]!.seq : null;
+    return reply.send({
+      items,
+      nextBefore,
+      nextAfter: null,
+    });
+  });
 
   // GET /api/rooms/:id/admission
   app.get<{ Params: { id: string } }>('/api/rooms/:id/admission', { preHandler: admissionLimiter }, async (request, reply) => {

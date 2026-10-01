@@ -49,7 +49,7 @@ export function StatusPill() {
 export function LatencyHud() {
   const { client } = useWorkspace();
   const stats = useStore(client.stats);
-  const connected = useStore(client.status).connection === 'online';
+  const connected = useStore(client.status, (s) => s.connection === 'online');
   const rtt = stats.rttP50 ?? stats.rtt;
   return (
     <Popover>

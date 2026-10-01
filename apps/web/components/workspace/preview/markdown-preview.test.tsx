@@ -36,6 +36,14 @@ describe('MarkdownPreview', () => {
     expect(container).toHaveTextContent('Safe text');
   });
 
+  it('neutralizes dangerous javascript: URLs and embedded iframes', () => {
+    const malicious = '# Title\n[Bad](javascript:alert(1))\n<iframe src="https://evil.com"></iframe>';
+    const { container } = render(<MarkdownPreview content={malicious} />);
+    expect(container.querySelector('iframe')).toBeNull();
+    const link = container.querySelector('a');
+    expect(link?.getAttribute('href')).toBe('#');
+  });
+
   it('applies zoom in style on the content container', () => {
     const markdown = '# Scaled Heading\nContent';
     const { container } = render(<MarkdownPreview content={markdown} zoom={1.5} />);

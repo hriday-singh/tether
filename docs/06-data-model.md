@@ -123,13 +123,14 @@ CREATE UNIQUE INDEX audit_events_room_id_seq_idx ON audit_events (room_id, seq);
 | Timestamps | `TEXT` (ISO 8601 UTC) | `timestamptz` |
 | Auto-increment ID | `INTEGER PRIMARY KEY AUTOINCREMENT` | `bigserial PRIMARY KEY` |
 
-## Chat messages ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015))
+## Chat messages ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015), [ADR-018](11-decisions.md#adr-018-chat-code-references-via-yjs-relative-positions))
 
-Migration `migrations/0002_chat.{sqlite,postgres}.sql` (generated, apply manually). Table `chat_messages`:
+Migration `migrations/0002_chat.{sqlite,postgres}.sql` & `migrations/0003_chat_refs_room_expiry.{sqlite,postgres}.sql` (generated, apply manually). Table `chat_messages`:
 `id`, `room_id` (FK, cascade), `seq` (per-room gapless, own counter), `client_msg_id` (the `chat.send`
 `rid`), `member_id`, `display_name` + `color_index` (denormalized snapshot), `body` (1–2000 chars),
+`code_ref` (JSON string or null for quoted code reference: `{from, to, line, endLine, snippet}`),
 `created_at`. Indexes: unique `(room_id, seq)` for paging, unique `(room_id, client_msg_id)` for
-idempotent resends. No retention job yet. Messages go when the room is deleted.
+idempotent resends.
 
 ## Audit event types
 
@@ -138,7 +139,7 @@ idempotent resends. No retention job yet. Messages go when the room is deleted.
 | `room.created` | `{ language, hasPasscode }` | Room creation |
 | `member.joined` | `{}` | Member becomes active (not on reconnect within grace) |
 | `member.left` | `{ reason: leave\|timeout\|kicked }` | Member removed |
-| `host.changed` | `{ from, to, reason }` | Election result |
+| `host.changed` | `{ from, to, toName, reason }` | Election result (`toName` denormalized for human readability) |
 | `room.locked` / `room.unlocked` | `{}` | Host |
 | `room.passcode` | `{ action: set\|changed\|cleared }` | Host (never the passcode) |
 | `room.language` | `{ from, to }` | Host |
@@ -164,6 +165,7 @@ instead of one row per keystroke.
 | Next seq on room load `SELECT max(seq) WHERE room_id=$1` | same |
 | Create retry `WHERE create_key=$1` | `rooms_create_key_key` (from `UNIQUE`) |
 | Ban check `(room_id, member_id)` | PK |
+| Expiry sweep `DELETE FROM rooms WHERE last_active_at < $1` | `rooms_last_active_at_idx` |
 
 Audit writes are batched with the persistence flush (same 250 ms tick, separate insert) so they don't add
 per-event round trips.
@@ -175,5 +177,8 @@ instead of a silent duplicate. Live `event` messages go out only after the inser
 ## Retention
 
 - `room_updates`: compacted continuously (see [03](03-sync-engine.md#5-persistence)).
-- `audit_events`: kept. Week-3 stretch: delete events older than 90 days, and delete rooms inactive for
-  30 days, via a scheduled job.
+- `rooms`: automated 24-hour idle sweep (`ROOM_EXPIRE_IDLE_MS = 24 * 60 * 60 * 1000`). Rooms with zero
+  active connections whose `last_active_at` exceeds 24 hours are deleted by the background registry
+  timer. All associated data (`room_updates`, `room_members`, `chat_messages`, `audit_events`) are
+  purged via database foreign key cascading (`ON DELETE CASCADE`).
+- `audit_events`: retained with the room lifecycle.

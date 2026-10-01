@@ -36,4 +36,13 @@ describe('preview builder', () => {
     expect(doc).not.toContain(maliciousRunId);
     expect(doc).toContain('\\u003c/script>');
   });
+
+  it('strips iframes, objects, forms, and neutralizes javascript: URLs', () => {
+    const malicious = '<iframe src="https://evil.com"></iframe><form action="/login"></form><a href="javascript:alert(1)">Click</a>';
+    const out = stripScripts(malicious);
+    expect(out).not.toContain('<iframe');
+    expect(out).not.toContain('<form');
+    expect(out).not.toContain('javascript:alert(1)');
+    expect(out).toContain('href="#"');
+  });
 });

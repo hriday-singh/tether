@@ -72,7 +72,7 @@ Every message has a `t` discriminator. Unknown `t` or failed Zod parse closes wi
 | `room.language` | `language: LanguageId` | host | Change syntax mode for everyone |
 | `verify.mismatch` | `sv, hash` | anyone | Client saw equal state vectors but a different hash (P1). Metric + log, then client resets from server |
 | `demo.storm` | `bots: 1–8, seconds: 1–60, faults: boolean` | host, `DEMO_MODE` only | Start a bot storm (P2, see [08](08-testing-and-verification.md#bot-storm-p2-demo-mode)) |
-| `chat.send` | `rid: uuid, text: string` (trimmed, 1–`CHAT_MAX_CHARS`) | anyone | Store and broadcast `chat.msg`, then `ok {rid}`. `rid` is the idempotency key: a resend returns the stored message to the sender only. Own bucket per connection (`CHAT_RATE_PER_SEC`/`CHAT_BURST`); over it gets `error {rid, code:"rate_limited"}`, no disconnect ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015)) |
+| `chat.send` | `rid: uuid, text: string` (trimmed, 1–`CHAT_MAX_CHARS`), `ref?: ChatCodeRef` | anyone | Store and broadcast `chat.msg`, then `ok {rid}`. `rid` is the idempotency key: a resend returns the stored message to the sender only. `ref` is an optional quoted code range (`ChatCodeRef`). Own bucket per connection (`CHAT_RATE_PER_SEC`/`CHAT_BURST`); over it gets `error {rid, code:"rate_limited"}`, no disconnect ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015), [ADR-018](11-decisions.md#adr-018-chat-code-references-via-yjs-relative-positions)) |
 
 Host-only messages from non-hosts get `error {code:"forbidden"}` (no disconnect: a race with host
 handover is legit) plus an audit entry.
@@ -100,9 +100,10 @@ effect.
 | `error` | `code, message, rid?` | Non-fatal error. `rid` set when answering a command |
 | `ok` | `rid` | Command applied, or already in that state |
 | `checksum` | `sv, hash` | Room quiet after a change (P1, see [03](03-sync-engine.md#47-verified-in-sync-p1)) |
-| `chat.msg` | `message: {id, roomId, seq, clientMsgId, memberId, name, colorIndex, text, createdAt}` | Chat message committed. Sent to everyone, sender included |
+| `chat.msg` | `message: {id, roomId, seq, clientMsgId, memberId, name, colorIndex, text, ref: ChatCodeRef | null, createdAt}` | Chat message committed. Sent to everyone, sender included |
 
-`Member = { id, name, colorIndex, joinedAt, status: "active" | "idle" | "away" | "reconnecting", isHost, isBot }`
+`Member = { id, name, colorIndex, joinedAt, status: "active" | "idle" | "away" | "reconnecting", isHost, isBot }`  
+`ChatCodeRef = { from: string, to: string, line: number, endLine: number, snippet: string }` (`from`/`to` are base64 `Y.RelativePosition` anchors tracking real-time edits)
 
 ### Activity feed delivery (no duplicates, no gaps)
 

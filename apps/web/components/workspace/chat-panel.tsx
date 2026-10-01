@@ -40,7 +40,7 @@ export function ChatPanel({ active }: { active: boolean }) {
   const { items } = useStore(feed.snapshot);
   const room = useStore(client.room);
   const roster = useStore(client.roster);
-  const connection = useStore(client.status).connection;
+  const connection = useStore(client.status, (s) => s.connection);
   const attachment = useStore(ws.chatRef);
   const [pending, setPending] = useState<readonly PendingChat[]>([]);
   const [announcement, setAnnouncement] = useState('');

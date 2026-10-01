@@ -41,6 +41,11 @@ export function getIsDraining(): boolean {
   return isDraining;
 }
 
+export function resetUpgradeGateState(): void {
+  isDraining = false;
+  ipConnectionCounts.clear();
+}
+
 export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDependencies) {
   return async function handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
     function reject(status: number, reason: string) {
@@ -133,11 +138,16 @@ export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDepende
     ipConnectionCounts.set(ip, currentIpConns + 1);
 
     wss.handleUpgrade(request, socket, head, (ws) => {
-      ws.on('close', () => {
+      let decremented = false;
+      const cleanupIp = () => {
+        if (decremented) return;
+        decremented = true;
         const count = ipConnectionCounts.get(ip) ?? 1;
         if (count <= 1) ipConnectionCounts.delete(ip);
         else ipConnectionCounts.set(ip, count - 1);
-      });
+      };
+      ws.on('close', cleanupIp);
+      ws.on('error', cleanupIp);
 
       const activeRoom = deps.roomRegistry.getOrCreate(roomId);
       if (!activeRoom) {
