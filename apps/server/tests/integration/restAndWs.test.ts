@@ -617,8 +617,12 @@ describe('Server HTTP REST & WebSocket Integration', () => {
           ws.send(Buffer.from([0x99, 0x88, 0x77]));
         });
         ws.on('close', (code) => {
-          expect(code).toBe(4009);
-          resolve();
+          try {
+            expect(code).toBe(4009);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
         });
         ws.on('error', reject);
       });

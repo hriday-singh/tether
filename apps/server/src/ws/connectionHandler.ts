@@ -100,48 +100,58 @@ export async function attachConnectionHandler(
     isBot: room.isBot(member.id),
   };
 
-  const token = await deps.joinService.issueRoomToken({
-    memberId: member.id,
-    roomId: room.id,
-    displayName: member.name,
-    passcodeVersion: roomRow.passcode_version,
-    roomEpoch: room.epoch,
-  });
-  const eventSeq = deps.auditRepo.getLatestSeq(room.id);
+  const sendWelcome = async () => {
+    try {
+      const token = await deps.joinService.issueRoomToken({
+        memberId: member.id,
+        roomId: room.id,
+        displayName: member.name,
+        passcodeVersion: roomRow.passcode_version,
+        roomEpoch: room.epoch,
+      });
+      const eventSeq = deps.auditRepo.getLatestSeq(room.id);
 
-  const welcomePayload = {
-    t: 'welcome' as const,
-    self: selfMember,
-    members: allMembers,
-    hostId: room.hostElector.hostId,
-    room: {
-      id: room.id,
-      language: roomRow.language,
-      locked: roomRow.locked === 1,
-      hasPasscode: roomRow.passcode_hash !== null,
-      epoch: room.epoch,
-    },
-    token,
-    eventSeq,
-    chatSeq: deps.chatService.getLatestSeq(room.id),
+      const welcomePayload = {
+        t: 'welcome' as const,
+        self: selfMember,
+        members: allMembers,
+        hostId: room.hostElector.hostId,
+        room: {
+          id: room.id,
+          language: roomRow.language,
+          locked: roomRow.locked === 1,
+          hasPasscode: roomRow.passcode_hash !== null,
+          epoch: room.epoch,
+        },
+        token,
+        eventSeq,
+        chatSeq: deps.chatService.getLatestSeq(room.id),
+      };
+
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(welcomePayload));
+
+        if (isNew) {
+          room.broadcastControl(
+            {
+              t: 'member.joined',
+              member: selfMember,
+            },
+            ws
+          );
+          deps.auditService.logEvent(room.id, {
+            type: 'member.joined',
+            actorMemberId: member.id,
+            actorName: member.name,
+            payload: {},
+          });
+        }
+      }
+    } catch {
+      // Socket closed or token issuance failure
+    }
   };
-  ws.send(JSON.stringify(welcomePayload));
-
-  if (isNew) {
-    room.broadcastControl(
-      {
-        t: 'member.joined',
-        member: selfMember,
-      },
-      ws
-    );
-    deps.auditService.logEvent(room.id, {
-      type: 'member.joined',
-      actorMemberId: member.id,
-      actorName: member.name,
-      payload: {},
-    });
-  }
+  const welcomePromise = sendWelcome();
 
   ws.on('message', async (data: WebSocket.RawData, isBinary: boolean) => {
     if (isBinary) {
@@ -442,4 +452,6 @@ export async function attachConnectionHandler(
     clearInterval(tokenRefreshInterval);
     room.removeConnection(ws, false);
   });
+
+  await welcomePromise;
 }
