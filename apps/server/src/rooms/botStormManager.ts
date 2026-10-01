@@ -523,31 +523,35 @@ export class BotStormManager {
                   if (activeAuthorId === botId) activeAuthorId = null;
                   return;
                 }
-                const chunkSize = Math.min(textToType.length - typedIndex, 3 + Math.floor(Math.random() * 4));
-                const chunk = textToType.slice(typedIndex, typedIndex + chunkSize);
+                try {
+                  const chunkSize = Math.min(textToType.length - typedIndex, 3 + Math.floor(Math.random() * 4));
+                  const chunk = textToType.slice(typedIndex, typedIndex + chunkSize);
 
-                const pos = resolveInsertPos(yText, botDoc, anchor);
-                botDoc.transact(() => {
-                  yText.insert(pos, chunk);
-                }, botId);
-                activeStorm.ops++;
-                typedIndex += chunkSize;
-                anchor = Y.createRelativePositionFromTypeIndex(yText, pos + chunk.length, -1);
-                const rel = anchor;
-                botAwareness.setLocalStateField('cursor', { anchor: rel, head: rel });
-                botAwareness.setLocalStateField('typing', true);
+                  const pos = resolveInsertPos(yText, botDoc, anchor);
+                  botDoc.transact(() => {
+                    yText.insert(pos, chunk);
+                  }, botId);
+                  activeStorm.ops++;
+                  typedIndex += chunkSize;
+                  anchor = Y.createRelativePositionFromTypeIndex(yText, pos + chunk.length, -1);
+                  const rel = anchor;
+                  botAwareness.setLocalStateField('cursor', { anchor: rel, head: rel });
+                  botAwareness.setLocalStateField('typing', true);
 
-                if (typedIndex < textToType.length) {
-                  const chunkTimer = setTimeout(streamChunk, 35 + Math.random() * 40);
-                  activeStorm.typingTimers.add(chunkTimer);
-                } else {
-                  if (activeAuthorId === botId) activeAuthorId = null;
-                  botAwareness.setLocalStateField('typing', false);
-                  if (!activeBot.hasChatted) {
-                    activeBot.hasChatted = true;
-                    sendBotChat(botId, botName, colorIndex, snippet.chatStatus);
+                  if (typedIndex < textToType.length) {
+                    const chunkTimer = setTimeout(streamChunk, 35 + Math.random() * 40);
+                    activeStorm.typingTimers.add(chunkTimer);
+                  } else {
+                    if (activeAuthorId === botId) activeAuthorId = null;
+                    botAwareness.setLocalStateField('typing', false);
+                    if (!activeBot.hasChatted) {
+                      activeBot.hasChatted = true;
+                      sendBotChat(botId, botName, colorIndex, snippet.chatStatus);
+                    }
+                    scheduleNextAction(400 + Math.random() * 500);
                   }
-                  scheduleNextAction(400 + Math.random() * 500);
+                } catch {
+                  if (activeAuthorId === botId) activeAuthorId = null;
                 }
               };
 

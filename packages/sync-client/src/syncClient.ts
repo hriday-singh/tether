@@ -7,8 +7,6 @@ import {
 } from '@tether/shared/protocol/codec';
 import {
   ClientControlMessage,
-  ServerControlMessage,
-  ServerControlMessageSchema,
   Member,
   RoomMetadata,
 } from '@tether/shared/protocol/schemas';
@@ -22,9 +20,9 @@ import {
   WAKE_PROBE_MS,
 } from '@tether/shared/constants';
 import { calculateBackoff } from '@tether/shared/backoff';
-import { areStateVectorsEqual, hashString } from '@tether/shared/checksum';
 import { StatsStore, ClientStats } from './statsStore.js';
 import { WakeManager } from './wakeManager.js';
+import { dispatchControlMessage } from './controlHandler.js';
 import { probeAdmission } from './admissionProbe.js';
 import { DelayLine } from './delayLine.js';
 import {
@@ -270,136 +268,45 @@ export class SyncClient {
   }
 
   private handleControlMessage(jsonStr: string): void {
-    try {
-      const raw = JSON.parse(jsonStr);
-      const parsed: ServerControlMessage = ServerControlMessageSchema.parse(raw);
-
-      switch (parsed.t) {
-        case 'welcome': {
-          this.hasReceivedWelcome = true;
-          this.self = parsed.self;
-          this.members = parsed.members;
-          this.hostId = parsed.hostId;
-          this.room = parsed.room;
-          this.setStatus('connected');
-          this.pendingAcks.clear();
-          this.setSyncState('synced');
-          this.options.onWelcome?.({
-            self: parsed.self,
-            room: parsed.room,
-            chatSeq: parsed.chatSeq,
-            eventSeq: parsed.eventSeq,
-          });
-          this.options.onRosterChange?.(parsed.members);
-          this.options.onHostChange?.(parsed.hostId);
-          break;
-        }
-        case 'pong': {
-          const now = this.clock();
-          const rtt = Math.max(0, now - parsed.ts);
-          this.statsStore.recordRtt(rtt);
-          this.wakeManager?.clearProbe();
-          this.options.onStatsChange?.(this.statsStore.getStats());
-          break;
-        }
-        case 'ack': {
-          const pending = this.pendingAcks.get(parsed.seq);
-          if (pending) {
-            const ackLatency = Math.max(0, this.clock() - pending.sentAt);
-            this.statsStore.recordAckLatency(ackLatency);
-            this.pendingAcks.delete(parsed.seq);
-            this.options.onStatsChange?.(this.statsStore.getStats());
-          }
-          if (this.pendingAcks.size === 0) {
-            this.setSyncState('saved');
-          }
-          break;
-        }
-        case 'ok':
-        case 'error': {
-          const pending = parsed.rid ? this.pendingCommands.get(parsed.rid) : undefined;
-          if (!pending || !parsed.rid) break;
-          clearTimeout(pending.timer);
-          this.pendingCommands.delete(parsed.rid);
-          if (parsed.t === 'ok') pending.resolve();
-          else pending.reject(new Error(parsed.code));
-          break;
-        }
-        case 'token': {
-          // Hourly refresh: reconnects must present the fresh token, and the app persists it for reloads.
-          this.token = parsed.token;
-          this.options.onToken?.(parsed.token);
-          break;
-        }
-        case 'room.updated': {
-          if (this.room) {
-            this.room = {
-              ...this.room,
-              ...(parsed.settings.language ? { language: parsed.settings.language } : {}),
-              ...(parsed.settings.locked !== undefined ? { locked: parsed.settings.locked } : {}),
-              ...(parsed.settings.hasPasscode !== undefined ? { hasPasscode: parsed.settings.hasPasscode } : {}),
-            };
-          }
-          this.options.onRoomUpdate?.(parsed.settings);
-          break;
-        }
-        case 'event': {
-          this.options.onEvent?.(parsed.event);
-          break;
-        }
-        case 'chat.msg': {
-          this.options.onChat?.(parsed.message);
-          break;
-        }
-        case 'member.joined': {
-          this.members = [...this.members.filter((m) => m.id !== parsed.member.id), parsed.member];
-          this.options.onRosterChange?.(this.members);
-          break;
-        }
-        case 'member.left': {
-          this.members = this.members.filter((m) => m.id !== parsed.memberId);
-          this.options.onRosterChange?.(this.members);
-          break;
-        }
-        case 'member.status': {
-          this.members = this.members.map((m) =>
-            m.id === parsed.memberId ? { ...m, status: parsed.status } : m
-          );
-          this.options.onRosterChange?.(this.members);
-          break;
-        }
-        case 'throttled': {
-          this.options.onThrottled?.(parsed.windowMs);
-          break;
-        }
-        case 'host.changed': {
-          this.hostId = parsed.hostId;
-          this.options.onHostChange?.(parsed.hostId);
-          break;
-        }
-        case 'checksum': {
-          const localSv = Y.encodeStateVector(this.doc);
-          const localText = this.doc.getText('codemirror').toString();
-          const localHash = hashString(localText);
-
-          const matched = areStateVectorsEqual(localSv, Buffer.from(parsed.sv, 'base64')) && localHash === parsed.hash;
-          this.options.onChecksum?.({ hash: parsed.hash, matched });
-          if (matched) {
-            this.setSyncState('synced');
-          } else {
-            this.setSyncState('mismatch');
-            this.sendControl({
-              t: 'verify.mismatch',
-              sv: Buffer.from(localSv).toString('base64'),
-              hash: localHash,
-            });
-          }
-          break;
-        }
-      }
-    } catch (err) {
-      this.options.onError?.(new Error(`Failed to parse control message: ${String(err)}`));
-    }
+    dispatchControlMessage(
+      {
+        doc: this.doc,
+        options: this.options,
+        clock: this.clock,
+        statsStore: this.statsStore,
+        wakeManager: this.wakeManager,
+        pendingAcks: this.pendingAcks,
+        pendingCommands: this.pendingCommands,
+        members: this.members,
+        hostId: this.hostId,
+        room: this.room,
+        self: this.self,
+        token: this.token,
+        hasReceivedWelcome: this.hasReceivedWelcome,
+        setStatus: (status) => this.setStatus(status),
+        setSyncState: (state) => this.setSyncState(state),
+        sendControl: (msg) => this.sendControl(msg),
+        setHasReceivedWelcome: (val) => {
+          this.hasReceivedWelcome = val;
+        },
+        setMembers: (members) => {
+          this.members = members;
+        },
+        setHostId: (hostId) => {
+          this.hostId = hostId;
+        },
+        setRoom: (room) => {
+          this.room = room;
+        },
+        setSelf: (self) => {
+          this.self = self;
+        },
+        setToken: (token) => {
+          this.token = token;
+        },
+      },
+      jsonStr
+    );
   }
 
   private handleLocalDocUpdate = (update: Uint8Array, origin: unknown): void => {

@@ -72,7 +72,7 @@ export function describeEvent(e: AuditEvent): EventView {
       const converged = p.converged;
       const label = converged === true ? 'Converged' : converged === false ? 'Diverged' : 'Verifying';
       const tone: EventView['tone'] = converged === true ? 'success' : converged === false ? 'destructive' : 'primary';
-      return { icon: CpuIcon, text: `Chaos complete: ${num(p.bots)} bots · ${num(p.ops)} ops · ${(num(p.durationMs) / 1000).toFixed(1)}s — ${label}`, tone };
+      return { icon: CpuIcon, text: `Chaos complete: ${num(p.bots)} bots, ${num(p.ops)} ops, ${(num(p.durationMs) / 1000).toFixed(1)}s (${label})`, tone };
     }
     default:
       return { icon: AlertCircleIcon, text: `${who}: ${e.type}`, tone: 'neutral' };

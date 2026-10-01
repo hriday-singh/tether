@@ -116,6 +116,12 @@ export class HostElector {
     return this.members.has(memberId);
   }
 
+  /** In the grace window following an abrupt disconnect. */
+  public isReconnecting(memberId: string): boolean {
+    const member = this.members.get(memberId);
+    return member !== undefined && member.graceTimerExpiresAt !== null;
+  }
+
   /** Kick: drop immediately and silently (the kick already announced it), no grace, no "timed out". */
   public evict(memberId: string): void {
     this.members.delete(memberId);

@@ -84,7 +84,7 @@ export async function attachConnectionHandler(
     name: m.display_name,
     colorIndex: m.color_index,
     joinedAt: m.first_joined_at,
-    status: 'active',
+    status: room.hostElector.isReconnecting(m.member_id) ? 'reconnecting' : 'active',
     isHost: room.hostElector.hostId === m.member_id,
     isBot: room.isBot(m.member_id),
   }));
@@ -414,13 +414,6 @@ export async function attachConnectionHandler(
             }
             if (deps.botStormManager && deps.botStormManager.isStormActive(room.id)) {
               await deps.botStormManager.stopStorm(room.id);
-            } else {
-              deps.auditService.logEvent(room.id, {
-                type: 'demo.storm_completed',
-                actorMemberId: member.id,
-                actorName: member.name,
-                payload: { bots: 0, seconds: 0, durationMs: 0, ops: 0, converged: true, checksum: '--------' },
-              });
             }
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;

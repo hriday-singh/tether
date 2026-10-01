@@ -108,7 +108,7 @@ export function ThinkingOrb({
   if (prevProps.color !== color || prevProps.tone !== tone) {
     setPrevProps({ color, tone });
     const direct = resolveExplicitColor(color, tone);
-    if (direct && direct !== resolvedColor) {
+    if (direct !== resolvedColor) {
       setResolvedColor(direct);
     }
   }
