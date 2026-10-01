@@ -71,6 +71,7 @@ export interface Workspace {
   maximizePanel(panel: 'editor' | null): void;
   openDrawerTab(tab: 'console' | 'sync' | 'chaos'): void;
   destroy(): void;
+  resubscribe?(): void;
 }
 
 const Ctx = createContext<Workspace | null>(null);
@@ -109,11 +110,16 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
   );
 
   const chatUnread = createStore(0);
-  const unsubChat = client.onChat((m) => {
-    const s = ui.get();
-    const visible = (s.sidebarOpen && s.sidebarTab === 'chat') || s.mobileTab === 'chat';
-    if (!visible && m.memberId !== client.room.get().selfId) chatUnread.update((n) => n + 1);
-  });
+  let unsubChat: (() => void) | null = null;
+  const subscribeChat = () => {
+    if (unsubChat) return;
+    unsubChat = client.onChat((m) => {
+      const s = ui.get();
+      const visible = (s.sidebarOpen && s.sidebarTab === 'chat') || s.mobileTab === 'chat';
+      if (!visible && m.memberId !== client.room.get().selfId) chatUnread.update((n) => n + 1);
+    });
+  };
+  subscribeChat();
 
   const ws: Workspace = {
     client,
@@ -235,8 +241,13 @@ export function createWorkspace(client: SyncClient, roomId: string, session: Roo
     },
 
     destroy() {
-      unsubChat();
+      unsubChat?.();
+      unsubChat = null;
       runner.stop();
+    },
+
+    resubscribe() {
+      subscribeChat();
     },
   };
   return ws;

@@ -40,8 +40,6 @@ export function getWebPort() {
 }
 
 export function runNextCommand(command) {
-  const port = getWebPort();
-
   const require = createRequire(import.meta.url);
   let nextBin;
   try {
@@ -51,16 +49,28 @@ export function runNextCommand(command) {
   }
 
   const userArgs = process.argv.slice(2);
-  const hasCustomPort = userArgs.some((arg) => {
-    return arg === '-p' || arg === '--port' || arg.startsWith('-p=') || arg.startsWith('--port=');
-  });
+  let portArgs = [];
+  if (command === 'dev' || command === 'start') {
+    const port = getWebPort();
+    const hasCustomPort = userArgs.some((arg) => {
+      return arg === '-p' || arg === '--port' || arg.startsWith('-p=') || arg.startsWith('--port=');
+    });
+    portArgs = hasCustomPort ? [] : ['-p', port];
+  }
 
-  const portArgs = hasCustomPort ? [] : ['-p', port];
   const args = [nextBin, command, ...portArgs, ...userArgs];
+
+  const env = { ...process.env };
+  if (command === 'build' || command === 'start') {
+    env.NODE_ENV = 'production';
+  } else if (command === 'dev') {
+    env.NODE_ENV = 'development';
+  }
 
   const child = spawn(process.execPath, args, {
     cwd: webDir,
     stdio: 'inherit',
+    env,
   });
 
   child.on('exit', (code, signal) => {

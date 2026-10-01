@@ -14,6 +14,7 @@ import {
   StopIcon,
   CheckmarkCircle02Icon,
   TextAlignLeftIcon,
+  KeyboardIcon,
 } from '@hugeicons/core-free-icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -278,6 +279,10 @@ function OverflowMenu({ languageExt }: { languageExt: string }) {
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void navigator.clipboard.writeText(`${location.origin}/r/${ws.roomId}`).then(() => toast.success('Invite link copied'))}>
           <Icon icon={Link01Icon} size={14} /> Copy invite link
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => ws.ui.update((s) => ({ ...s, shortcuts: true }))}>
+          <Icon icon={KeyboardIcon} size={14} /> Keyboard shortcuts ({isMac() ? '⌘?' : 'Ctrl+?'})
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem destructive onSelect={() => void leave()}>

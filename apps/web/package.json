@@ -11,7 +11,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg && node scripts/dev.js",
-    "build": "pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg && next build",
+    "build": "pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg && node scripts/build.js",
     "start": "node scripts/start.js",
     "lint": "eslint .",
     "typecheck": "pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg && tsc --noEmit",

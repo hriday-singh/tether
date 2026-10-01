@@ -25,6 +25,8 @@ The workspace supports instantaneous, flicker-free theme switching across 4 cura
 
 ## 2. VS Code-Style Theme QuickPick (`⌘K ⌘T` / Command Palette)
 
+![Command Palette and Preferences](../assets/command-palette.png)
+
 To mimic the intuitive ergonomics of VS Code, developers can open the Theme QuickPick from the `⌘K` Command Palette or via direct shortcut `⌘K ⌘T`.
 
 ### Interactive Preview on Arrow Navigation

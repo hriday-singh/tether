@@ -290,7 +290,7 @@ export function buildPreferenceAndDiagnosticCommands(
       icon: KeyboardIcon,
       label: 'Keyboard shortcuts',
       shortcut: '?',
-      keywords: ['keyboard', 'shortcuts', 'help', 'hotkeys'],
+      keywords: ['keyboard', 'shortcuts', 'help', 'hotkeys', 'cmds', 'commands'],
       priority: 90,
       onSelect: act(() => ui({ shortcuts: true })),
     },

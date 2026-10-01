@@ -38,6 +38,7 @@ If a feature threatens any of these four, the feature loses.
 | 10 | [Roadmap & TODO](10-roadmap.md) | 2-week plan + week-3 stretch checklist |
 | 11 | [Decisions log](11-decisions.md) | ADRs (001–017) + research sources |
 | 12 | [UI / UX direction](12-ui-ux.md) | "Quiet IDE" aesthetic, verified libraries, and ADR-016 overview |
+| — | [OpenAPI specification](openapi.json) | REST API schema (OpenAPI 3.1.0) |
 | — | [**UI/UX Specs Suite**](ui-ux/) | **Dedicated modular frontend & UI/UX architecture:** |
 | · | [01 — Design tokens & themes](ui-ux/01-design-tokens-and-themes.md) | Semantic OKLCH tokens, dark/light scales, presence colors, zero-emoji rule |
 | · | [02 — Component library specs](ui-ux/02-component-library-specs.md) | Radix, Hugeicons, theSVG, morphicons, torph (`<TextMorph />`), bklit-ui, thinking-orbs |

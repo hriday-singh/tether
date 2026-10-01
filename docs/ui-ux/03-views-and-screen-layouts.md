@@ -13,11 +13,13 @@ The application comprises five primary screen states and four interactive overla
 3. **Desktop Workspace (`/r/[id]`)**: The "Quiet IDE" three-pane resizable workspace with collaborative CodeMirror editor, live sandboxed preview, sidebar, and diagnostics console (for viewports ≥ 1024px).
 4. **Small Screen Viewport Barrier (`<ScreenTooSmallGate />`)**: Protective gate screen when accessed on viewports < 1024px, informing users that the collaborative engineering environment works on bigger screens only with dynamic resize auto-unblocking.
 5. **Terminal / Edge States**: Kicked view (with instant "Copy My Version" button), Room Locked, Offline Reconnecting banner, and 404 Not Found.
-6. **Modal Overlays**: `⌘K` Command Palette, VS Code-Style Settings Dialog, Host Controls Sheet, Keyboard Shortcuts Modal (`?`).
+6. **Modal Overlays**: Command Palette (`⌘K`), VS Code-Style Settings Dialog (`⌘,`), Host Controls Sheet, Keyboard Shortcuts Modal (`⌘?` / `?`).
 
 ---
 
 ## 2. Desktop Workspace Wireframe & Inset Card Architecture
+
+![Desktop Workspace Layout](../assets/workspace-preview.png)
 
 The desktop workspace uses an **Inset Floating Card Layout** with `react-resizable-panels`. Instead of rigid, edge-to-edge square panels, the workspace sits inside a subtle padded background canvas (`p-2.5 gap-2.5`), with each pane encapsulated in a floating card with continuous rounded corners (`rounded-2xl`).
 
@@ -77,6 +79,8 @@ The desktop workspace uses an **Inset Floating Card Layout** with `react-resizab
   * Tab 1: **Console**: Logs captured from sandboxed iframe + Web Worker evaluations.
   * Tab 2: **Sync Diagnostics**: `bklit-ui` real-time RTT latency chart, SHA-256 state checksum, token-bucket throttle counter.
   * Tab 3: **Chaos Lab**: Bot Storm trigger button (spawns 8 headless peers typing under latency).
+
+  ![Diagnostics Drawer and Sync Latency](../assets/network-lab.png)
 * **Bottom Status Bar (24px height)**:
   * Connection health dot (`●` emerald/amber/crimson).
   * Cursor position (`Ln 4, Col 12`).
@@ -163,3 +167,55 @@ When a user navigates directly to a room link, they are held in the Join Gate be
 | **Room Locked** | Lock icon badge on Join Gate; prevents new admissions. | Displays message: *"The host has locked this room. Please request access from the host."* |
 | **Connection Dropped** | Yellow warning pill in status bar: *"Reconnecting in 2s (Attempt 3/5)..."* | Local edits continue buffering to IndexedDB without blocking the user. |
 | **Room Not Found (404)** | Centered card: *"Room `r-xyz` does not exist or has expired."* | Button: *"Return to Home"* or *"Create This Room"*. |
+
+---
+
+## 7. Modal Overlays & Keyboard Shortcuts
+
+Tether provides keyboard-first navigation modeled after IDE conventions while preserving browser accessibility.
+
+### 7.1 Command Palette (`Ctrl/Cmd + K`)
+
+The Command Palette overlay (`cmdk`) allows keyboard-driven execution of all workspace capabilities:
+- **Navigation**: Switch between Sidebar tabs (People, Chat, Activity, Scratchpad), toggle panels, or trigger Zen Mode (`Ctrl/Cmd + Shift + F` / `F11`).
+- **Editor Actions**: Format code (`Shift + Alt + F`), trigger find panel (`Ctrl/Cmd + F`), change language, adjust font size or tab size.
+- **Theme QuickPick (`Ctrl/Cmd + K Ctrl/Cmd + T`)**: Instant preview on arrow navigation, Enter to commit, Esc to cancel.
+- **Room Controls**: Invite peers, lock/unlock room, run bot storms, or export state snapshots.
+
+### 7.2 Settings Modal (`Ctrl/Cmd + ,`)
+
+A tabbed dialog dividing preferences into four functional categories:
+1. **Appearance**: Theme selection (`quiet-dark`, `quiet-light`, `contrast-dark`, `contrast-light`), font size, caret blinking.
+2. **Editor**: Tab size (2 or 4 spaces), line wrapping, bracket pairing, line numbers.
+3. **Collaboration**: Presence cursors, selection highlights, follow unblocking on input.
+4. **Diagnostics**: Throttle indicator visibility, RTT sparklines, checksum logging.
+
+### 7.3 Keyboard Shortcuts Cheatsheet Modal (`Ctrl/Cmd + ?` or `?`)
+
+Pressing `Ctrl/Cmd + ?` (or `?` when outside text inputs) opens a modal listing all active workspace shortcuts.
+
+### 7.4 Comprehensive Keyboard Shortcuts Matrix
+
+| Category | Shortcut (Mac / Linux & Win) | Action | Target / Context |
+|---|---|---|---|
+| **Command & Search** | `⌘K` / `Ctrl+K` | Open Command Palette | Global |
+| **Command & Search** | `⌘K ⌘T` / `Ctrl+K Ctrl+T` | Open Theme QuickPick | Global |
+| **Command & Search** | `⌘F` / `Ctrl+F` | Open Search / Replace panel | Editor |
+| **Execution** | `⌘Enter` / `Ctrl+Enter` | Run code or refresh live preview | Global |
+| **Code Formatting** | `⇧⌥F` / `Shift+Alt+F` | Format active document | Editor |
+| **View Navigation** | `⌘⇧F` / `Ctrl+Shift+F` (or `F11`) | Toggle Zen Mode (Editor & Preview only) | Global |
+| **View Navigation** | `⌘B` / `Ctrl+B` | Toggle Sidebar | Global |
+| **View Navigation** | `⌘J` / `Ctrl+J` (or `Ctrl+\``) | Toggle Diagnostics Drawer | Global |
+| **Collaboration** | `⌘⇧M` / `Ctrl+Shift+M` | Quote editor selection into room chat | Editor |
+| **Collaboration** | `⌥H` / `Alt+H` | Highlight current line for all peers | Editor |
+| **Preferences** | `⌘,` / `Ctrl+,` | Open Settings Dialog | Global |
+| **Help** | `⌘?` / `Ctrl+?` (or `?`) | Open Keyboard Shortcuts Cheatsheet | Global |
+| **Focus & Dismiss** | `Escape` | Dismiss modal/drawer, exit Zen mode, or focus editor | Global |
+| **Accessibility** | `Escape` then `Tab` | Release focus trap from CodeMirror to UI | Editor |
+
+### 7.5 Accessibility and Focus Management
+
+- **Typing Isolation**: Shortcuts like `?` are suppressed when focus resides within text inputs, textareas, or contentEditable elements (`!typing`).
+- **Focus Restoration**: Pressing `Escape` closes the topmost modal/drawer and returns focus to the CodeMirror editor surface.
+- **Tab Trap Exit**: Following WCAG keyboard trapping guidelines, pressing `Escape` followed by `Tab` inside the CodeMirror editor moves tab focus to the next interactive UI element rather than inserting tab spaces into the document.
+

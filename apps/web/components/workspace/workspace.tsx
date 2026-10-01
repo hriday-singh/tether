@@ -56,6 +56,7 @@ const storage = typeof window === 'undefined' ? undefined : window.localStorage;
 export function Workspace({ client, roomId, session }: { client: SyncClient; roomId: string; session: RoomSession }) {
   const ws = useMemo(() => createWorkspace(client, roomId, session), [client, roomId, session]);
   useEffect(() => {
+    ws.resubscribe?.();
     return () => {
       ws.destroy();
     };
@@ -432,9 +433,21 @@ function useGlobalShortcuts() {
             }
           });
         }
+      } else if (e.key === 'F11') {
+        e.preventDefault();
+        ws.ui.update((s) => ({ ...s, zenMode: !s.zenMode }));
+      } else if (mod && (e.key === '?' || e.code === 'Slash' || (e.shiftKey && key === '/'))) {
+        e.preventDefault();
+        ws.ui.update((s) => ({ ...s, shortcuts: !s.shortcuts }));
       } else if (mod && key === 'k') {
         e.preventDefault();
         ws.ui.update((s) => ({ ...s, palette: s.palette ? false : 'commands' }));
+      } else if (mod && key === 'b') {
+        e.preventDefault();
+        ws.ui.update((s) => ({ ...s, sidebarOpen: !s.sidebarOpen }));
+      } else if (mod && key === 'j') {
+        e.preventDefault();
+        ws.ui.update((s) => ({ ...s, drawerOpen: !s.drawerOpen }));
       } else if (mod && e.key === ',') {
         e.preventDefault();
         ws.ui.update((s) => ({ ...s, settings: true }));
@@ -465,15 +478,16 @@ function ShortcutsDialog() {
     [`${m} ,`, 'Settings'],
     [`${m} Enter`, 'Run / stop code'],
     ['Shift Alt F', 'Format document'],
-    [`${m} Shift F`, 'Toggle Zen mode'],
+    [`${m} Shift F / F11`, 'Toggle Zen mode'],
+    [`${m} B`, 'Toggle sidebar (People / Chat / Activity)'],
+    [`${m} J / Ctrl \``, 'Toggle diagnostics drawer'],
     ['Alt H', 'Highlight current lines for everyone'],
     [`${m} Shift M`, 'Comment on selection in chat'],
-    ['Ctrl `', 'Toggle diagnostics drawer'],
     ['Esc', 'Exit Zen mode / Restore panel / Back to editor'],
     ['Esc then Tab', 'Move focus out of the editor'],
     [`${m} F`, 'Find in document'],
     [`${m} Z / ${m} Shift Z`, 'Undo / redo (your edits only)'],
-    ['?', 'This list'],
+    [`${m} ? / ?`, 'View keyboard shortcuts (this list)'],
   ];
   return (
     <Dialog open={open} onOpenChange={(v) => ws.ui.update((s) => ({ ...s, shortcuts: v }))}>

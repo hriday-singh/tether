@@ -1,6 +1,16 @@
 # Tether
 
+[![Node.js](https://img.shields.io/badge/node-%3E%3D22.0.0-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-%3E%3D9.0.0-F69220?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Fastify](https://img.shields.io/badge/Fastify-5-000000?logo=fastify&logoColor=white)](https://fastify.dev/)
+[![CRDT](https://img.shields.io/badge/CRDT-Yjs-orange)](https://yjs.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A real-time collaborative code editor built on Yjs CRDTs, a Fastify WebSocket sync server, CodeMirror 6, and Next.js 16.
+
+![Tether Collaborative Workspace](docs/assets/workspace-preview.png)
 
 ## Features
 
@@ -14,6 +24,34 @@ A real-time collaborative code editor built on Yjs CRDTs, a Fastify WebSocket sy
 - **Themes**: Choose Quiet Dark, Quiet Light, or High Contrast, and preview theme changes before switching.
 - **Command palette**: Press `Ctrl/Cmd+K` to search navigation, room and host actions, editor settings, and themes.
 - **Storage and room cleanup**: Local development uses SQLite by default, and production can use PostgreSQL. Inactive temporary rooms are deleted after 24 hours.
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl/Cmd + K` | Open Command Palette (navigation, actions, editor settings, themes) |
+| `Ctrl/Cmd + ?` (or `?`) | View keyboard shortcuts modal |
+| `Ctrl/Cmd + ,` | Open Settings modal |
+| `Ctrl/Cmd + Enter` | Run code in sandboxed worker / refresh preview |
+| `Shift + Alt + F` | Format document |
+| `Ctrl/Cmd + Shift + F` / `F11` | Toggle Zen mode (distraction-free editor & preview) |
+| `Ctrl/Cmd + B` | Toggle sidebar (People / Chat / Activity / Scratchpad) |
+| `Ctrl/Cmd + J` (or `Ctrl + \``) | Toggle bottom diagnostics drawer & console |
+| `Ctrl/Cmd + Shift + M` | Quote selected code snippet into room chat |
+| `Alt + H` | Highlight current line for all peers |
+| `Ctrl/Cmd + F` | Find in document |
+
+### Command Palette
+
+Press `Ctrl/Cmd + K` to open the Command Palette for keyboard-driven navigation, editor settings, and room controls:
+
+![Tether Command Palette](docs/assets/command-palette.png)
+
+### Diagnostics Drawer & Network Lab
+
+Expand the bottom drawer to inspect real-time RTT latency, verify SHA-256 state checksums, or simulate network chaos (inject latency, drop sockets, and trigger bot storms):
+
+![Tether Diagnostics and Network Lab](docs/assets/network-lab.png)
 
 ## Architecture
 
@@ -43,18 +81,28 @@ A real-time collaborative code editor built on Yjs CRDTs, a Fastify WebSocket sy
 | Path                   | Package               | Description                                                                        | Dev port |
 | ---------------------- | --------------------- | ---------------------------------------------------------------------------------- | -------- |
 | `apps/server`          | `@tether/server`      | REST API, WebSocket server, Yjs sync, room persistence (Fastify 5, ws, Yjs)        | 4000     |
-| `apps/web`             | `@tether/web`         | Editor, console, room management (Next.js 16, React 19, CodeMirror 6, Tailwind v4) | 3001     |
+| `apps/web`             | `@tether/web`         | Editor, console, room management (Next.js 16, React 19, CodeMirror 6, Tailwind v4) | 3001*    |
 | `packages/shared`      | `@tether/shared`      | Protocol codecs, Zod schemas, rate limiter, backoff, checksums                     | —        |
 | `packages/sync-client` | `@tether/sync-client` | Client-side WebSocket sync driver                                                  | —        |
 | `tests/chaos`          | `@tether/chaos`       | Network chaos, convergence, and invariant tests (Vitest, fast-check)               | —        |
 
+\* _Note: Local development runs Next.js on port `3001` to prevent collisions with standard local services on port `3000`. Docker Compose maps the web container to port `3000`._
+
 ## Getting started
 
-Requires Node 22+ and pnpm.
+### Prerequisites
+
+- **Node.js**: `22+` (required for native `node:sqlite`)
+- **pnpm**: `9+`
+- **Git**
 
 ### 1. Setup
 
-The setup script creates `.env` with a random `JWT_SECRET`, installs dependencies, builds the shared packages, and creates the `./data` directory. Every prompt has a default, so pressing Enter throughout gives a local SQLite setup.
+You can set up Tether with the interactive wizard script or with manual commands.
+
+#### Option A: Automated setup wizard
+
+The setup script creates `.env` with a secure random `JWT_SECRET`, installs workspace dependencies, builds shared packages, and initializes `./data`. Every prompt provides a recommended default, so pressing Enter throughout configures a local SQLite setup.
 
 Windows:
 
@@ -74,29 +122,64 @@ The script asks for:
 1. **Environment**: local (Node + pnpm), Docker Compose, or both.
 2. **Database**: SQLite (default) or PostgreSQL (Docker container on 5432 or an external URL).
 3. **Ports**: backend (default 4000) and web (default 3001). Related `.env` values are updated to match.
-4. **Launch**: whether to start the dev servers when setup finishes.
+4. **Launch**: whether to start dev servers when setup finishes.
 
-For CI or scripted installs, use `.\setup.ps1 -NonInteractive` or `./setup.sh --non-interactive`. To point the web client at a public backend, pass `-BackendUrl https://api.example.com` (or `--backend-url=https://api.example.com`), then rebuild the web app, since `NEXT_PUBLIC_*` values are fixed at build time.
+For scripted or CI environments without prompts:
+
+```powershell
+# Windows
+.\setup.ps1 -NonInteractive
+```
+
+```bash
+# POSIX
+./setup.sh --non-interactive
+```
+
+To target a remote backend, pass `-BackendUrl https://api.example.com` (or `--backend-url=https://api.example.com`), then rebuild the web app since `NEXT_PUBLIC_*` values are fixed at build time.
+
+#### Option B: Manual setup
+
+If your environment restricts running scripts or you prefer explicit commands:
+
+```bash
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Ensure data directory exists for SQLite
+mkdir -p data
+
+# 3. Install dependencies across workspaces
+pnpm install
+
+# 4. Build shared packages (required before web/server can compile)
+pnpm build:pkg
+```
 
 ### 2. Run
+
+Start both servers concurrently:
 
 ```bash
 ./launch.sh      # or .\launch.ps1 on Windows, or pnpm dev
 ```
 
-- Web: http://localhost:3001
-- API: http://localhost:4000
-- WebSocket: `ws://localhost:4000`
-- Health: http://localhost:4000/health/ready
+- Web client: http://localhost:3001
+- HTTP API: http://localhost:4000
+- WebSocket sync: `ws://localhost:4000`
+- Readiness check: http://localhost:4000/health/ready
+- OpenAPI spec: http://localhost:4000/docs/openapi.json
 
 ## Docker
+
+Run the stack via Docker Compose:
 
 ```bash
 docker compose up -d                      # web + server + SQLite volume
 docker compose --profile postgres up -d   # with a PostgreSQL container
 ```
 
-Web runs on http://localhost:3000, API on http://localhost:4000.
+In Docker, the web client runs on http://localhost:3000 and the API on http://localhost:4000.
 
 ## Configuration
 
@@ -125,18 +208,21 @@ Burst latency is bounded by the 200 ms batching window and the token-bucket thro
 
 ## Scripts
 
+> [!NOTE]
+> Whenever you modify `@tether/shared` or `@tether/sync-client`, run `pnpm build:pkg` so dependent workspaces receive updated TypeScript type definitions.
+
 ```bash
-pnpm dev          # server + web
-pnpm dev:server   # backend only
-pnpm dev:web      # frontend only
+pnpm dev          # server + web (concurrent)
+pnpm dev:server   # backend only (port 4000)
+pnpm dev:web      # frontend only (port 3001)
 pnpm db:migrate   # run sqlite database migrations
-pnpm test         # all tests
+pnpm test         # all unit and integration tests
 pnpm chaos:ci     # network partition and convergence tests
 pnpm bench        # latency benchmark
-pnpm typecheck
-pnpm lint
-pnpm build:pkg    # build @tether/shared and @tether/sync-client
-pnpm build
+pnpm typecheck    # workspace-wide typechecking
+pnpm lint         # workspace-wide linting
+pnpm build:pkg    # compile @tether/shared and @tether/sync-client
+pnpm build        # typecheck, test, and build shared packages
 ```
 
 ## Documentation
@@ -153,6 +239,7 @@ pnpm build
 - [Roadmap](docs/10-roadmap.md)
 - [Architecture decisions (ADRs)](docs/11-decisions.md)
 - [UI / UX](docs/12-ui-ux.md)
+- [OpenAPI specification](docs/openapi.json)
 
 ## Contributing
 
