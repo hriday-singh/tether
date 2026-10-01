@@ -121,7 +121,11 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
 
   // POST /api/rooms
   const CreateRoomBodySchema = z.object({
-    roomId: z.string().optional(),
+    roomId: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])?$/i, 'Invalid roomId format. Must be 3-32 lowercase alphanumeric characters or hyphens.')
+      .optional(),
     passcode: z.string().min(4).max(64).nullable().optional(),
     name: z.string().min(1).max(50),
     language: z.string().min(1).max(50).optional(),
@@ -140,13 +144,24 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     }
 
     const idempotencyKey = (request.headers['idempotency-key'] as string | undefined) ?? null;
-    const result = await deps.roomService.createRoom({
-      roomId: parsed.data.roomId,
-      passcode: parsed.data.passcode,
-      creatorName: parsed.data.name,
-      language: parsed.data.language,
-      createKey: idempotencyKey,
-    });
+    let result;
+    try {
+      result = await deps.roomService.createRoom({
+        roomId: parsed.data.roomId,
+        passcode: parsed.data.passcode,
+        creatorName: parsed.data.name,
+        language: parsed.data.language,
+        createKey: idempotencyKey,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Invalid room request';
+      return reply.status(400).send({
+        error: {
+          code: 'bad_request',
+          message: msg,
+        },
+      });
+    }
 
     if ('error' in result) {
       return reply.status(409).send({
@@ -241,7 +256,8 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
 
     // Upsert member
     const existingMembers = deps.memberRepo.getMembers(roomId);
-    const colorIndex = existingMembers.length % 12;
+    const existingMember = deps.memberRepo.getMember(roomId, memberId);
+    const colorIndex = existingMember?.color_index ?? (existingMembers.length % 12);
     deps.memberRepo.upsertMember({
       roomId,
       memberId,

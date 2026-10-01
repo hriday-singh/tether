@@ -20,7 +20,7 @@ A real-time collaborative code editor built on Yjs CRDTs, a Fastify WebSocket sy
 ```
                        ┌─────────────────────────────────────────┐
                        │               Web Browser               │
-                       │   Next.js 16 Client (http://:3001)      │
+                       │    Next.js 16 Client (localhost:3001)   │
                        └─────────────┬─────────────┬─────────────┘
                                      │             │
                              HTTP API│             │WebSocket Sync
@@ -44,9 +44,9 @@ A real-time collaborative code editor built on Yjs CRDTs, a Fastify WebSocket sy
 | ---------------------- | --------------------- | ---------------------------------------------------------------------------------- | -------- |
 | `apps/server`          | `@tether/server`      | REST API, WebSocket server, Yjs sync, room persistence (Fastify 5, ws, Yjs)        | 4000     |
 | `apps/web`             | `@tether/web`         | Editor, console, room management (Next.js 16, React 19, CodeMirror 6, Tailwind v4) | 3001     |
-| `packages/shared`      | `@tether/shared`      | Protocol codecs, Zod schemas, rate limiter, backoff, checksums                     |          |
-| `packages/sync-client` | `@tether/sync-client` | Client-side WebSocket sync driver                                                  |          |
-| `tests/chaos`          | `@tether/chaos`       | Network chaos, convergence, and invariant tests (Vitest, fast-check)               |          |
+| `packages/shared`      | `@tether/shared`      | Protocol codecs, Zod schemas, rate limiter, backoff, checksums                     | —        |
+| `packages/sync-client` | `@tether/sync-client` | Client-side WebSocket sync driver                                                  | —        |
+| `tests/chaos`          | `@tether/chaos`       | Network chaos, convergence, and invariant tests (Vitest, fast-check)               | —        |
 
 ## Getting started
 
@@ -150,6 +150,8 @@ pnpm build
 - [Frontend](docs/07-frontend.md)
 - [Testing and benchmarks](docs/08-testing-and-verification.md)
 - [Operations](docs/09-operations.md)
+- [Roadmap](docs/10-roadmap.md)
+- [Architecture decisions (ADRs)](docs/11-decisions.md)
 - [UI / UX](docs/12-ui-ux.md)
 
 ## Contributing

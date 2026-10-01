@@ -191,6 +191,9 @@ export async function attachConnectionHandler(
           }
         }
       } catch {
+        if (ws.readyState !== WebSocket.OPEN) {
+          return;
+        }
         deps.auditService.logEvent(room.id, {
           type: 'security.protocol',
           actorMemberId: member.id,
@@ -420,6 +423,9 @@ export async function attachConnectionHandler(
           }
         }
       } catch {
+        if (ws.readyState !== WebSocket.OPEN) {
+          return;
+        }
         deps.auditService.logEvent(room.id, {
           type: 'security.protocol',
           actorMemberId: member.id,

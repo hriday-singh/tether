@@ -196,6 +196,50 @@ describe('Server HTTP REST & WebSocket Integration', () => {
       expect(staleAdmRes.statusCode).toBe(200);
       expect(JSON.parse(staleAdmRes.payload)).toEqual({ status: 'reauth' });
     });
+
+    it('validates roomId format and returns 400 bad_request on malformed roomId', async () => {
+      const badRes = await app.inject({
+        method: 'POST',
+        url: '/api/rooms',
+        payload: { name: 'Alice', roomId: 'invalid slug with spaces!' },
+      });
+      expect(badRes.statusCode).toBe(400);
+      const data = JSON.parse(badRes.payload);
+      expect(data.error.code).toBe('bad_request');
+    });
+
+    it('preserves existing member colorIndex upon rejoin', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/rooms',
+        payload: { name: 'Alice', roomId: 'color-test' },
+      });
+      const join1 = await app.inject({
+        method: 'POST',
+        url: '/api/rooms/color-test/join',
+        payload: { name: 'Bob' },
+      });
+      const bob1 = JSON.parse(join1.payload);
+      const member1 = memberRepo.getMember('color-test', bob1.memberId);
+      const originalColor = member1?.color_index;
+      expect(originalColor).toBeDefined();
+
+      // Add another member to change existingMembers.length
+      await app.inject({
+        method: 'POST',
+        url: '/api/rooms/color-test/join',
+        payload: { name: 'Charlie' },
+      });
+
+      // Bob rejoins with same memberId
+      await app.inject({
+        method: 'POST',
+        url: '/api/rooms/color-test/join',
+        payload: { name: 'Bob', memberId: bob1.memberId },
+      });
+      const member2 = memberRepo.getMember('color-test', bob1.memberId);
+      expect(member2?.color_index).toBe(originalColor);
+    });
   });
 
   describe('WebSocket Upgrade & Synchronization', () => {
