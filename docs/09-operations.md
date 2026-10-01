@@ -1,4 +1,4 @@
-# 09 — Operations
+# 09: Operations
 
 ## Environment variables
 
@@ -9,7 +9,7 @@ refuses to start on invalid config).
 |-----|-----|---------|-------|
 | `PORT` | server | `4000` | REST + WS on the same port |
 | `HOST` | server | `0.0.0.0` | Listening host |
-| `JWT_SECRET` | server | — | required, ≥ 32 bytes |
+| `JWT_SECRET` | server | - | required, ≥ 32 bytes |
 | `ALLOWED_ORIGINS` | server | `http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001` | comma-separated, checked on upgrade + CORS |
 | `DATABASE_DRIVER` | server | `sqlite` | Must be `sqlite` (embedded via `node:sqlite`). Any other value stops the server at boot ([ADR-020](11-decisions.md#adr-020-sqlite-only-postgres-removed)) |
 | `SQLITE_PATH` | server | `./data/tether.db` | SQLite database file location (or `:memory:` for tests) |
@@ -22,7 +22,7 @@ refuses to start on invalid config).
 | `NEXT_PUBLIC_WS_URL` | web | `ws://localhost:4000` | backend WebSocket URL |
 | `NEXT_PUBLIC_DEMO_MODE`| web | `false` | enables Network Lab panel and StormPanel |
 
-## Local run (Target flow — Zero external services needed)
+## Local run (Target flow: zero external services needed)
 
 ```bash
 pnpm install

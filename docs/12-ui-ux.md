@@ -1,4 +1,4 @@
-# 12 — UI / UX Direction
+# 12: UI / UX Direction
 
 Status: **locked & approved** (2026-09-29 via ADR-016). Complete modular specifications are detailed in [`docs/ui-ux/`](ui-ux/).
 
@@ -39,11 +39,11 @@ The interface borrows VS Code's intuitive layout (central editor, collapsible pa
 
 For full implementation blueprints, wireframes, and schemas, refer to the dedicated specification documents in [`docs/ui-ux/`](ui-ux/):
 
-1. **[01 — Design Tokens and Dual-Theme System](ui-ux/01-design-tokens-and-themes.md)**: Semantic OKLCH scales, light/dark variables, presence palette, typography hierarchy, and zero-emoji standard.
-2. **[02 — Component Library Specifications](ui-ux/02-component-library-specs.md)**: Deep integration specs for Radix, Hugeicons, theSVG, morphicons, torph (`<TextMorph />`), bklit-ui, thinking-orbs, and React Bits.
-3. **[03 — Views and Screen Layouts](ui-ux/03-views-and-screen-layouts.md)**: Desktop resizable 3-pane workspace, small screen viewport barrier (`<ScreenTooSmallGate />`), landing hero, join gate, overlays, and edge states.
-4. **[04 — Settings and Theme Quick-Picker](ui-ux/04-settings-and-theme-picker.md)**: VS Code-style `⌘K` Theme QuickPick with live keyboard preview, modal tabs, and preference schema.
-5. **[05 — Sandboxed Live Preview and DevTools Console](ui-ux/05-sandbox-preview-and-console.md)**: Client-side sandboxed iframe (`sandbox="allow-scripts"` with opaque origin), Web Worker JS/TS runner with 5-second infinite-loop watchdog, and DevTools console UI.
+1. **[01: Design Tokens and Dual-Theme System](ui-ux/01-design-tokens-and-themes.md)**: Semantic OKLCH scales, light/dark variables, presence palette, typography hierarchy, and zero-emoji standard.
+2. **[02: Component Library Specifications](ui-ux/02-component-library-specs.md)**: Deep integration specs for Radix, Hugeicons, theSVG, morphicons, torph (`<TextMorph />`), bklit-ui, thinking-orbs, and React Bits.
+3. **[03: Views and Screen Layouts](ui-ux/03-views-and-screen-layouts.md)**: Desktop resizable 3-pane workspace, small screen viewport barrier (`<ScreenTooSmallGate />`), landing hero, join gate, overlays, and edge states.
+4. **[04: Settings and Theme Quick-Picker](ui-ux/04-settings-and-theme-picker.md)**: VS Code-style `⌘K` Theme QuickPick with live keyboard preview, modal tabs, and preference schema.
+5. **[05: Sandboxed Live Preview and DevTools Console](ui-ux/05-sandbox-preview-and-console.md)**: Client-side sandboxed iframe (`sandbox="allow-scripts"` with opaque origin), Web Worker JS/TS runner with 5-second infinite-loop watchdog, and DevTools console UI.
 
 ---
 

@@ -57,8 +57,8 @@ export function describeEvent(e: AuditEvent): EventView {
       };
     case 'edit.summary': {
       const lines = Array.isArray(p.lines) ? p.lines.map(num) : [];
-      const range = lines.length === 2 ? (lines[0] === lines[1] ? `L${lines[0]}` : `L${lines[0]}–${lines[1]}`) : '';
-      return { icon: Edit02Icon, text: `${who} edited ${range} (+${num(p.inserted)} −${num(p.deleted)})`.replace('  ', ' '), tone: 'neutral' };
+      const range = lines.length === 2 ? (lines[0] === lines[1] ? `L${lines[0]}` : `L${lines[0]}-${lines[1]}`) : '';
+      return { icon: Edit02Icon, text: `${who} edited ${range} (+${num(p.inserted)} -${num(p.deleted)})`.replace('  ', ' '), tone: 'neutral' };
     }
     case 'throttle.applied':
       return { icon: AlertCircleIcon, text: `${who} was batched to 5 updates/s (nothing lost)`, tone: 'warning' };

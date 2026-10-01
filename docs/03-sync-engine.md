@@ -1,4 +1,4 @@
-# 03 — Sync Engine (the core)
+# 03: Sync Engine (the core)
 
 This is the part that must be bulletproof. Every other doc bends to fit this one.
 

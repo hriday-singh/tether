@@ -61,7 +61,7 @@ export function StatusBar() {
       <Sep />
       <span className="inline-flex items-center gap-1">
         <Icon icon={CrownIcon} size={11} className="text-warning" />
-        Host: {host?.name ?? '—'}
+        Host: {host?.name ?? '-'}
       </span>
     </footer>
   );

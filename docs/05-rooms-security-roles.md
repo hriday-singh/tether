@@ -1,8 +1,8 @@
-# 05 — Rooms, Security & Roles
+# 05: Rooms, Security & Roles
 
 ## Rooms
 
-- **Room ID:** user-chosen slug `^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$` (3–32 chars), or generated
+- **Room ID:** user-chosen slug `^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$` (3-32 chars), or generated
   (`adjective-noun-4digits`) if left blank. Unique. Case-insensitive (stored lowercase).
 - **Persistent:** a room and its document survive after everyone leaves. Only an explicit delete
   (week-3 stretch: expiry job) removes it.
@@ -16,11 +16,11 @@ All bodies are Zod-validated and all errors use one shape: `{ error: { code, mes
 | Method | Path | Body | Returns | Rate limit |
 |--------|------|------|---------|------------|
 | POST | `/api/rooms` | `{ roomId?, passcode?, name, language? }` + header `Idempotency-Key` | `201 { room, token, memberId }`. Creator becomes host | 10/min/IP |
-| GET | `/api/rooms/:id` | — | `{ id, hasPasscode, locked, memberCount }` (for the join gate) | 60/min/IP |
+| GET | `/api/rooms/:id` | - | `{ id, hasPasscode, locked, memberCount }` (for the join gate) | 60/min/IP |
 | POST | `/api/rooms/:id/join` | `{ name, passcode?, memberId? }` | `200 { room, token, memberId }` | **5/min per IP+room** (brute force) |
-| GET | `/api/rooms/:id/events?before=<seq>` or `?after=<seq>`, `&limit=50` | — (token in `Authorization: Bearer`) | `{ items, nextBefore \| nextAfter }`, max limit 100. `after` returns ascending (gap-fill) | 60/min/token |
-| GET | `/api/rooms/:id/admission` | — (Bearer token) | `{ status: ok \| reauth \| banned \| locked \| full \| draining }`, 404 if the room is gone. Runs admission checks 3–8 without opening anything | 30/min/IP |
-| GET | `/health/live`, `/health/ready`, `/metrics` | — | liveness / readiness (DB + buffer) / Prometheus | internal |
+| GET | `/api/rooms/:id/events?before=<seq>` or `?after=<seq>`, `&limit=50` | - (token in `Authorization: Bearer`) | `{ items, nextBefore \| nextAfter }`, max limit 100. `after` returns ascending (gap-fill) | 60/min/token |
+| GET | `/api/rooms/:id/admission` | - (Bearer token) | `{ status: ok \| reauth \| banned \| locked \| full \| draining }`, 404 if the room is gone. Runs admission checks 3-8 without opening anything | 30/min/IP |
+| GET | `/health/live`, `/health/ready`, `/metrics` | - | liveness / readiness (DB + buffer) / Prometheus | internal |
 
 `memberId` on join: the client re-sends its previous `memberId` (from localStorage) so a returning
 browser keeps the same identity and color. Reclaiming an existing identity requires a valid room session token in `Authorization: Bearer <token>` where `claims.sub === memberId`, preventing unauthorized identity hijacking. Otherwise, the server generates a fresh UUID. If a new member attempts to join a room at maximum capacity (`MAX_MEMBERS_PER_ROOM`), the server returns `403` with code `full`. Banned member IDs get 403 (`banned`).
@@ -38,7 +38,7 @@ OpenAPI spec generated from the Zod schemas (`/docs/openapi.json`) per stack rul
 
 ## Credentials & tokens
 
-- **Passcode:** 4–64 chars. Stored as `scrypt(N=2^15, r=8, p=1, 16-byte salt, 32-byte key)`, compared with
+- **Passcode:** 4-64 chars. Stored as `scrypt(N=2^15, r=8, p=1, 16-byte salt, 32-byte key)`, compared with
   `timingSafeEqual`. Never logged (pino redaction on `passcode`, `token`, `authorization`,
   `sec-websocket-protocol`).
 - **Room session token:** JWT HS256 via `jose`, secret from `JWT_SECRET` (≥ 32 bytes, validated at boot).
@@ -132,7 +132,7 @@ it clears its local copy (see [03](03-sync-engine.md#7-edge-cases)).
 | Presence spoofing | Identity binding above |
 | Socket flooding | Outbound throttle + inbound flood guard + frame cap |
 | Memory exhaustion | Frame/doc/awareness caps, slow-consumer close, bounded persistence buffer, connection caps |
-| XSS via names / feed | Names 1–32 chars, control chars stripped, rendered as text only (React escaping), strict CSP |
+| XSS via names / feed | Names 1-32 chars, control chars stripped, rendered as text only (React escaping), strict CSP |
 | XSS via Markdown preview | DOMPurify HTML sanitization in the parent origin; preview iframes use opaque origin (`null`) without `allow-same-origin` |
 | Malformed binary | Decoder in try/catch, `4009`, never crashes the process |
 | Non-host admin actions | Server-side host check per command |

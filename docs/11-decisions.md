@@ -1,10 +1,10 @@
-# 11 — Decisions Log (ADRs)
+# 11: Decisions Log (ADRs)
 
 Format: context, decision, consequences. Newest at the bottom. Superseded ADRs stay, marked as such.
 
 ## ADR-001: Core pitch is zero-loss sync + measured latency
 - **Context:** spec lists many features; reviewers see dozens of similar collaborative editors.
-- **Decision:** the showcase is correctness under failure (convergence, no loss) plus measured latency,
+- **Decision:** the core demonstration is correctness under failure (convergence, no loss) plus measured latency,
   proven by an automated chaos suite. Features are table stakes.
 - **Consequences:** engine + harness are built before the UI. Features that risk invariants get cut.
 
@@ -60,10 +60,10 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
   cursors and per-user undo.
 - **Consequences:** fewer IDE features (no IntelliSense), which matches the non-goals.
 
-## ADR-010: Database engine & persistence (SQLite for POC, PostgreSQL for Production Scale) — amended by ADR-020
+## ADR-010: Database engine & persistence (SQLite for POC, PostgreSQL for Production Scale) (amended by ADR-020)
 - **Context:** The system needs durable persistence for room snapshots, merged update logs (flushed every 250 ms), member records, and gapless audit events. Keystroke sync itself is entirely in-memory (Yjs + WebSockets).
 - **Decision:** Use **SQLite** (via Node 22 built-in `node:sqlite` with Write-Ahead Logging `WAL` mode) for local development, automated testing, and single-node Docker Compose deployments. Maintain a 1:1 mapped **PostgreSQL** schema ([06](06-data-model.md)) and repository pattern abstraction (`apps/server/src/repo/`) for enterprise multi-node production scale (AWS RDS PostgreSQL).
-- **Consequences:** Zero external database dependencies for local development and CI; instant in-memory test runs; Docker Compose runs seamlessly on a single EC2 instance with a mounted volume; clean migration path to AWS RDS PostgreSQL when horizontal scaling is required. Acked edits remain 100% durable.
+- **Consequences:** Zero external database dependencies for local development and CI; instant in-memory test runs; Docker Compose runs directly on a single EC2 instance with a mounted volume; clean migration path to AWS RDS PostgreSQL when horizontal scaling is required. Acked edits remain 100% durable.
 
 ## ADR-011: IndexedDB local copy in v1
 - **Context:** "never lose a keystroke" must include refreshing the tab while offline.
@@ -99,7 +99,7 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
   Chat, per-author colors and multi-file stay out. (Code preview and client-side execution boundaries amended in ADR-016. Text chat amended in ADR-017).
 
 ## ADR-016: Client-Side Sandboxed Preview, DevTools Console, Multi-Theme Engine, and Dual Morphing
-- **Context:** Users require an impressive, responsive developer experience with live HTML/JS preview and execution feedback without introducing server-side remote code execution risks or ballooning infrastructure costs. In addition, theme accessibility requires equal dark and light mode support with seamless state transitions.
+- **Context:** Users require an impressive, responsive developer experience with live HTML/JS preview and execution feedback without introducing server-side remote code execution risks or ballooning infrastructure costs. In addition, theme accessibility requires equal dark and light mode support with smooth state transitions.
 - **Decision:**
   1. **Client-Side Isolated Preview:** Sandboxed `<iframe sandbox="allow-scripts" srcdoc>` with an opaque origin (`null`). Zero server execution, no container orchestration, and zero access to parent cookies or `localStorage`.
   2. **Client-Side JS/TS Runner:** Dedicated Web Worker with a strict 5-second watchdog timer to safely terminate infinite loops without freezing the UI.
@@ -130,9 +130,9 @@ Format: context, decision, consequences. Newest at the bottom. Superseded ADRs s
   feed stays an audit feed, and chat messages do not create audit events.
 
 ## ADR-018: Chat Code References via Yjs Relative Positions
-- **Context:** When discussing code in chat, members need to quote specific line ranges ("check lines 12–15"). If quoted line numbers are static integers, subsequent edits by other members immediately invalidate the reference.
+- **Context:** When discussing code in chat, members need to quote specific line ranges ("check lines 12-15"). If quoted line numbers are static integers, subsequent edits by other members immediately invalidate the reference.
 - **Decision:** Use Yjs Relative Positions (`Y.createRelativePositionFromTypeIndex`, `Y.encodeRelativePosition`). When quoting code in chat, the client captures base64 `from` and `to` relative positions alongside snapshot metadata (`line`, `endLine`, `snippet`). In the chat feed, clicking a quoted code reference resolves the current absolute positions in the active editor (`Y.createAbsolutePositionFromRelativePosition`), highlighting the target text and scrolling it into view even after surrounding insertions or deletions. If the target text is deleted entirely, the UI gracefully falls back to the original line numbers and stored snippet.
-- **Consequences:** Quoted code references remain robust across concurrent edits with zero server overhead (stored as an optional JSON column `code_ref` in `chat_messages`, Migration 0003).
+- **Consequences:** Quoted code references remain stable across concurrent edits with zero server overhead (stored as an optional JSON column `code_ref` in `chat_messages`, Migration 0003).
 
 ## ADR-019: Inactive Room Expiry & Cascading Garbage Collection
 - **Context:** Public sandbox environments accumulate abandoned ephemeral rooms over time, consuming database storage and memory if left unchecked.

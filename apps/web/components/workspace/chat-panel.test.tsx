@@ -21,7 +21,7 @@ describe('ChatComposer', () => {
   it('shows quoted code, focuses the box, and lets you drop the quote', () => {
     const ref = { from: 'AQ==', to: 'Ag==', line: 3, endLine: 5, snippet: '  const x = 1;\nreturn x;' };
     const { box, onClearAttachment } = setup(true, ref);
-    expect(screen.getByText('L3–5')).toBeInTheDocument();
+    expect(screen.getByText('L3-5')).toBeInTheDocument();
     expect(screen.getByText('const x = 1;')).toBeInTheDocument();
     expect(box).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: 'Remove quoted code' }));

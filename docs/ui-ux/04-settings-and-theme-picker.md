@@ -1,4 +1,4 @@
-# 04 — Settings and Theme Quick-Picker
+# 04: Settings and Theme Quick-Picker
 
 This document specifies the theme switching engine, the VS Code-style `⌘K` Theme QuickPick, and the comprehensive user settings modal.
 
@@ -133,7 +133,7 @@ The Settings dialog provides a centered, tabbed modal to configure editor prefer
 
 ### Tab 4: Network & Telemetry Lab
 * **Live Latency Sampling**: Toggle to plot RTT live in the bottom diagnostics drawer (default `true`).
-* **Simulated Network Latency (Demo Tool)**: Slider to artificially inject 50ms – 500ms delay into WebSocket transmission to demonstrate convergence and honest connection UI.
+* **Simulated Network Latency (Demo Tool)**: Slider to artificially inject 50ms-500ms delay into WebSocket transmission to demonstrate convergence and honest connection UI.
 
 ---
 

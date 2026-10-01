@@ -1,4 +1,4 @@
-# 01 — Design Tokens and Dual-Theme System
+# 01: Design Tokens and Dual-Theme System
 
 This document specifies the global token hierarchy, semantic color scales, typography rules, zero-emoji policy, and dual-theme engine (Dark default + equivalent Light mode) for the collaborative workspace.
 

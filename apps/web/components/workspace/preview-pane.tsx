@@ -63,7 +63,7 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
     return () => window.removeEventListener('blur', onBlur);
   }, [zoomOpen]);
 
-  // Rebuild on text change (debounced). Depends on [client, mode] only — NOT on `run`.
+  // Rebuild on text change (debounced). Depends on [client, mode] only, not on `run`.
   // Preview-store mutations (Run Page, refresh, language-switch resets) are handled
   // via a stable store subscription so the text observer is never torn down mid-transition.
   useEffect(() => {
@@ -88,7 +88,7 @@ export function PreviewPane({ header = true }: { header?: boolean }) {
       timer = setTimeout(() => {
         if (mode === 'html' || mode === 'css') {
           if (ws.preview.get().scripts) {
-            // User typed while scripts were on — turn scripts off and rebuild
+            // User typed while scripts were on, turn scripts off and rebuild
             ws.preview.set({ runId: randomId(4), scripts: false });
           } else {
             buildDoc();

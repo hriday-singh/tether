@@ -1,4 +1,4 @@
-# 06 — Data Model (SQLite)
+# 06: Data Model (SQLite)
 
 ## Strategy: SQLite only ([ADR-020](11-decisions.md#adr-020-sqlite-only-postgres-removed))
 
@@ -127,7 +127,7 @@ CREATE UNIQUE INDEX audit_events_room_id_seq_idx ON audit_events (room_id, seq);
 
 Migration `migrations/0002_chat.{sqlite,postgres}.sql` & `migrations/0003_chat_refs_room_expiry.{sqlite,postgres}.sql` (generated, apply manually; the `.postgres.sql` files are reference only). Table `chat_messages`:
 `id`, `room_id` (FK, cascade), `seq` (per-room gapless, own counter), `client_msg_id` (the `chat.send`
-`rid`), `member_id`, `display_name` + `color_index` (denormalized snapshot), `body` (1–2000 chars),
+`rid`), `member_id`, `display_name` + `color_index` (denormalized snapshot), `body` (1-2000 chars),
 `code_ref` (JSON string or null for quoted code reference: `{from, to, line, endLine, snippet}`),
 `created_at`. Indexes: unique `(room_id, seq)` for paging, unique `(room_id, client_msg_id)` for
 idempotent resends.

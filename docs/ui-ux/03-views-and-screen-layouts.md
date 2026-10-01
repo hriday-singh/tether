@@ -1,4 +1,4 @@
-# 03 — Views and Screen Layouts
+# 03: Views and Screen Layouts
 
 This document specifies the wireframes, view hierarchy, responsive layout systems, and panel coordination for all application views.
 
@@ -8,7 +8,7 @@ This document specifies the wireframes, view hierarchy, responsive layout system
 
 The application comprises five primary screen states and four interactive overlay modals:
 
-1. **Landing Page (`/`)**: Product showcase, live animated mini-editor, quick room creator, and join-by-ID form with Lenis smooth scrolling.
+1. **Landing Page (`/`)**: Product preview, live animated mini-editor, quick room creator, and join-by-ID form with Lenis smooth scrolling.
 2. **Join Gate (`/r/[id]`)**: Passcode & display name entry with live avatar presence stack and `thinking-orbs` connecting state.
 3. **Desktop Workspace (`/r/[id]`)**: The "Quiet IDE" three-pane resizable workspace with collaborative CodeMirror editor, live sandboxed preview, sidebar, and diagnostics console (for viewports ≥ 1024px).
 4. **Small Screen Viewport Barrier (`<ScreenTooSmallGate />`)**: Protective gate screen when accessed on viewports < 1024px, informing users that the collaborative engineering environment works on bigger screens only with dynamic resize auto-unblocking.
@@ -40,7 +40,7 @@ The desktop workspace uses an **Inset Floating Card Layout** with `react-resizab
 ╰────────────────────────────────────────╯ ╰──────────────────────────────────╯ ╰──────────────────────────────────╯
   ▼ 8px gap
 ╭─ Floating Diagnostics Drawer Card (rounded-2xl, collapsible) ────────────────────────────────────────╮
-│ ( Console )   ( Sync & Latency Chart )   ( Chaos Lab )                                         [—] [✕] │
+│ ( Console )   ( Sync & Latency Chart )   ( Chaos Lab )                                         [-] [✕] │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ > console.log("Tether room sync initialized");                                                       │
 │   ( RTT p95: 28ms ) · ( Pending: 0 ops ) · ( Checksum: 0x8f2a1b9c ) · ( Verified 2s ago )           │
@@ -59,7 +59,7 @@ The desktop workspace uses an **Inset Floating Card Layout** with `react-resizab
 * **Pills & Status Indicators**:
   * All status badges ("Verified in sync", "24 ms", room ID pill, off-screen cursor chips) use `rounded-full` capsules with subtle border glows.
 * **Interactive Buttons & Inputs**:
-  * Form inputs, action buttons, and dropdown selectors use `rounded-xl` (10px–12px) for comfortable click targets and visual warmth.
+  * Form inputs, action buttons, and dropdown selectors use `rounded-xl` (10px-12px) for comfortable click targets and visual warmth.
   * Brand icon + Room ID pill with copy trigger (`morphicons` + `<TextMorph>`).
   * Language selector dropdown with `theSVG` vector logo.
   * Share Invite button (opens dialog or copies URL).
@@ -92,7 +92,7 @@ The desktop workspace uses an **Inset Floating Card Layout** with `react-resizab
 ### Responsive Viewport Strategy (Desktop & Laptops)
 To prevent code view cramping on laptops and smaller desktop displays:
 * **Large Desktop Viewports (≥ 1280px / `xl`)**: Full 3-pane split (CodeMirror Editor + Live Sandboxed Preview + Sidebar) mounted simultaneously using `react-resizable-panels`.
-* **Medium Desktop & Laptops (1024px – 1279px / `lg`)**: 2-pane priority layout (CodeMirror Editor taking ≥ 65% width + Sidebar). The Live Preview pane transforms into a collapsible side-drawer or segmented toggle inside the editor pane, guaranteeing CodeMirror maintains a minimum width of at least `600px` without horizontal line crowding.
+* **Medium Desktop & Laptops (1024px - 1279px / `lg`)**: 2-pane priority layout (CodeMirror Editor taking ≥ 65% width + Sidebar). The Live Preview pane transforms into a collapsible side-drawer or segmented toggle inside the editor pane, guaranteeing CodeMirror maintains a minimum width of at least `600px` without horizontal line crowding.
 * **Small Screens & Mobile Viewports (< 1024px)**: The collaborative IDE experience requires a larger display to prevent UI collisions and cursor disorientation. The app mounts `<ScreenTooSmallGate />` informing the user that Tether's workspace works on bigger screens only (auto-unblocks upon resizing window).
 
 ---

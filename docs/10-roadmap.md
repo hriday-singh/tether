@@ -1,4 +1,4 @@
-# 10 — Roadmap & TODO
+# 10: Roadmap & TODO
 
 Order is deliberate: **engine and proof first, UI last.** If time runs out, we have a correct system
 with a plain UI, not a pretty one that loses text.
@@ -53,9 +53,9 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] `throttled` notice + audit (rate-limited)
 - [x] Throttle + flood integration tests
 
-### M5: Chaos harness (gate for UI) — [COMPLETE]
+### M5: Chaos harness (gate for UI) - [COMPLETE]
 - [x] `FaultyTransport` (ordered delay, abrupt kill, inbound pause) in `packages/sync-client/src/testing/`
-- [x] Seeded action generator + invariant checks I1–I4 + ack + DB reload
+- [x] Seeded action generator + invariant checks I1-I4 + ack + DB reload
 - [x] `chaos:ci` in CI, `chaos:nightly` scheduled
 - [x] Regression test template for failing seeds
 - [x] Latency bench script + first numbers recorded
@@ -82,7 +82,7 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] Edit-summary coalescer (5 s idle / 30 s max) + tests
 - [x] Live `event` push + REST pagination: per-room gapless `seq`, push after commit, client dedupe + gap-fill, tests (REST pagination complete)
 
-### M9: Web UI — [COMPLETE]
+### M9: Web UI - [COMPLETE]
 - [x] Token file (`globals.css`), Tailwind v4 theme, UI primitives
 - [x] Home (create/join), join gate
 - [x] Workspace layout: desktop resizable split + small screen barrier (`<ScreenTooSmallGate />`)
@@ -95,13 +95,13 @@ Each milestone ends with: lint + typecheck + tests green, docs updated, no commi
 - [x] RTL tests for non-trivial components
 - [x] Verify small screen lockout (< 1024px) & desktop workspace (≥ 1024px); performance profile (no long task > 50 ms)
 
-### M10: Ship — [COMPLETE]
+### M10: Ship - [COMPLETE]
 - [x] Bench numbers + perf metrics recorded in README and testing doc
 - [x] README: pitch, architecture diagram, env, install, run, test, chaos, guarantees + honest limits
 - [x] `docker compose up` full-stack path verified from clean clone
 - [x] Docs re-synced with code
 
-### M11: Text chat & Code References ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015) & [ADR-018](11-decisions.md#adr-018-chat-code-references-via-yjs-relative-positions)) — [COMPLETE]
+### M11: Text chat & Code References ([ADR-017](11-decisions.md#adr-017-text-chat-in-voice-chat-out-amends-adr-015) & [ADR-018](11-decisions.md#adr-018-chat-code-references-via-yjs-relative-positions)) - [COMPLETE]
 - [x] Protocol: `chat.send` / `chat.msg`, `welcome.chatSeq`, chat limits in constants
 - [x] Server: `chat_messages` table (migration 0002 & 0003), ChatRepo/ChatService, per-connection chat bucket, REST `GET /api/rooms/:id/chat`
 - [x] Web: generic seq store, `Textarea` primitive, Chat sidebar tab (unread badge, pending/failed states)

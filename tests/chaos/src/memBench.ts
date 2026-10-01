@@ -1,11 +1,11 @@
 /**
  * Server memory/CPU benchmark. Run: pnpm --filter @tether/chaos mem-bench
  *
- * M1 typing  – 5 clients type into a preloaded doc; times the server's inbound hot path
+ * M1 typing  : 5 clients type into a preloaded doc; times the server's inbound hot path
  *              (Room.handleInboundUpdate) directly so in-process client work doesn't blur it.
- * M2 reload  – rows left in room_updates after M1 and the cost of a crash-style reload
+ * M2 reload  : rows left in room_updates after M1 and the cost of a crash-style reload
  *              (fresh registry, no unload flush) that replays them.
- * M3 churn   – create/load/unload many rooms, then check retained heap after forced GC.
+ * M3 churn   : create/load/unload many rooms, then check retained heap after forced GC.
  */
 import { performance, PerformanceObserver } from 'node:perf_hooks';
 import { WebSocketServer, WebSocket } from 'ws';

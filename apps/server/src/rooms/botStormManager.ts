@@ -114,7 +114,7 @@ export const SNIPPETS_BY_LANG: Record<string, CodeSnippet[]> = {
     },
     {
       code: `\n// Helper: deep equality check for plain objects\nfunction deepEqual(a, b) {\n  if (a === b) return true;\n  if (!a || !b || typeof a !== 'object') return false;\n  const keys = Object.keys(a);\n  if (keys.length !== Object.keys(b).length) return false;\n  return keys.every((k) => deepEqual(a[k], b[k]));\n}\n`,
-      comment: '// Recursive equality — plain objects only\n',
+      comment: '// Recursive equality: plain objects only\n',
       chatStatus: 'Implemented deep equality comparison.',
     },
     {

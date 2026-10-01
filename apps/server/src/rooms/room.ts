@@ -232,7 +232,7 @@ export class Room {
     this.connContexts.set(ws, ctx);
     const { isNew, isReconnecting } = this.hostElector.addMember(member.id, undefined, !isBot);
 
-    // Member came back within the grace window — tell everyone they're active again.
+    // Member came back within the grace window, tell everyone they're active again.
     if (isReconnecting) {
       this.broadcastControl({ t: 'member.status', memberId: member.id, status: 'active' });
     }
@@ -284,7 +284,7 @@ export class Room {
 
     this.hostElector.disconnectConnection(ctx.memberId, isCleanLeave);
 
-    // Abrupt disconnect enters the grace window — tell remaining clients so the
+    // Abrupt disconnect enters the grace window; tell remaining clients so the
     // roster shows "reconnecting…" instead of appearing fully active.
     if (!isCleanLeave) {
       this.broadcastControl({ t: 'member.status', memberId: ctx.memberId, status: 'reconnecting' });
@@ -296,7 +296,7 @@ export class Room {
    * allocation per keystroke at 100 KB). Merging an update grows the encoded doc by at most
    * ~2x its bytes in measurements (struct splits); 16x is the margin. Exact encode only when
    * the estimate crosses the cap.
-   * ponytail: margin is empirical — if it's ever exceeded, the doc overshoots the cap slightly
+   * ponytail: margin is empirical; if it's ever exceeded, the doc overshoots the cap slightly
    * until the next crossing triggers an exact measure.
    */
   private exceedsMaxDocSize(updateBytes: number): boolean {

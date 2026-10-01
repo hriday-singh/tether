@@ -1,4 +1,4 @@
-# 07 — Frontend
+# 07: Frontend
 
 ## Routes
 
@@ -27,7 +27,7 @@ Desktop (≥ 1024px)
 │                                         │ Laasya is now host │
 └─────────────────────────────────────────┴────────────────────┘
 
-Small Screens (< 1024px) — Screen Barrier Overlay (<ScreenTooSmallGate />)
+Small Screens (< 1024px): Screen Barrier Overlay (<ScreenTooSmallGate />)
 ┌────────────────────────────────────────────────────────┐
 │                   [ Monitor01Icon ]                    │
 │             Please try on a bigger screen              │
@@ -91,7 +91,7 @@ hardcodes a color, size, radius, or duration.
 - **Presence palette:** `presence-1` … `presence-8`, each with `-fg` (cursor/label, AA on the editor
   background) and `-bg` (selection/highlight tint). Assigned by `colorIndex` from the server.
 - **Status colors:** `status-saved`, `status-saving`, `status-offline` map onto semantic tokens.
-- **Scales:** type (xs–2xl), spacing (4 px base), radius (`sm`, `md`, `lg`, `full`, rounded by default),
+- **Scales:** type (xs-2xl), spacing (4 px base), radius (`sm`, `md`, `lg`, `full`, rounded by default),
   shadow (`sm`, `md`), motion (`duration-fast` 120 ms, `duration-base` 200 ms, `ease-standard`).
 - **Multi-theme engine:** Quiet Dark (default), Quiet Light, and High-Contrast modes, switchable via VS Code-style `⌘K` QuickPick with live keyboard arrow preview (see [ADR-016](11-decisions.md#adr-016-client-side-sandboxed-preview-devtools-console-multi-theme-engine-and-dual-morphing)).
 - **Motion:** CSS transitions on `opacity`/`transform` only. `prefers-reduced-motion` disables them.
@@ -107,4 +107,4 @@ hardcodes a color, size, radius, or duration.
 
 ## Open questions
 
-- ~~Visual design direction~~ Resolved: see [12 — UI / UX direction](12-ui-ux.md) and [ADR-016](11-decisions.md).
+- ~~Visual design direction~~ Resolved: see [12: UI / UX direction](12-ui-ux.md) and [ADR-016](11-decisions.md).

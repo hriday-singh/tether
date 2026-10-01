@@ -9,7 +9,7 @@ export const RoomIdSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .regex(ROOM_ID_RE, '3–32 chars: lowercase letters, digits, dashes (not at the ends)');
+  .regex(ROOM_ID_RE, '3-32 chars: lowercase letters, digits, dashes (not at the ends)');
 export const PasscodeSchema = z.string().min(4, 'At least 4 characters').max(64, 'Max 64 characters');
 
 export const CreateRoomInputSchema = z.object({

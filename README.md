@@ -81,9 +81,9 @@ Expand the bottom drawer to inspect real-time RTT latency, verify SHA-256 state 
 | ---------------------- | --------------------- | ---------------------------------------------------------------------------------- | -------- |
 | `apps/server`          | `@tether/server`      | REST API, WebSocket server, Yjs sync, room persistence (Fastify 5, ws, Yjs)        | 4000     |
 | `apps/web`             | `@tether/web`         | Editor, console, room management (Next.js 16, React 19, CodeMirror 6, Tailwind v4) | 3001*    |
-| `packages/shared`      | `@tether/shared`      | Protocol codecs, Zod schemas, rate limiter, backoff, checksums                     | —        |
-| `packages/sync-client` | `@tether/sync-client` | Client-side WebSocket sync driver                                                  | —        |
-| `tests/chaos`          | `@tether/chaos`       | Network chaos, convergence, and invariant tests (Vitest, fast-check)               | —        |
+| `packages/shared`      | `@tether/shared`      | Protocol codecs, Zod schemas, rate limiter, backoff, checksums                     | -        |
+| `packages/sync-client` | `@tether/sync-client` | Client-side WebSocket sync driver                                                  | -        |
+| `tests/chaos`          | `@tether/chaos`       | Network chaos, convergence, and invariant tests (Vitest, fast-check)               | -        |
 
 \* _Note: Local development runs Next.js on port `3001` to prevent collisions with standard local services on port `3000`. Docker Compose maps the web container to port `3000`._
 

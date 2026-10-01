@@ -1,4 +1,4 @@
-# 08 — Testing & Verification
+# 08: Testing & Verification
 
 The chaos harness is the **proof** of the pitch. UI work (milestone M9) does not start until it
 runs green in CI.
@@ -28,7 +28,7 @@ repeat STEPS times, choose weighted-random action:
   burst: 50 inserts in 100 ms          (forces throttle path)
   disconnect client k (abrupt: terminate, no close frame)
   reconnect client k
-  set latency on client k (0–500 ms, jittered)
+  set latency on client k (0-500 ms, jittered)
   pause client k inbound (simulates slow consumer → 4008 path)
   restart server (graceful)            (nightly only)
 heal: remove latency, reconnect everyone, wait for quiescence (no frames for 1 s)

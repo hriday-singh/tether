@@ -1,4 +1,4 @@
-# 05 — Sandboxed Live Preview and DevTools Console
+# 05: Sandboxed Live Preview and DevTools Console
 
 This document specifies the client-side sandboxed execution architecture, secure iframe live preview, infinite-loop watchdog protection, and DevTools console panel.
 

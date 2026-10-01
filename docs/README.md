@@ -1,4 +1,4 @@
-# Tether — Real-Time Collaborative Code Workspace (WEB-02)
+# Tether: Real-Time Collaborative Code Workspace (WEB-02)
 
 Status: **Active / Implemented v1.0**. All core milestones verified with 275+ tests passing across 60 test suites.
 Last updated: 2026-09-30
@@ -11,7 +11,7 @@ test suite and show measured latency live in the UI.
 
 ## The one thing that must be solid
 
-Everything else in the spec (rooms, roster, audit feed, host handover) is table stakes. The showcase is:
+Everything else in the spec (rooms, roster, audit feed, host handover) is table stakes. The core demonstration is:
 
 1. **Convergence.** All clients and the server end with byte-identical documents. No exceptions.
 2. **Zero loss.** An edit made on any client (online or offline) survives reconnects, throttling,
@@ -36,15 +36,15 @@ If a feature threatens any of these four, the feature loses.
 | 08 | [Testing & verification](08-testing-and-verification.md) | Chaos harness, property tests, latency bench |
 | 09 | [Operations](09-operations.md) | Env config, local run, observability, shutdown, scale path |
 | 10 | [Roadmap & TODO](10-roadmap.md) | 2-week plan + week-3 stretch checklist |
-| 11 | [Decisions log](11-decisions.md) | ADRs (001–017) + research sources |
+| 11 | [Decisions log](11-decisions.md) | ADRs (001-017) + research sources |
 | 12 | [UI / UX direction](12-ui-ux.md) | "Quiet IDE" aesthetic, verified libraries, and ADR-016 overview |
-| — | [OpenAPI specification](openapi.json) | REST API schema (OpenAPI 3.1.0) |
-| — | [**UI/UX Specs Suite**](ui-ux/) | **Dedicated modular frontend & UI/UX architecture:** |
-| · | [01 — Design tokens & themes](ui-ux/01-design-tokens-and-themes.md) | Semantic OKLCH tokens, dark/light scales, presence colors, zero-emoji rule |
-| · | [02 — Component library specs](ui-ux/02-component-library-specs.md) | Radix, Hugeicons, theSVG, morphicons, torph (`<TextMorph />`), bklit-ui, thinking-orbs |
-| · | [03 — Views & screen layouts](ui-ux/03-views-and-screen-layouts.md) | Desktop resizable 3-pane workspace, small screen barrier (`<ScreenTooSmallGate />`), landing page, join gate, overlays |
-| · | [04 — Settings & theme picker](ui-ux/04-settings-and-theme-picker.md) | VS Code-style `⌘K` Theme QuickPick with arrow preview, settings modal, preferences schema |
-| · | [05 — Sandbox preview & console](ui-ux/05-sandbox-preview-and-console.md) | Client-side sandboxed iframe preview, 5s watchdog Web Worker runner, DevTools console UI |
+| - | [OpenAPI specification](openapi.json) | REST API schema (OpenAPI 3.1.0) |
+| - | [**UI/UX Specs Suite**](ui-ux/) | **Dedicated modular frontend & UI/UX architecture:** |
+| · | [01: Design tokens & themes](ui-ux/01-design-tokens-and-themes.md) | Semantic OKLCH tokens, dark/light scales, presence colors, zero-emoji rule |
+| · | [02: Component library specs](ui-ux/02-component-library-specs.md) | Radix, Hugeicons, theSVG, morphicons, torph (`<TextMorph />`), bklit-ui, thinking-orbs |
+| · | [03: Views & screen layouts](ui-ux/03-views-and-screen-layouts.md) | Desktop resizable 3-pane workspace, small screen barrier (`<ScreenTooSmallGate />`), landing page, join gate, overlays |
+| · | [04: Settings & theme picker](ui-ux/04-settings-and-theme-picker.md) | VS Code-style `⌘K` Theme QuickPick with arrow preview, settings modal, preferences schema |
+| · | [05: Sandbox preview & console](ui-ux/05-sandbox-preview-and-console.md) | Client-side sandboxed iframe preview, 5s watchdog Web Worker runner, DevTools console UI |
 
 ## Locked decisions (2026-09-29 / 2026-09-30)
 

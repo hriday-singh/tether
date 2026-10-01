@@ -7,7 +7,7 @@ import { THEME_BOOT_SCRIPT } from '@/lib/prefs';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Tether — collaborative code pad', template: '%s · Tether' },
+  title: { default: 'Tether: Collaborative Code Pad', template: '%s · Tether' },
   description: 'Real-time collaborative coding with zero lost edits, proven by chaos tests.',
 };
 

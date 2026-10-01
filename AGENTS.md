@@ -1,4 +1,4 @@
-# Tether Monorepo — AI Agent Guide
+# Tether Monorepo: AI Agent Guide
 
 This document is the authoritative guide for AI coding agents (Antigravity, Cursor, OpenAI Codex, GitHub Copilot) operating in this repository. Follow these conventions and commands when analyzing, setting up, building, testing, or launching the system.
 
@@ -12,9 +12,9 @@ This repository is a TypeScript monorepo managed with `pnpm` workspaces (`pnpm-w
 |------|------|-------------|----------|----------|
 | `apps/server` | `@tether/server` | Real-time collaboration backend: Fastify REST API, WebSocket server, Yjs sync engine, session admission, room persistence | Fastify 5, ws, Yjs, lib0, node:sqlite / pg | `4000` |
 | `apps/web` | `@tether/web` | Web client: collaborative code editor, terminal, room management | Next.js 16 (App Router), React 19, CodeMirror, Tailwind CSS v4 | `3001` |
-| `packages/shared` | `@tether/shared` | Shared protocol codecs, Zod schemas, token bucket rate limiter, backoff, checksum utilities | TypeScript, Zod, lib0 | — |
-| `packages/sync-client` | `@tether/sync-client` | Client-side sync engine communicating with server WebSocket | TypeScript, Yjs | — |
-| `tests/chaos` | `@tether/chaos` | Automated network chaos, concurrency, and stress test suites | Vitest | — |
+| `packages/shared` | `@tether/shared` | Shared protocol codecs, Zod schemas, token bucket rate limiter, backoff, checksum utilities | TypeScript, Zod, lib0 | - |
+| `packages/sync-client` | `@tether/sync-client` | Client-side sync engine communicating with server WebSocket | TypeScript, Yjs | - |
+| `tests/chaos` | `@tether/chaos` | Automated network chaos, concurrency, and stress test suites | Vitest | - |
 
 ---
 

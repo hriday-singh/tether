@@ -63,6 +63,6 @@ Template: `.env.example`
 
 1. **Never Commit Directly**: Code modifications only. Do not stage or execute `git commit`.
 2. **Never Run Migrations Automatically**: Output migration SQL/files and explain changes to the human operator.
-3. **Strict TypeScript**: No `any` — use `unknown` with type guards or define explicit interfaces.
+3. **Strict TypeScript**: No `any`, use `unknown` with type guards or define explicit interfaces.
 4. **File Length**: No single file should exceed 700 lines; keep components and services modular.
 5. **Shared Package Compilation**: When modifying `packages/shared` or `packages/sync-client`, always compile via `pnpm build:pkg` (or `pnpm --filter @tether/shared build:pkg && pnpm --filter @tether/sync-client build:pkg`).

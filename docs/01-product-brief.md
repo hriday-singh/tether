@@ -1,4 +1,4 @@
-# 01 — Product Brief
+# 01: Product Brief
 
 ## Problem
 

@@ -14,8 +14,8 @@ const ev = (type: string, payload: Record<string, unknown> = {}, actorName: stri
 
 describe('describeEvent', () => {
   it('formats edit summaries with line ranges', () => {
-    expect(describeEvent(ev('edit.summary', { inserted: 34, deleted: 5, lines: [12, 18] })).text).toBe('Laasya edited L12–18 (+34 −5)');
-    expect(describeEvent(ev('edit.summary', { inserted: 1, deleted: 0, lines: [3, 3] })).text).toBe('Laasya edited L3 (+1 −0)');
+    expect(describeEvent(ev('edit.summary', { inserted: 34, deleted: 5, lines: [12, 18] })).text).toBe('Laasya edited L12-18 (+34 -5)');
+    expect(describeEvent(ev('edit.summary', { inserted: 1, deleted: 0, lines: [3, 3] })).text).toBe('Laasya edited L3 (+1 -0)');
   });
 
   it('distinguishes leave reasons and never trusts payload types blindly', () => {

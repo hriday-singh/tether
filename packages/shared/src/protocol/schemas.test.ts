@@ -232,7 +232,7 @@ describe('DisplayNameSchema', () => {
     expect(DisplayNameSchema.parse('  A\u0000l\u202Eic\u200Be\n ')).toBe('Alice');
   });
 
-  it('enforces 1–32 characters after stripping', () => {
+  it('enforces 1-32 characters after stripping', () => {
     expect(DisplayNameSchema.safeParse('\u202E\u200B ').success).toBe(false);
     expect(DisplayNameSchema.parse('x'.repeat(32))).toHaveLength(32);
     expect(DisplayNameSchema.safeParse('x'.repeat(33)).success).toBe(false);
