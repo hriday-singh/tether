@@ -127,14 +127,14 @@ describe('Toaster', () => {
 describe('ConfirmButton', () => {
   it('asks once, then confirms on Yes; Cancel does nothing', () => {
     const onConfirm = vi.fn();
-    render(<ConfirmButton title="Remove Ravi?" onConfirm={onConfirm}>Remove</ConfirmButton>);
+    render(<ConfirmButton title="Remove Hriday?" onConfirm={onConfirm}>Remove</ConfirmButton>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onConfirm).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    expect(screen.getByRole('dialog', { name: 'Remove Ravi?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Remove Hriday?' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });

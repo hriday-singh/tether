@@ -206,7 +206,7 @@ export function StartPanel() {
             autoComplete="nickname"
             maxLength={50}
             value={name}
-            placeholder="Asha"
+            placeholder="Laasya"
             onChange={(e) => setNameInput(e.target.value)}
             aria-invalid={!!nameError}
             aria-describedby={nameError ? 's-name-error' : undefined}

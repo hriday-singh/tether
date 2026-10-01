@@ -7,10 +7,10 @@ describe('sessions storage and recent tracking', () => {
   });
 
   it('saves and retrieves a room session', () => {
-    sessions.set('room-alpha', { token: 'jwt-123', memberId: 'mem-1', name: 'Asha', epoch: '1' });
+    sessions.set('room-alpha', { token: 'jwt-123', memberId: 'mem-1', name: 'Laasya', epoch: '1' });
     const s = sessions.get('room-alpha');
-    expect(s).toEqual({ token: 'jwt-123', memberId: 'mem-1', name: 'Asha', epoch: '1' });
-    expect(sessions.lastName()).toBe('Asha');
+    expect(s).toEqual({ token: 'jwt-123', memberId: 'mem-1', name: 'Laasya', epoch: '1' });
+    expect(sessions.lastName()).toBe('Laasya');
   });
 
   it('tracks recent sessions and returns last session', () => {

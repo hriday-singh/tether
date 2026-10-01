@@ -55,7 +55,7 @@ export function languageInfo(id: string): LanguageInfo {
 
 export const STARTER_CODE: Record<LanguageId, string> = {
   javascript: `// Tether — every keystroke here is shared with the room.\nfunction greet(name) {\n  return \`Hello, \${name}!\`;\n}\n\nconsole.log(greet('Tether'));\n`,
-  typescript: `// Tether — every keystroke here is shared with the room.\ntype Peer = { name: string; latencyMs: number };\n\nconst peers: Peer[] = [{ name: 'Asha', latencyMs: 24 }];\nconsole.log(peers.map((p) => \`\${p.name}: \${p.latencyMs} ms\`).join('\n'));\n`,
+  typescript: `// Tether — every keystroke here is shared with the room.\ntype Peer = { name: string; latencyMs: number };\n\nconst peers: Peer[] = [{ name: 'Laasya', latencyMs: 24 }];\nconsole.log(peers.map((p) => \`\${p.name}: \${p.latencyMs} ms\`).join('\n'));\n`,
   html: `<!DOCTYPE html>\n<html>\n  <head>\n    <style>\n      body { font-family: system-ui; padding: 2rem; }\n    </style>\n  </head>\n  <body>\n    <h1>Tether</h1>\n    <p>Edit together. Preview updates as you type.</p>\n    <script>\n      console.log('Preview scripts run when you press Run.');\n    </script>\n  </body>\n</html>\n`,
   css: `/* Styles apply to the preview sample markup. */\nbody {\n  font-family: system-ui;\n  padding: 2rem;\n}\n\nh1 {\n  letter-spacing: -0.02em;\n}\n`,
   python: `# Tether — shared Python scratchpad (syntax only, no execution)\ndef greet(name: str) -> str:\n    return f"Hello, {name}!"\n\nprint(greet("Tether"))\n`,

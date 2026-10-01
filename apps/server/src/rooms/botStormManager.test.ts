@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WebSocketServer } from 'ws';
 import { FastifyInstance } from 'fastify';
 import * as Y from 'yjs';
-import { BotStormManager, waitForConvergence } from './botStormManager.js';
+import { BotStormManager, resolveInsertPos, waitForConvergence } from './botStormManager.js';
 import { createDatabase, DatabaseSession } from '../db/database.js';
 import { RoomRepo } from '../repo/roomRepo.js';
 import { UpdateRepo } from '../repo/updateRepo.js';
@@ -215,4 +215,23 @@ describe('BotStormManager', () => {
     stray.getText('codemirror').insert(0, 'different');
     expect((await waitForConvergence(server, [twin, stray])).converged).toBe(false);
   }, 10000);
+
+  it('keeps each bot snippet contiguous when bots type chunks concurrently', () => {
+    const doc = new Y.Doc();
+    const text = doc.getText('codemirror');
+    text.insert(0, 'start\n');
+    const anchors: Record<'a' | 'b', Y.RelativePosition | null> = { a: null, b: null };
+    const type = (bot: 'a' | 'b', chunk: string) => {
+      const pos = resolveInsertPos(text, doc, anchors[bot]);
+      text.insert(pos, chunk);
+      anchors[bot] = Y.createRelativePositionFromTypeIndex(text, pos + chunk.length, -1);
+    };
+    // Interleaved chunks, plus a peer prepending text, used to scramble stale integer offsets.
+    for (let i = 0; i < 3; i++) {
+      type('a', 'AAA');
+      text.insert(0, '#');
+      type('b', 'bbb');
+    }
+    expect(text.toString()).toBe('###start\nAAAAAAAAAbbbbbbbbb');
+  });
 });

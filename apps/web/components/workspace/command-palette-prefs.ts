@@ -1,5 +1,4 @@
 import {
-  Activity01Icon,
   KeyboardIcon,
   PaintBoardIcon,
   Settings01Icon,
@@ -271,17 +270,6 @@ export function buildPreferenceAndDiagnosticCommands(
       onSelect: act(() => {
         ws.client.lab?.killSocket?.();
         toast.info('Socket dropped (reconnecting...)');
-      }),
-    },
-    {
-      id: 'chaos:launch',
-      category: 'Advanced & Diagnostics',
-      icon: Activity01Icon,
-      label: 'Chaos Lab: Open Bot Storm Panel',
-      keywords: ['chaos launch', 'bot storm', 'stress test', 'network lab', 'simulate load'],
-      priority: 45,
-      onSelect: act(() => {
-        ui({ drawerOpen: true, drawerTab: 'chaos' });
       }),
     },
 

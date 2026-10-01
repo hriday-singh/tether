@@ -21,7 +21,7 @@ describe('demoFrame', () => {
     const f = demoFrame(0);
     expect(f.lines[3]).toBe('  ');
     expect(f.lines[6]).toBe('');
-    expect(f).toMatchObject({ synced: false, commented: false, running: false, output: false, selectedLine: null });
+    expect(f).toMatchObject({ synced: false, commented: false, running: false, output: false, selectedLine: null, ping: 11 });
   });
 
   it('types both lines in full, then syncs, comments, runs and prints', () => {
@@ -43,9 +43,10 @@ describe('MiniEditor', () => {
   it('shows the finished story when motion is reduced', () => {
     render(<MiniEditor />);
     expect(screen.getByText('greet.ts')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Ping \d+ milliseconds/)).toBeInTheDocument();
     expect(screen.getByText('In sync')).toBeInTheDocument();
     expect(screen.getByText('Nice. Run it?')).toBeInTheDocument();
-    expect(screen.getByText("'Welcome, Asha!'")).toBeInTheDocument();
+    expect(screen.getByText("'Welcome, Laasya!'")).toBeInTheDocument();
   });
 
   it('Run jumps the story to running, then prints the output', () => {
@@ -58,6 +59,6 @@ describe('MiniEditor', () => {
     expect(screen.getByText('Running greet.ts…')).toBeInTheDocument();
 
     act(() => vi.advanceTimersByTime(1000));
-    expect(screen.getByText("'Welcome, Ravi!'")).toBeInTheDocument();
+    expect(screen.getByText("'Welcome, Hriday!'")).toBeInTheDocument();
   });
 });

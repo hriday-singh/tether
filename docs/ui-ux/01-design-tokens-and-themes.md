@@ -204,7 +204,7 @@ export const fontMono = localFont({
 
 | Previous Thought | Approved SVG Replacement | Library & Component |
 |---|---|---|
-| Hand wave "👋 Ravi joined" | `UserAdd01Icon` | `Hugeicons stroke-rounded` |
+| Hand wave "👋 Hriday joined" | `UserAdd01Icon` | `Hugeicons stroke-rounded` |
 | Lightning "⚡ Reconnected" | `FlashIcon` | `Hugeicons stroke-rounded` |
 | Checkmark "✓ Verified" | `CheckmarkCircle02Icon` | `Hugeicons stroke-rounded` |
 | Warning "⚠️ Throttled" | `AlertCircleIcon` | `Hugeicons stroke-rounded` |

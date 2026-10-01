@@ -89,7 +89,7 @@ describe('SyncClient network lab + server signals', () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it('setLatency delays outgoing and incoming frames', () => {
+  it('setLatency splits the delay across outgoing and incoming frames', () => {
     const onStatsChange = vi.fn();
     const { client, ws } = makeClient({ onStatsChange });
     client.connect();
@@ -100,13 +100,35 @@ describe('SyncClient network lab + server signals', () => {
     client.setLatency(200);
     client.sendPing();
     expect(sock.sent.length).toBe(baseline);
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(100);
     expect(sentControls(sock).at(-1)?.t).toBe('ping');
 
     sock.receive(JSON.stringify({ t: 'pong', id: 1, ts: Date.now(), serverQueueMs: 0 }));
     expect(onStatsChange).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(100);
     expect(onStatsChange).toHaveBeenCalledTimes(1);
+    client.destroy();
+  });
+
+  it('setLatency drops stale RTT samples and pings so p50 reflects the new delay at once', () => {
+    const onStatsChange = vi.fn();
+    const { client, ws } = makeClient({ onStatsChange });
+    client.connect();
+    vi.advanceTimersByTime(0);
+    const sock = ws();
+    for (let i = 0; i < 10; i++) {
+      sock.receive(JSON.stringify({ t: 'pong', id: i, ts: Date.now() - 10, serverQueueMs: 0 }));
+    }
+
+    client.setLatency(150);
+    vi.advanceTimersByTime(75);
+    const ping = sentControls(sock).at(-1);
+    expect(ping?.t).toBe('ping');
+
+    sock.receive(JSON.stringify({ t: 'pong', id: 99, ts: ping?.ts, serverQueueMs: 0 }));
+    vi.advanceTimersByTime(75);
+    // Slider value = added round trip, not per direction.
+    expect(onStatsChange.mock.lastCall?.[0].rtt.p50Ms).toBe(150);
     client.destroy();
   });
 

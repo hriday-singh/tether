@@ -12,20 +12,22 @@ import { useMediaQuery } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 import { CursorPos, MiniEditorCode, highlightLine } from './mini-editor-code';
 
-const START_LINES = ["const team = ['Asha', 'Ravi'];", '', 'function greet(name: string) {', '  ', '}', '', ''];
-const ASHA = { line: 3, prefix: '  ', text: 'return `Welcome, ${name}!`;' };
-const RAVI = { line: 6, prefix: '', text: 'console.log(team.map(greet));' };
-const OUTPUT = "['Welcome, Asha!', 'Welcome, Ravi!']";
+const START_LINES = ["const team = ['Laasya', 'Hriday'];", '', 'function greet(name: string) {', '  ', '}', '', ''];
+const LAASYA = { line: 3, prefix: '  ', text: 'return `Welcome, ${name}!`;' };
+const HRIDAY = { line: 6, prefix: '', text: 'console.log(team.map(greet));' };
+const OUTPUT = "['Welcome, Laasya!', 'Welcome, Hriday!']";
 
 // Story beats, in ticks of TICK_MS. One loop is roughly 13 seconds.
 const TICK_MS = 70;
-const RAVI_START = 12;
+const HRIDAY_START = 12;
 const SYNCED_AT = 64;
 const SELECT_AT = 72;
 const COMMENT_AT = 84;
 const RUN_AT = 104;
 const OUTPUT_AT = 112;
 const LOOP_AT = 190;
+// ponytail: illustrative ping, wobbles around 11 ms so the pill looks live.
+const PINGS = [11, 12, 11, 13, 11, 12];
 
 /** Characters typed after `ticks`, pausing a little on spaces so it reads like a person. */
 function typed(text: string, ticks: number): number {
@@ -42,30 +44,32 @@ export type DemoFrame = {
   commented: boolean;
   running: boolean;
   output: boolean;
+  ping: number;
 };
 
 /** Pure: everything the demo shows at a given tick. */
 export function demoFrame(tick: number): DemoFrame {
-  const a = ASHA.prefix + ASHA.text.slice(0, typed(ASHA.text, tick));
-  const r = RAVI.prefix + RAVI.text.slice(0, typed(RAVI.text, tick - RAVI_START));
+  const a = LAASYA.prefix + LAASYA.text.slice(0, typed(LAASYA.text, tick));
+  const r = HRIDAY.prefix + HRIDAY.text.slice(0, typed(HRIDAY.text, tick - HRIDAY_START));
   const lines = [...START_LINES];
-  lines[ASHA.line] = a;
-  lines[RAVI.line] = r;
+  lines[LAASYA.line] = a;
+  lines[HRIDAY.line] = r;
   const selecting = tick >= SELECT_AT;
   return {
     lines,
     cursors: [
-      { who: 0, name: 'Asha', color: 0, line: ASHA.line, col: a.length },
-      // Ravi selects Asha's line to comment on it, so his cursor jumps to its start.
+      { who: 0, name: 'Laasya', color: 0, line: LAASYA.line, col: a.length },
+      // Hriday selects Laasya's line to comment on it, so the cursor jumps to its start.
       selecting
-        ? { who: 1, name: 'Ravi', color: 1, line: ASHA.line, col: ASHA.prefix.length }
-        : { who: 1, name: 'Ravi', color: 1, line: RAVI.line, col: r.length },
+        ? { who: 1, name: 'Hriday', color: 1, line: LAASYA.line, col: LAASYA.prefix.length }
+        : { who: 1, name: 'Hriday', color: 1, line: HRIDAY.line, col: r.length },
     ],
-    selectedLine: selecting ? ASHA.line : null,
+    selectedLine: selecting ? LAASYA.line : null,
     synced: tick >= SYNCED_AT,
     commented: tick >= COMMENT_AT,
     running: tick >= RUN_AT && tick < OUTPUT_AT,
     output: tick >= OUTPUT_AT,
+    ping: PINGS[Math.floor(tick / 15) % PINGS.length]!,
   };
 }
 
@@ -101,60 +105,69 @@ export function MiniEditor() {
       aria-label="Tether demo: two people editing, commenting and running code together"
       className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-overlay"
     >
-      <header className="flex h-11 items-center gap-2 border-b border-border/60 bg-muted/30 px-3">
-        <span className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-card px-2 font-mono text-caption font-medium text-foreground shadow-xs">
-          <LanguageLogo language="typescript" size={13} />
+      <header className="flex h-12 items-center gap-2 border-b border-border/60 bg-muted/30 px-3">
+        <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-card px-2.5 font-mono text-body font-medium text-foreground shadow-xs">
+          <LanguageLogo language="typescript" size={15} />
           greet.ts
         </span>
 
         <div className="ml-auto flex items-center gap-2">
-          <div className="hidden items-center -space-x-1.5 sm:flex" aria-label="Asha and Ravi are in the room">
-            <Avatar name="Asha" colorIndex={0} size="sm" />
-            <Avatar name="Ravi" colorIndex={1} size="sm" />
+          <div className="hidden items-center -space-x-1.5 sm:flex" aria-label="Laasya and Hriday are in the room">
+            <Avatar name="Laasya" colorIndex={0} />
+            <Avatar name="Hriday" colorIndex={1} />
           </div>
           <span
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/60 px-2.5 font-mono text-caption text-muted-foreground tabular"
+            aria-label={`Ping ${f.ping} milliseconds`}
+          >
+            <span aria-hidden className="size-1.5 rounded-full bg-success" />
+            {f.ping} ms
+          </span>
+          <span
             className={cn(
-              'inline-flex h-7 items-center gap-1.5 rounded-full border px-2 text-micro font-medium transition-ui',
+              'inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-caption font-medium transition-ui',
               f.synced ? 'border-success/30 text-success' : 'border-primary/30 text-primary',
             )}
           >
             {f.synced ? (
-              <Icon icon={CheckmarkCircle02Icon} size={12} />
+              <Icon icon={CheckmarkCircle02Icon} size={14} />
             ) : (
-              <ThinkingOrb state="working" tone="primary" size={20} animated label="Syncing" className="-my-1 size-3.5" />
+              <ThinkingOrb state="working" tone="primary" size={20} animated label="Syncing" className="-my-1 size-4" />
             )}
-            <TextMorph>{f.synced ? 'In sync' : 'Syncing…'}</TextMorph>
+            <span className="hidden sm:inline">
+              <TextMorph>{f.synced ? 'In sync' : 'Syncing…'}</TextMorph>
+            </span>
           </span>
           <Button
             size="sm"
             variant="secondary"
             onClick={() => setTick(RUN_AT)}
-            className={cn('h-7 gap-1 px-2.5 text-micro font-medium', f.running && 'ring-2 ring-primary/40')}
+            className={cn('h-8 gap-1.5 px-3 text-caption font-medium', f.running && 'ring-2 ring-primary/40')}
           >
-            <Icon icon={PlayIcon} size={12} className="text-primary" />
+            <Icon icon={PlayIcon} size={14} className="text-primary" />
             <TextMorph>{f.running ? 'Running…' : 'Run'}</TextMorph>
           </Button>
         </div>
       </header>
 
-      <div className="grid sm:grid-cols-[minmax(0,1fr)_12rem]">
+      <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(10rem,32%)]">
         <MiniEditorCode lines={f.lines} cursors={f.cursors} selectedLine={f.selectedLine} selectionColor={1} />
 
         <aside aria-label="Room chat" className="flex flex-col gap-3 border-t border-border/60 bg-muted/20 p-3 sm:border-t-0 sm:border-l">
-          <span className="text-micro font-medium text-muted-foreground">Chat</span>
-          <ChatMessage name="Asha" color={0} text="Adding a greeting for the team." />
+          <span className="text-caption font-medium text-muted-foreground">Chat</span>
+          <ChatMessage name="Laasya" color={0} text="Adding a greeting for the team." />
           {f.commented && (
-            <ChatMessage name="Ravi" color={1} quote={{ label: `L${ASHA.line + 1}`, code: ASHA.text }} text="Nice. Run it?" />
+            <ChatMessage name="Hriday" color={1} quote={{ label: `L${LAASYA.line + 1}`, code: LAASYA.text }} text="Nice. Run it?" />
           )}
         </aside>
       </div>
 
-      <section aria-label="Console" className="border-t border-border/60 bg-muted/30 font-mono text-caption">
-        <div className="flex h-8 items-center justify-between px-3 text-micro text-muted-foreground">
+      <section aria-label="Console" className="border-t border-border/60 bg-muted/30 font-mono text-body">
+        <div className="flex h-9 items-center justify-between px-3 text-caption text-muted-foreground">
           <span className="font-sans font-medium">Console</span>
           <span className="font-sans">Runs in your browser</span>
         </div>
-        <div className="flex h-9 items-center gap-2 overflow-hidden px-3 whitespace-pre">
+        <div className="flex h-11 items-center gap-2 overflow-hidden px-3 whitespace-pre">
           <span aria-hidden className="text-muted-foreground/60">›</span>
           {f.output ? (
             <span className="animate-fade-in">{highlightLine(OUTPUT)}</span>
@@ -170,16 +183,16 @@ export function MiniEditor() {
 function ChatMessage({ name, color, text, quote }: { name: string; color: number; text: string; quote?: { label: string; code: string } }) {
   return (
     <div className="flex animate-fade-in gap-2">
-      <Avatar name={name} colorIndex={color} size="sm" />
+      <Avatar name={name} colorIndex={color} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-micro font-medium text-foreground">{name}</span>
+        <span className="text-caption font-medium text-foreground">{name}</span>
         {quote && (
           <span className="block overflow-hidden rounded-lg border border-border/60 bg-card/80">
-            <span className="block border-b border-border/60 px-2 py-0.5 font-mono text-micro text-primary">{quote.label}</span>
-            <span className="block truncate px-2 py-1 font-mono text-micro text-muted-foreground">{quote.code}</span>
+            <span className="block border-b border-border/60 px-2 py-0.5 font-mono text-caption text-primary">{quote.label}</span>
+            <span className="block truncate px-2 py-1 font-mono text-caption text-muted-foreground">{quote.code}</span>
           </span>
         )}
-        <p className="text-caption text-foreground/90">{text}</p>
+        <p className="text-body text-foreground/90">{text}</p>
       </div>
     </div>
   );

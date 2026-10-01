@@ -225,6 +225,8 @@ describe('buildPaletteCommands feature completeness', () => {
     expect(ids).toContain('net:kill-socket');
     expect(ids).toContain('console:clear');
     expect(ids).toContain('console:share');
-    expect(ids).toContain('chaos:launch');
+    expect(ids).toContain('view:chaos');
+    // ids are React keys and cmdk values; duplicates render twice
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

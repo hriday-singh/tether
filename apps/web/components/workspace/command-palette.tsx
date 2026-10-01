@@ -145,6 +145,7 @@ function Commands({ onClose }: { onClose: () => void }) {
               {scoredItems.map(({ cmd }) => (
                 <PaletteItem
                   key={cmd.id}
+                  id={cmd.id}
                   icon={cmd.icon}
                   label={cmd.label}
                   shortcut={cmd.shortcut}
@@ -175,6 +176,7 @@ function Commands({ onClose }: { onClose: () => void }) {
                 {items.map((cmd) => (
                   <PaletteItem
                     key={cmd.id}
+                  id={cmd.id}
                     icon={cmd.icon}
                     label={cmd.label}
                     shortcut={cmd.shortcut}
@@ -204,6 +206,7 @@ function Commands({ onClose }: { onClose: () => void }) {
 }
 
 function PaletteItem({
+  id,
   icon,
   label,
   shortcut,
@@ -213,6 +216,7 @@ function PaletteItem({
   onSelect,
   onSettingsClick,
 }: {
+  id: string;
   icon: Parameters<typeof Icon>[0]['icon'];
   label: string;
   shortcut?: string;
@@ -225,7 +229,7 @@ function PaletteItem({
   return (
     <CommandItem
       onSelect={onSelect}
-      value={label}
+      value={id}
       className="group flex items-center gap-2 rounded-lg px-2 py-2 text-body outline-none select-none transition-ui"
     >
       <Icon icon={icon} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-ui" />

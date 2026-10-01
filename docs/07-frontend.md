@@ -18,13 +18,13 @@ Desktop (≥ 1024px)
 │ room-id · 🔒 · [JavaScript ▾]   ● Saved · 24 ms    [Host ▾]  │  top bar
 ├─────────────────────────────────────────┬────────────────────┤
 │                                         │ People (4)         │
-│                                         │ ● Asha  host typing│
-│            CodeMirror editor            │ ● Ravi  idle       │
+│                                         │ ● Laasya host typ… │
+│            CodeMirror editor            │ ● Hriday idle      │
 │   remote cursors + name labels          │ ◌ Meera reconnect… │
 │   line highlights in gutter             ├────────────────────┤
 │                                         │ Activity           │
-│                                         │ Ravi edited L12–18 │
-│                                         │ Asha is now host   │
+│                                         │ Hriday edited L12… │
+│                                         │ Laasya is now host │
 └─────────────────────────────────────────┴────────────────────┘
 
 Small Screens (< 1024px) — Screen Barrier Overlay (<ScreenTooSmallGate />)

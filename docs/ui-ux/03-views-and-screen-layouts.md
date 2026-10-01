@@ -31,7 +31,7 @@ The desktop workspace uses an **Inset Floating Card Layout** with `react-resizab
 │ 2 <html>                               │ │ Sandboxed Live HTML Preview      │ ├──────────────────────────────────┤
 │ 3   <body>                             │ │ [Rendered DOM Output]            │ │ • Sarah [Host]                   │
 │ 4     <h1>Tether</h1>                  │ │                                  │ │ • Alex  ( Follow )               │
-│ 5   </body>                            │ │                                  │ │ • Ravi  (Typing...)              │
+│ 5   </body>                            │ │                                  │ │ • Hriday  (Typing...)            │
 │ 6 </html>                              │ │                                  │ │ • Elena (Idle)                   │
 │                                        │ │                                  │ │ ──────────────────────────────── │
 │ ( Alex ↑ Ln 4 ) [Pill Chip]            │ │                                  │ │ 14:02 Alex joined room           │

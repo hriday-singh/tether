@@ -53,7 +53,7 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-16 pb-20 sm:px-6 lg:grid-cols-[1fr_1fr] lg:pt-28 lg:pb-28">
+        <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-16 pb-20 sm:px-6 lg:grid-cols-[1fr_1.25fr] lg:pt-28 lg:pb-28">
           <div className="flex flex-col gap-6">
             <h1 className="text-hero font-semibold tracking-tight text-balance">Code together. Stay in sync.</h1>
             <p className="max-w-lg text-title leading-relaxed text-muted-foreground text-pretty">

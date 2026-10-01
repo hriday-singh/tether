@@ -160,24 +160,14 @@ export const SNIPPETS_BY_LANG: Record<string, CodeSnippet[]> = {
   ],
 };
 
-function findSafeInsertPos(yText: Y.Text): number {
-  const len = yText.length;
-  if (len === 0) return 0;
-  // 65% chance to append at end of file (natural for human collaboration)
-  if (Math.random() < 0.65) {
-    return len;
-  }
-  const str = yText.toString();
-  const lineEnds: number[] = [];
-  for (let i = 0; i < str.length; i++) {
-    if (str[i] === '\n') {
-      lineEnds.push(i + 1);
-    }
-  }
-  if (lineEnds.length > 0) {
-    return lineEnds[Math.floor(Math.random() * lineEnds.length)]!;
-  }
-  return len;
+/**
+ * Next index for a bot's chunk. Bots type in chunks while peers edit concurrently, so a stored integer
+ * index goes stale and chunks land inside other bots' text. The anchor is pinned (assoc -1) to the bot's
+ * own last typed char, keeping each snippet contiguous. No anchor = new block, appended at end of file.
+ */
+export function resolveInsertPos(yText: Y.Text, doc: Y.Doc, anchor: Y.RelativePosition | null): number {
+  if (!anchor) return yText.length;
+  return Y.createAbsolutePositionFromRelativePosition(anchor, doc)?.index ?? yText.length;
 }
 
 export class BotStormManager {
@@ -380,25 +370,23 @@ export class BotStormManager {
 
             // 65% Author a code snippet / block via progressive typing
             if (roll < 0.65) {
-              const insertPos = findSafeInsertPos(yText);
               const textToType = snippet.code;
               let typedIndex = 0;
-              let currentPos = insertPos;
+              let anchor: Y.RelativePosition | null = null;
 
               const streamChunk = () => {
                 if (activeStorm.stopped) return;
                 const chunkSize = Math.min(textToType.length - typedIndex, 3 + Math.floor(Math.random() * 4));
                 const chunk = textToType.slice(typedIndex, typedIndex + chunkSize);
 
+                const pos = resolveInsertPos(yText, botDoc, anchor);
                 botDoc.transact(() => {
-                  yText.insert(currentPos, chunk);
+                  yText.insert(pos, chunk);
                 }, botId);
                 activeStorm.ops++;
-                currentPos += chunk.length;
                 typedIndex += chunkSize;
-
-                const at = Math.min(currentPos, yText.length);
-                const rel = Y.createRelativePositionFromTypeIndex(yText, at);
+                anchor = Y.createRelativePositionFromTypeIndex(yText, pos + chunk.length, -1);
+                const rel = anchor;
                 botAwareness.setLocalStateField('cursor', { anchor: rel, head: rel });
                 botAwareness.setLocalStateField('typing', true);
 
@@ -463,15 +451,15 @@ export class BotStormManager {
             }
 
             // 15% Inline comment authoring
-            const commentPos = findSafeInsertPos(yText);
-            const commentText = snippet.comment;
+            const commentPos = yText.length;
+            const endsWithNewline = commentPos === 0 || yText.toString().endsWith('\n');
+            const commentText = (endsWithNewline ? '' : '\n') + snippet.comment;
             botDoc.transact(() => {
               yText.insert(commentPos, commentText);
             }, botId);
             activeStorm.ops++;
 
-            const at = Math.min(commentPos + commentText.length, yText.length);
-            const rel = Y.createRelativePositionFromTypeIndex(yText, at);
+            const rel = Y.createRelativePositionFromTypeIndex(yText, commentPos + commentText.length, -1);
             botAwareness.setLocalStateField('cursor', { anchor: rel, head: rel });
             botAwareness.setLocalStateField('typing', false);
 

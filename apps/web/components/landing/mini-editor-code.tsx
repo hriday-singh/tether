@@ -97,10 +97,10 @@ export function highlightLine(text: string): React.ReactNode {
 
 export function MiniEditorCode({ lines, cursors, selectedLine = null, selectionColor = 0 }: MiniEditorCodeProps) {
   return (
-    <div className="relative overflow-hidden bg-editor px-3 pt-6 pb-4 font-mono text-caption leading-loose">
+    <div className="relative overflow-hidden bg-editor px-3 pt-6 pb-4 font-mono text-body leading-loose">
       {lines.map((text, idx) => (
         <div key={`line-${idx}`} className="relative flex items-baseline">
-          <span className="w-6 shrink-0 text-right text-micro text-muted-foreground/50 select-none tabular" aria-hidden>
+          <span className="w-6 shrink-0 text-right text-caption text-muted-foreground/50 select-none tabular" aria-hidden>
             {idx + 1}
           </span>
           <div

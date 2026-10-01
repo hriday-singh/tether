@@ -111,7 +111,7 @@ export class SyncClient {
     this.clock = options.clock ?? (() => Date.now());
 
     this.statsStore = new StatsStore(options.statsWindowSize ?? 60);
-    this.delayLine.setDelay(options.latencyMs ?? 0);
+    this.delayLine.setDelay((options.latencyMs ?? 0) / 2);
 
     this.wakeManager = new WakeManager({
       probeTimeoutMs: options.wakeProbeTimeoutMs ?? WAKE_PROBE_MS,
@@ -501,9 +501,14 @@ export class SyncClient {
     });
   }
 
-  /** Simulated latency (network lab): delays every frame in both directions, order preserved. */
+  /** Simulated latency (network lab): adds `ms` to round trip, half per direction, order preserved. */
   public setLatency(ms: number): void {
-    this.delayLine.setDelay(ms);
+    const before = this.delayLine.delay;
+    this.delayLine.setDelay(ms / 2);
+    if (this.delayLine.delay === before) return;
+    // Old RTT samples predate the new delay; without a reset the p50 takes ~30 pings (~2.5 min) to move.
+    this.statsStore.reset();
+    this.sendPing();
   }
 
   public sendPing(): void {
