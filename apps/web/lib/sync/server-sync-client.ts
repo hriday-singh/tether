@@ -490,6 +490,17 @@ export class ServerSyncClient implements SyncClient {
     const fullCmd = { ...cmd, rid } as unknown as ClientControlMessage & { rid: string };
     try {
       await this.protocolClient.command(fullCmd);
+      if (cmd.t === 'demo.storm_stop') {
+        const cur = this.storm.get();
+        if (cur.running) {
+          this.storm.set({
+            ...cur,
+            running: false,
+            bots: 0,
+            endsAt: null,
+          });
+        }
+      }
     } catch (err) {
       throw new CommandError((err as Error).message);
     }

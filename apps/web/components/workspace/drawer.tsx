@@ -325,7 +325,7 @@ function ChaosLab() {
     setPending(true);
     try {
       await client.command({ t: 'demo.storm_stop' });
-      toast.info('Stopping chaos storm...');
+      toast.success('Chaos storm stopped');
     } catch (e) {
       toast.error('Could not stop storm', { description: e instanceof CommandError ? e.code : String(e) });
     } finally {

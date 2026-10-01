@@ -36,7 +36,15 @@ export function StatusPill() {
         )}
       >
         {view.orb ? (
-          <ThinkingOrb state={view.orb} tone={view.tone} size={20} animated={prefs.ambientAnimations} label={view.label} className="-my-1 size-4" />
+          <ThinkingOrb
+            key={`${view.orb}-${view.tone}`}
+            state={view.orb}
+            tone={view.tone}
+            size={20}
+            animated={prefs.ambientAnimations}
+            label={view.label}
+            className="-my-1 size-4"
+          />
         ) : view.icon ? (
           <MorphIcon icon={view.icon} size={14} />
         ) : null}

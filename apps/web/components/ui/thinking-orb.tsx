@@ -15,6 +15,8 @@ const TONE_TOKENS: Record<OrbTone, string> = {
   neutral: 'var(--muted-foreground)',
 };
 
+const colorCache = new Map<string, string>();
+
 /**
  * thinking-orbs requires #hex or rgb()/rgba().
  * Converts any CSS color (oklch, var(--...), hex, hsl, rgb) to an sRGB `rgb(r, g, b)` string.
@@ -34,6 +36,9 @@ function toRgbColor(colorStr: string): string | undefined {
 
   if (typeof document === 'undefined') return undefined;
 
+  const cached = colorCache.get(trimmed);
+  if (cached) return cached;
+
   let resolvedStr = trimmed;
   if (trimmed.includes('var(')) {
     const el = document.createElement('span');
@@ -43,7 +48,9 @@ function toRgbColor(colorStr: string): string | undefined {
     el.remove();
     const innerRgb = resolvedStr.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
     if (innerRgb) {
-      return `rgb(${Math.round(Number(innerRgb[1]))}, ${Math.round(Number(innerRgb[2]))}, ${Math.round(Number(innerRgb[3]))})`;
+      const res = `rgb(${Math.round(Number(innerRgb[1]))}, ${Math.round(Number(innerRgb[2]))}, ${Math.round(Number(innerRgb[3]))})`;
+      colorCache.set(trimmed, res);
+      return res;
     }
   }
 
@@ -56,16 +63,24 @@ function toRgbColor(colorStr: string): string | undefined {
     ctx.fillStyle = resolvedStr;
     ctx.fillRect(0, 0, 1, 1);
     const data = ctx.getImageData(0, 0, 1, 1).data;
-    return `rgb(${data[0]}, ${data[1]}, ${data[2]})`;
+    const res = `rgb(${data[0]}, ${data[1]}, ${data[2]})`;
+    colorCache.set(trimmed, res);
+    return res;
   } catch {
     return undefined;
   }
 }
 
+function resolveExplicitColor(color?: string, tone?: OrbTone): string | undefined {
+  if (color && color !== 'currentColor') return toRgbColor(color);
+  if (tone) return toRgbColor(TONE_TOKENS[tone]);
+  return undefined;
+}
+
 /**
  * ThinkingOrb displays an orbital thought-indicator for asynchronous / connecting states.
  * - Eagerly imported (no dynamic chunk delay or solid blue ball placeholder artifact).
- * - Inherits the computed text color of its container by default to match the text next to it.
+ * - Prioritizes explicit `color` or `tone` prop, falling back to computed container text color.
  * - Pauses rendering when hidden or offscreen to avoid wasted RAM/CPU.
  * - Falls back to a lightweight CSS pulse dot when `animated=false`.
  */
@@ -87,20 +102,36 @@ export function ThinkingOrb({
   className?: string;
 }) {
   const containerRef = useRef<HTMLSpanElement>(null);
-  const [resolvedColor, setResolvedColor] = useState<string | undefined>(() => {
-    if (color && color !== 'currentColor') return toRgbColor(color);
-    if (tone) return toRgbColor(TONE_TOKENS[tone]);
-    return undefined;
-  });
+  const [resolvedColor, setResolvedColor] = useState<string | undefined>(() => resolveExplicitColor(color, tone));
+  const [prevProps, setPrevProps] = useState({ color, tone });
+
+  if (prevProps.color !== color || prevProps.tone !== tone) {
+    setPrevProps({ color, tone });
+    const direct = resolveExplicitColor(color, tone);
+    if (direct && direct !== resolvedColor) {
+      setResolvedColor(direct);
+    }
+  }
 
   useEffect(() => {
     const resolve = () => {
       // 1. Explicit color prop (other than 'currentColor') takes top priority
       if (color && color !== 'currentColor') {
-        setResolvedColor(toRgbColor(color));
-        return;
+        const rgb = toRgbColor(color);
+        if (rgb) {
+          setResolvedColor(rgb);
+          return;
+        }
       }
-      // 2. Resolve from the DOM container's computed text color (matches the text next to it)
+      // 2. Explicit tone prop takes priority over ambient DOM inheritance
+      if (tone) {
+        const rgb = toRgbColor(TONE_TOKENS[tone]);
+        if (rgb) {
+          setResolvedColor(rgb);
+          return;
+        }
+      }
+      // 3. Resolve from the DOM container's computed text color (matches the text next to it)
       if (containerRef.current) {
         const computed = window.getComputedStyle(containerRef.current).color;
         if (computed && computed !== 'transparent' && computed !== 'rgba(0, 0, 0, 0)') {
@@ -111,16 +142,16 @@ export function ThinkingOrb({
           }
         }
       }
-      // 3. Fallback to tone token if specified
-      if (tone) {
-        setResolvedColor(toRgbColor(TONE_TOKENS[tone]));
-        return;
-      }
+      // 4. Fallback to primary tone token if unspecified
+      setResolvedColor(toRgbColor(TONE_TOKENS.primary));
     };
 
     resolve();
-    // Re-resolve when the theme or container styles change so the orb stays synchronized with the text color.
-    const observer = new MutationObserver(resolve);
+    // Re-resolve when the theme changes so the orb stays synchronized with the theme colors.
+    const observer = new MutationObserver(() => {
+      colorCache.clear();
+      resolve();
+    });
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class', 'data-theme', 'style'],

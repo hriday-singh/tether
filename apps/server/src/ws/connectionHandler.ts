@@ -412,8 +412,15 @@ export async function attachConnectionHandler(
               ws.send(JSON.stringify({ t: 'error', rid: msg.rid, code: 'forbidden', message: 'Not host' }));
               return;
             }
-            if (deps.botStormManager) {
-              void deps.botStormManager.stopStorm(room.id);
+            if (deps.botStormManager && deps.botStormManager.isStormActive(room.id)) {
+              await deps.botStormManager.stopStorm(room.id);
+            } else {
+              deps.auditService.logEvent(room.id, {
+                type: 'demo.storm_completed',
+                actorMemberId: member.id,
+                actorName: member.name,
+                payload: { bots: 0, seconds: 0, durationMs: 0, ops: 0, converged: true, checksum: '--------' },
+              });
             }
             ws.send(JSON.stringify({ t: 'ok', rid: msg.rid }));
             break;

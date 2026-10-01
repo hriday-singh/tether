@@ -68,6 +68,12 @@ export function describeEvent(e: AuditEvent): EventView {
       return { icon: Shield01Icon, text: `${who} was disconnected after sending invalid data`, tone: 'destructive' };
     case 'demo.storm':
       return { icon: CpuIcon, text: `${who} launched Chaos: ${num(p.bots)} bots, ${num(p.seconds)} s${p.faults ? ', faults on' : ''}`, tone: 'primary' };
+    case 'demo.storm_completed': {
+      const converged = p.converged;
+      const label = converged === true ? 'Converged' : converged === false ? 'Diverged' : 'Verifying';
+      const tone: EventView['tone'] = converged === true ? 'success' : converged === false ? 'destructive' : 'primary';
+      return { icon: CpuIcon, text: `Chaos complete: ${num(p.bots)} bots · ${num(p.ops)} ops · ${(num(p.durationMs) / 1000).toFixed(1)}s — ${label}`, tone };
+    }
     default:
       return { icon: AlertCircleIcon, text: `${who}: ${e.type}`, tone: 'neutral' };
   }

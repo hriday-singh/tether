@@ -361,6 +361,13 @@ export class SyncClient {
           this.options.onRosterChange?.(this.members);
           break;
         }
+        case 'member.status': {
+          this.members = this.members.map((m) =>
+            m.id === parsed.memberId ? { ...m, status: parsed.status } : m
+          );
+          this.options.onRosterChange?.(this.members);
+          break;
+        }
         case 'throttled': {
           this.options.onThrottled?.(parsed.windowMs);
           break;

@@ -76,6 +76,20 @@ interface CodeSnippet {
   chatStatus: string;
 }
 
+/** Per-role action distribution so bots visually do different things. `code` = threshold for code authoring, `review` = threshold for review (remainder = comment). */
+interface ActionWeights { code: number; review: number }
+const ROLE_WEIGHTS: Record<string, ActionWeights> = {
+  'Feature Lead':       { code: 0.75, review: 0.90 },
+  'Backend Engineer':   { code: 0.60, review: 0.85 },
+  'Systems Engineer':   { code: 0.45, review: 0.85 },
+  'Frontend Engineer':  { code: 0.70, review: 0.88 },
+  'Quality & Testing':  { code: 0.25, review: 0.80 },
+  'Full Stack Engineer':{ code: 0.65, review: 0.85 },
+  'Reliability Engineer':{ code: 0.40, review: 0.82 },
+  'UI Engineer':        { code: 0.72, review: 0.90 },
+};
+const DEFAULT_WEIGHTS: ActionWeights = { code: 0.65, review: 0.85 };
+
 export const SNIPPETS_BY_LANG: Record<string, CodeSnippet[]> = {
   javascript: [
     {
@@ -92,6 +106,31 @@ export const SNIPPETS_BY_LANG: Record<string, CodeSnippet[]> = {
       code: `\n// Validation: check payload integrity\nfunction isValidPayload(payload) {\n  return Boolean(payload && typeof payload === 'object' && payload.id);\n}\n`,
       comment: '// Validates payload shape\n',
       chatStatus: 'Adding payload validation checks.',
+    },
+    {
+      code: `\n// Helper: debounce function calls\nfunction debounce(fn, waitMs) {\n  let timer;\n  return (...args) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), waitMs);\n  };\n}\n`,
+      comment: '// Debounce for high-frequency events\n',
+      chatStatus: 'Added debounce utility function.',
+    },
+    {
+      code: `\n// Helper: deep equality check for plain objects\nfunction deepEqual(a, b) {\n  if (a === b) return true;\n  if (!a || !b || typeof a !== 'object') return false;\n  const keys = Object.keys(a);\n  if (keys.length !== Object.keys(b).length) return false;\n  return keys.every((k) => deepEqual(a[k], b[k]));\n}\n`,
+      comment: '// Recursive equality — plain objects only\n',
+      chatStatus: 'Implemented deep equality comparison.',
+    },
+    {
+      code: `\n// Utility: simple event emitter\nfunction createEmitter() {\n  const listeners = new Map();\n  return {\n    on(event, fn) { const s = listeners.get(event) ?? new Set(); s.add(fn); listeners.set(event, s); },\n    off(event, fn) { listeners.get(event)?.delete(fn); },\n    emit(event, ...args) { listeners.get(event)?.forEach((fn) => fn(...args)); },\n  };\n}\n`,
+      comment: '// Lightweight pub/sub emitter\n',
+      chatStatus: 'Created lightweight event emitter.',
+    },
+    {
+      code: `\n// Helper: throttle to limit invocation rate\nfunction throttle(fn, limitMs) {\n  let last = 0;\n  return (...args) => {\n    const now = Date.now();\n    if (now - last >= limitMs) {\n      last = now;\n      return fn(...args);\n    }\n  };\n}\n`,
+      comment: '// Rate-limit calls to limitMs interval\n',
+      chatStatus: 'Throttle utility for rate-limited calls.',
+    },
+    {
+      code: `\n// Utility: group array items by a key function\nfunction groupBy(arr, keyFn) {\n  return arr.reduce((map, item) => {\n    const key = keyFn(item);\n    const group = map.get(key) ?? [];\n    group.push(item);\n    map.set(key, group);\n    return map;\n  }, new Map());\n}\n`,
+      comment: '// Groups items into Map buckets\n',
+      chatStatus: 'Added groupBy collection helper.',
     },
   ],
   typescript: [
@@ -110,6 +149,31 @@ export const SNIPPETS_BY_LANG: Record<string, CodeSnippet[]> = {
       comment: '// Resilient retry utility\n',
       chatStatus: 'Added typed retry helper with backoff.',
     },
+    {
+      code: `\n// Discriminated union for operation results\nexport type Result<T, E = Error> =\n  | { ok: true; value: T }\n  | { ok: false; error: E };\n\nexport const ok = <T>(value: T): Result<T, never> => ({ ok: true, value });\nexport const err = <E>(error: E): Result<never, E> => ({ ok: false, error });\n`,
+      comment: '// Rust-style Result type\n',
+      chatStatus: 'Added Result<T,E> discriminated union.',
+    },
+    {
+      code: `\n// Typed event bus with subscriber map\nexport class EventBus<Events extends Record<string, unknown>> {\n  private subs = new Map<keyof Events, Set<(data: unknown) => void>>();\n  on<K extends keyof Events>(event: K, fn: (data: Events[K]) => void): () => void {\n    const set = this.subs.get(event) ?? new Set();\n    set.add(fn as (data: unknown) => void);\n    this.subs.set(event, set);\n    return () => set.delete(fn as (data: unknown) => void);\n  }\n  emit<K extends keyof Events>(event: K, data: Events[K]): void {\n    this.subs.get(event)?.forEach((fn) => fn(data));\n  }\n}\n`,
+      comment: '// Type-safe publish/subscribe\n',
+      chatStatus: 'Implemented typed EventBus class.',
+    },
+    {
+      code: `\n// Simple TTL cache for expensive lookups\nexport class TtlCache<K, V> {\n  private store = new Map<K, { value: V; expiresAt: number }>();\n  constructor(private readonly ttlMs: number) {}\n  get(key: K): V | undefined {\n    const entry = this.store.get(key);\n    if (!entry || Date.now() > entry.expiresAt) { this.store.delete(key); return undefined; }\n    return entry.value;\n  }\n  set(key: K, value: V): void {\n    this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs });\n  }\n}\n`,
+      comment: '// Cache entries expire after TTL\n',
+      chatStatus: 'Built TTL cache for repeated lookups.',
+    },
+    {
+      code: `\n// Assertion helper for narrowing types\nexport function assert(condition: unknown, msg?: string): asserts condition {\n  if (!condition) throw new Error(msg ?? 'Assertion failed');\n}\n\nexport function assertDefined<T>(val: T | null | undefined, name = 'value'): T {\n  assert(val != null, \`Expected \${name} to be defined\`);\n  return val;\n}\n`,
+      comment: '// Narrowing assertions for runtime safety\n',
+      chatStatus: 'Added assertion helpers for type narrowing.',
+    },
+    {
+      code: `\n// Minimal logger with structured output\nexport const logger = {\n  info: (msg: string, ctx?: Record<string, unknown>) => console.log(JSON.stringify({ level: 'info', msg, ...ctx })),\n  warn: (msg: string, ctx?: Record<string, unknown>) => console.warn(JSON.stringify({ level: 'warn', msg, ...ctx })),\n  error: (msg: string, ctx?: Record<string, unknown>) => console.error(JSON.stringify({ level: 'error', msg, ...ctx })),\n};\n`,
+      comment: '// Structured JSON logger\n',
+      chatStatus: 'Set up structured logging utility.',
+    },
   ],
   python: [
     {
@@ -122,12 +186,27 @@ export const SNIPPETS_BY_LANG: Record<string, CodeSnippet[]> = {
       comment: '# Handled retry logic\n',
       chatStatus: 'Added retry_operation utility.',
     },
+    {
+      code: `\n# Decorator: memoize pure function results\nfrom functools import wraps\ndef memoize(fn):\n    cache = {}\n    @wraps(fn)\n    def wrapper(*args):\n        if args not in cache:\n            cache[args] = fn(*args)\n        return cache[args]\n    return wrapper\n`,
+      comment: '# Cache pure function calls\n',
+      chatStatus: 'Implemented memoize decorator.',
+    },
+    {
+      code: `\n# Helper: process items in fixed-size batches\ndef batched(iterable, n: int):\n    from itertools import islice\n    it = iter(iterable)\n    while batch := list(islice(it, n)):\n        yield batch\n`,
+      comment: '# Chunked iteration for batch processing\n',
+      chatStatus: 'Added batch processing generator.',
+    },
   ],
   rust: [
     {
       code: `\npub fn clamp_num<T: PartialOrd>(val: T, min: T, max: T) -> T {\n    if val < min { min } else if val > max { max } else { val }\n}\n`,
       comment: '// Generic clamp range helper\n',
       chatStatus: 'Added clamp_num implementation in Rust.',
+    },
+    {
+      code: `\n/// Retry a fallible operation with exponential backoff.\npub fn retry<F, T, E>(mut f: F, max: usize) -> Result<T, E>\nwhere\n    F: FnMut() -> Result<T, E>,\n{\n    let mut last_err = None;\n    for _ in 0..max {\n        match f() {\n            Ok(v) => return Ok(v),\n            Err(e) => last_err = Some(e),\n        }\n    }\n    Err(last_err.unwrap())\n}\n`,
+      comment: '// Retry up to max attempts\n',
+      chatStatus: 'Added retry helper in Rust.',
     },
   ],
   go: [
@@ -136,12 +215,22 @@ export const SNIPPETS_BY_LANG: Record<string, CodeSnippet[]> = {
       comment: '// Clamps integer to range\n',
       chatStatus: 'Implemented ClampInt helper in Go.',
     },
+    {
+      code: `\n// SafeGo runs fn in a goroutine and recovers panics.\nfunc SafeGo(fn func()) {\n\tgo func() {\n\t\tdefer func() {\n\t\t\tif r := recover(); r != nil {\n\t\t\t\tlog.Printf("recovered panic: %v", r)\n\t\t\t}\n\t\t}()\n\t\tfn()\n\t}()\n}\n`,
+      comment: '// Panic-safe goroutine launcher\n',
+      chatStatus: 'Added SafeGo panic recovery wrapper.',
+    },
   ],
   html: [
     {
       code: `\n<!-- Collaborator banner -->\n<div class="banner">\n  <p>Live pair-programming session in progress</p>\n</div>\n`,
       comment: '<!-- Header status banner -->\n',
       chatStatus: 'Added status banner markup.',
+    },
+    {
+      code: `\n<!-- Notification toast container -->\n<div id="toasts" role="alert" aria-live="polite">\n  <template id="toast-tmpl">\n    <div class="toast"><span class="toast-msg"></span></div>\n  </template>\n</div>\n`,
+      comment: '<!-- Accessible toast region -->\n',
+      chatStatus: 'Added accessible toast container.',
     },
   ],
   css: [
@@ -150,12 +239,22 @@ export const SNIPPETS_BY_LANG: Record<string, CodeSnippet[]> = {
       comment: '/* Center alignment utility */\n',
       chatStatus: 'Added flexbox alignment rules.',
     },
+    {
+      code: `\n/* Smooth fade-in animation */\n@keyframes fade-in {\n  from { opacity: 0; transform: translateY(4px); }\n  to   { opacity: 1; transform: translateY(0); }\n}\n.fade-in {\n  animation: fade-in 0.2s ease-out;\n}\n`,
+      comment: '/* Entry animation keyframes */\n',
+      chatStatus: 'Added fade-in animation keyframes.',
+    },
   ],
   default: [
     {
       code: `\n// Utility function for data processing\nfunction formatDuration(ms) {\n  const s = Math.floor(ms / 1000);\n  const m = Math.floor(s / 60);\n  return \`\${m}m \${s % 60}s\`;\n}\n`,
       comment: '// Format duration in minutes and seconds\n',
       chatStatus: 'Added duration formatting utility.',
+    },
+    {
+      code: `\n// Utility: generate short unique IDs\nfunction uniqueId(prefix = '') {\n  return prefix + Math.random().toString(36).slice(2, 10);\n}\n`,
+      comment: '// Random short ID generator\n',
+      chatStatus: 'Added unique ID generator.',
     },
   ],
 };
@@ -205,53 +304,93 @@ export class BotStormManager {
       stop: async () => {},
     };
 
+    let activeAuthorId: string | null = null;
+
     const stop = async () => {
       if (activeStorm.stopped) return;
       activeStorm.stopped = true;
+      activeAuthorId = null;
 
-      if (activeStorm.stopTimer) {
-        clearTimeout(activeStorm.stopTimer);
-        activeStorm.stopTimer = null;
-      }
-
-      for (const t of activeStorm.typingTimers) {
-        clearTimeout(t);
-      }
-      activeStorm.typingTimers.clear();
-
-      // Undo changes made by each bot and clear presence
-      for (const bot of activeStorm.bots) {
-        bot.awareness.setLocalStateField('typing', false);
-        bot.awareness.setLocalStateField('cursor', null);
-        bot.awareness.setLocalStateField('highlight', null);
-        while (bot.undoManager.canUndo()) {
-          bot.undoManager.undo();
+      try {
+        if (activeStorm.stopTimer) {
+          clearTimeout(activeStorm.stopTimer);
+          activeStorm.stopTimer = null;
         }
-        bot.client.flushBatch();
+
+        for (const t of activeStorm.typingTimers) {
+          clearTimeout(t);
+        }
+        activeStorm.typingTimers.clear();
+
+        // 1. Immediately zero out artificial network latency on all bot sockets
+        for (const bot of activeStorm.bots) {
+          try {
+            const ws = (bot.client as unknown as { ws?: { setLatency?: (min: number, max: number) => void } }).ws;
+            if (ws && typeof ws.setLatency === 'function') {
+              ws.setLatency(0, 0);
+            }
+            bot.awareness.setLocalStateField('typing', false);
+            bot.awareness.setLocalStateField('cursor', null);
+            bot.awareness.setLocalStateField('highlight', null);
+          } catch {}
+        }
+
+        // 2. Undo changes made by each bot and flush updates
+        for (const bot of activeStorm.bots) {
+          try {
+            while (bot.undoManager.canUndo()) {
+              bot.undoManager.undo();
+            }
+            bot.client.flushBatch();
+          } catch (e) {
+            console.error(`[botStorm] Undo error for bot ${bot.name}:`, e);
+          }
+        }
+
+        // 3. Wait for every bot replica to match the server's before judging convergence
+        const durationMs = Date.now() - activeStorm.startedAt;
+        let convergenceResult = { converged: true, checksum: '--------' };
+        try {
+          convergenceResult = await waitForConvergence(loadedRoom.doc, activeStorm.bots.map((b) => b.doc));
+        } catch (e) {
+          console.error('[botStorm] waitForConvergence error:', e);
+        }
+
+        // 4. Destroy bot clients, remove DB rows, evict from host elector, and broadcast member.left
+        for (const bot of activeStorm.bots) {
+          try {
+            bot.client.destroy();
+            bot.awareness.destroy();
+            bot.doc.destroy();
+            this.deps.memberRepo.deleteMember(options.roomId, bot.memberId);
+            loadedRoom.hostElector.evict(bot.memberId);
+            loadedRoom.broadcastControl({
+              t: 'member.left',
+              memberId: bot.memberId,
+              reason: 'leave',
+            });
+          } catch (e) {
+            console.error(`[botStorm] Bot cleanup error for bot ${bot.name}:`, e);
+          }
+        }
+
+        this.deps.auditService.logEvent(options.roomId, {
+          type: 'demo.storm_completed',
+          actorMemberId: null,
+          actorName: null,
+          payload: {
+            bots: options.bots,
+            seconds: options.seconds,
+            durationMs,
+            ops: activeStorm.ops,
+            converged: convergenceResult.converged,
+            checksum: convergenceResult.checksum,
+          },
+        });
+      } finally {
+        this.activeStorms.delete(options.roomId);
+        loadedRoom.scheduleChecksum();
       }
-
-      // Wait for every bot replica to match the server's before judging convergence.
-      const durationMs = Date.now() - activeStorm.startedAt;
-      const { converged, checksum } = await waitForConvergence(loadedRoom.doc, activeStorm.bots.map((b) => b.doc));
-
-      for (const bot of activeStorm.bots) {
-        bot.client.destroy();
-        bot.awareness.destroy();
-        bot.doc.destroy();
-        // Bot ids are single-use; leaving rows behind fills the 32-seat capacity after a few storms.
-        this.deps.memberRepo.deleteMember(options.roomId, bot.memberId);
-      }
-
-      this.deps.auditService.logEvent(options.roomId, {
-        type: 'demo.storm_completed',
-        actorMemberId: null,
-        actorName: null,
-        payload: { bots: options.bots, seconds: options.seconds, durationMs, ops: activeStorm.ops, converged, checksum },
-      });
-
-      this.activeStorms.delete(options.roomId);
-      // Guarantees a checksum after the completion event so every browser verifies its own replica too.
-      loadedRoom.scheduleChecksum();
     };
 
     activeStorm.stop = stop;
@@ -354,6 +493,8 @@ export class BotStormManager {
         activeStorm.bots.push(activeBot);
 
         // Schedule realistic collaborative actions for this bot
+        const weights = ROLE_WEIGHTS[persona.role] ?? DEFAULT_WEIGHTS;
+        let snippetCursor = i; // each bot starts at a different offset so they write unique code
         const scheduleNextAction = (initialDelay = 150 + Math.random() * 250) => {
           if (activeStorm.stopped) return;
 
@@ -362,20 +503,26 @@ export class BotStormManager {
             if (activeStorm.stopped) return;
 
             const roll = Math.random();
-            const snippet = snippets[Math.floor(Math.random() * snippets.length)] ?? {
+            const snippet = snippets[snippetCursor % snippets.length] ?? {
               code: `\n// Collab update by ${botName}\n`,
               comment: `// Reviewing code...\n`,
               chatStatus: 'Working on current module.',
             };
+            snippetCursor++;
 
-            // 65% Author a code snippet / block via progressive typing
-            if (roll < 0.65) {
+            // Action distribution driven by persona role
+            const canAuthorCode = roll < weights.code && (activeAuthorId === null || activeAuthorId === botId);
+            if (canAuthorCode) {
+              activeAuthorId = botId;
               const textToType = snippet.code;
               let typedIndex = 0;
               let anchor: Y.RelativePosition | null = null;
 
               const streamChunk = () => {
-                if (activeStorm.stopped) return;
+                if (activeStorm.stopped) {
+                  if (activeAuthorId === botId) activeAuthorId = null;
+                  return;
+                }
                 const chunkSize = Math.min(textToType.length - typedIndex, 3 + Math.floor(Math.random() * 4));
                 const chunk = textToType.slice(typedIndex, typedIndex + chunkSize);
 
@@ -394,6 +541,7 @@ export class BotStormManager {
                   const chunkTimer = setTimeout(streamChunk, 35 + Math.random() * 40);
                   activeStorm.typingTimers.add(chunkTimer);
                 } else {
+                  if (activeAuthorId === botId) activeAuthorId = null;
                   botAwareness.setLocalStateField('typing', false);
                   if (!activeBot.hasChatted) {
                     activeBot.hasChatted = true;
@@ -407,8 +555,8 @@ export class BotStormManager {
               return;
             }
 
-            // 20% Code Review: set selection range and optional line highlight
-            if (roll < 0.85 && yText.length > 10) {
+            // Code Review: set selection range and optional line highlight
+            if (roll < weights.review && yText.length > 10) {
               const str = yText.toString();
               const lines: { start: number; end: number }[] = [];
               let lineStart = 0;
@@ -450,7 +598,12 @@ export class BotStormManager {
               }
             }
 
-            // 15% Inline comment authoring
+            // Inline comment authoring (remaining probability)
+            if (activeAuthorId !== null && yText.length > 0) {
+              // Avoid conflicting with an active author stream
+              scheduleNextAction(300 + Math.random() * 400);
+              return;
+            }
             const commentPos = yText.length;
             const endsWithNewline = commentPos === 0 || yText.toString().endsWith('\n');
             const commentText = (endsWithNewline ? '' : '\n') + snippet.comment;

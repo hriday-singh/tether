@@ -230,7 +230,12 @@ export class Room {
     };
 
     this.connContexts.set(ws, ctx);
-    const { isNew } = this.hostElector.addMember(member.id, undefined, !isBot);
+    const { isNew, isReconnecting } = this.hostElector.addMember(member.id, undefined, !isBot);
+
+    // Member came back within the grace window — tell everyone they're active again.
+    if (isReconnecting) {
+      this.broadcastControl({ t: 'member.status', memberId: member.id, status: 'active' });
+    }
 
     return { ctx, isNew };
   }
@@ -278,6 +283,12 @@ export class Room {
     this.editCoalescer.flushMember(ctx.memberId);
 
     this.hostElector.disconnectConnection(ctx.memberId, isCleanLeave);
+
+    // Abrupt disconnect enters the grace window — tell remaining clients so the
+    // roster shows "reconnecting…" instead of appearing fully active.
+    if (!isCleanLeave) {
+      this.broadcastControl({ t: 'member.status', memberId: ctx.memberId, status: 'reconnecting' });
+    }
   }
 
   /**
