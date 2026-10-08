@@ -131,6 +131,27 @@ describe('Rooms & RoomRegistry', () => {
       room.destroy();
     });
 
+    it('announces "reconnecting" only when the member has no socket left', () => {
+      roomRepo.create({ id: 'test-status-room', epoch: 'epoch-1', createdBy: 'u1' });
+      const room = new Room('test-status-room', 'epoch-1', null, [], persistenceService, auditService);
+      const aliceWs = new MockSocket();
+      const bobOld = new MockSocket();
+      const bobNew = new MockSocket();
+      room.addConnection(aliceWs as unknown as WebSocket, { id: 'u1', name: 'Alice', colorIndex: 0 });
+      room.addConnection(bobOld as unknown as WebSocket, { id: 'u2', name: 'Bob', colorIndex: 1 });
+      room.addConnection(bobNew as unknown as WebSocket, { id: 'u2', name: 'Bob', colorIndex: 1 });
+      const statuses = () =>
+        aliceWs.sent.filter((s): s is string => typeof s === 'string' && s.includes('member.status'));
+
+      room.removeConnection(bobOld as unknown as WebSocket, false); // stale socket after reconnect
+      expect(statuses()).toHaveLength(0);
+
+      room.removeConnection(bobNew as unknown as WebSocket, false); // last socket gone
+      expect(statuses()).toHaveLength(1);
+      expect(statuses()[0]).toContain('reconnecting');
+      room.destroy();
+    });
+
     it('caps seats by people online now: a full room turns away newcomers but not open tabs', () => {
       roomRepo.create({ id: 'test-seat-room', epoch: 'epoch-1', createdBy: 'm0' });
       const room = new Room('test-seat-room', 'epoch-1', null, [], persistenceService, auditService);

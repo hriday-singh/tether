@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { ROOM_EXPIRE_IDLE_MS } from '@tether/shared/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sessions } from './session';
 
 describe('sessions storage and recent tracking', () => {
@@ -13,28 +14,23 @@ describe('sessions storage and recent tracking', () => {
     expect(sessions.lastName()).toBe('Laasya');
   });
 
-  it('tracks recent sessions and returns last session', () => {
+  it('remembers only the last room, and one forget clears it', () => {
     sessions.set('room-1', { token: 't1', memberId: 'm1', name: 'User 1', epoch: '1' });
     sessions.set('room-2', { token: 't2', memberId: 'm2', name: 'User 2', epoch: '1' });
-
-    const recent = sessions.recent();
-    expect(recent.length).toBe(2);
-    expect(recent[0]?.roomId).toBe('room-2');
-    expect(recent[0]?.name).toBe('User 2');
-
-    const last = sessions.last();
-    expect(last?.roomId).toBe('room-2');
-    expect(last?.name).toBe('User 2');
-  });
-
-  it('forgets a specific recent session or clears all', () => {
-    sessions.set('room-1', { token: 't1', memberId: 'm1', name: 'User 1', epoch: '1' });
-    sessions.set('room-2', { token: 't2', memberId: 'm2', name: 'User 2', epoch: '1' });
-
-    sessions.forgetRecent('room-2');
-    expect(sessions.recent().map((r) => r.roomId)).toEqual(['room-1']);
+    expect(sessions.last()).toMatchObject({ roomId: 'room-2', name: 'User 2' });
 
     sessions.forgetRecent();
-    expect(sessions.recent()).toEqual([]);
+    expect(sessions.last()).toBeNull();
+    expect(sessions.get('room-1')).not.toBeNull(); // the join token itself is kept
+  });
+
+  it('drops the remembered room once the server would have expired it', () => {
+    vi.useFakeTimers();
+    sessions.set('room-1', { token: 't1', memberId: 'm1', name: 'User 1', epoch: '1' });
+    vi.advanceTimersByTime(ROOM_EXPIRE_IDLE_MS - 1);
+    expect(sessions.last()?.roomId).toBe('room-1');
+    vi.advanceTimersByTime(1);
+    expect(sessions.last()).toBeNull();
+    vi.useRealTimers();
   });
 });

@@ -436,7 +436,8 @@ function useGlobalShortcuts() {
       } else if (e.key === 'F11') {
         e.preventDefault();
         ws.ui.update((s) => ({ ...s, zenMode: !s.zenMode }));
-      } else if (mod && (e.key === '?' || e.code === 'Slash' || (e.shiftKey && key === '/'))) {
+      } else if (mod && (e.key === '?' || (e.shiftKey && e.code === 'Slash'))) {
+        // Plain Ctrl+/ belongs to the editor (toggle comment).
         e.preventDefault();
         ws.ui.update((s) => ({ ...s, shortcuts: !s.shortcuts }));
       } else if (mod && key === 'k') {
@@ -483,6 +484,7 @@ function ShortcutsDialog() {
     [`${m} J / Ctrl \``, 'Toggle diagnostics drawer'],
     ['Alt H', 'Highlight current lines for everyone'],
     [`${m} Shift M`, 'Comment on selection in chat'],
+    [`${m} /`, 'Toggle line comment'],
     ['Esc', 'Exit Zen mode / Restore panel / Back to editor'],
     ['Esc then Tab', 'Move focus out of the editor'],
     [`${m} F`, 'Find in document'],

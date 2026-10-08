@@ -295,9 +295,10 @@ export class Room {
 
     this.hostElector.disconnectConnection(ctx.memberId, isCleanLeave);
 
-    // Abrupt disconnect enters the grace window; tell remaining clients so the
-    // roster shows "reconnecting…" instead of appearing fully active.
-    if (!isCleanLeave) {
+    // Abrupt disconnect of the member's last socket enters the grace window; tell remaining clients so
+    // the roster shows "reconnecting…". A stale socket closing after its replacement joined (reconnect
+    // race, second tab, dev double-mount) must not: nothing would ever flip that member back to active.
+    if (!isCleanLeave && this.hostElector.isReconnecting(ctx.memberId)) {
       this.broadcastControl({ t: 'member.status', memberId: ctx.memberId, status: 'reconnecting' });
     }
   }

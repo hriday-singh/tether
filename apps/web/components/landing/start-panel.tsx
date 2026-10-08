@@ -47,8 +47,8 @@ export function useLastSession(): RecentSession | null {
   return JSON.parse(raw) as RecentSession | null;
 }
 
-function forgetSession(roomId: string) {
-  sessions.forgetRecent(roomId);
+function forgetSession() {
+  sessions.forgetRecent();
   window.dispatchEvent(new Event(RECENT_EVENT));
 }
 
@@ -83,7 +83,7 @@ function ResumeRow() {
         )}
       </p>
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" onClick={() => forgetSession(last.roomId)}>
+        <Button variant="ghost" size="sm" onClick={forgetSession}>
           Forget
         </Button>
         <Button variant="ghost" size="sm" className="text-foreground" asChild>

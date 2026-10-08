@@ -60,7 +60,7 @@ describe('StartPanel', () => {
 
   it('shows a resume row that can forget the session', async () => {
     const user = userEvent.setup();
-    localStorage.setItem('tether:recent-rooms', JSON.stringify([{ roomId: 'team-standup', name: 'Hriday', lastActive: 1 }]));
+    localStorage.setItem('tether:recent-rooms', JSON.stringify([{ roomId: 'team-standup', name: 'Hriday', lastActive: Date.now() }]));
     render(
       <>
         <NavStartButton />

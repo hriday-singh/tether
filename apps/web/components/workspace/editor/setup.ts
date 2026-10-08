@@ -1,10 +1,11 @@
-import { HighlightStyle, syntaxHighlighting, syntaxTree, type LanguageSupport } from '@codemirror/language';
+import { HighlightStyle, LanguageSupport, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { linter, lintGutter } from '@codemirror/lint';
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
 import type { LanguageId } from '@/lib/languages';
 import { createLinterSource } from './linter';
+import { markdownHelpers } from './markdown-helpers';
 
 /** Language support loaded on demand per language (docs/07: code-split per language). */
 export function loadLanguage(id: LanguageId): Promise<LanguageSupport> {
@@ -34,7 +35,10 @@ export function loadLanguage(id: LanguageId): Promise<LanguageSupport> {
         import('@codemirror/language'),
       ]).then(([clike, lang]) => new lang.LanguageSupport(lang.StreamLanguage.define(clike.csharp)));
     case 'markdown':
-      return import('@codemirror/lang-markdown').then((m) => m.markdown());
+      return import('@codemirror/lang-markdown').then((m) => {
+        const md = m.markdown();
+        return new LanguageSupport(md.language, [md.support, markdownHelpers]);
+      });
     case 'json':
       return import('@codemirror/lang-json').then((m) => m.json());
     case 'sql':

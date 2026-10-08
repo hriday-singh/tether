@@ -1,3 +1,4 @@
+import { ROOM_EXPIRE_IDLE_MS } from '@tether/shared/constants';
 import { z } from 'zod';
 
 const SessionSchema = z.object({ token: z.string(), memberId: z.string(), name: z.string(), epoch: z.string() });
@@ -34,41 +35,18 @@ function read<T>(k: string, schema: z.ZodType<T>): T | null {
 
 export const sessions = {
   get: (roomId: string) => read(key(roomId), SessionSchema),
-  recent(): RecentSession[] {
-    try {
-      const raw = localStorage.getItem(RECENT_KEY);
-      if (raw !== null) {
-        const parsed = RecentSessionListSchema.safeParse(JSON.parse(raw));
-        if (parsed.success) return parsed.data;
-      }
-      // Discover any existing session keys in storage if RECENT_KEY has never been initialized
-      const discovered: RecentSession[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith('collab:session:')) {
-          const rId = k.replace('collab:session:', '');
-          const s = this.get(rId);
-          if (s) {
-            discovered.push({ roomId: rId, name: s.name, lastActive: Date.now() });
-          }
-        }
-      }
-      return discovered;
-    } catch {
-      return [];
-    }
-  },
+  /** The one room to offer "Continue in"; gone once the server would have expired the room for idleness. */
   last(): RecentSession | null {
-    const list = this.recent();
-    return list[0] ?? null;
+    // Older builds stored up to 5 rooms; the newest is first.
+    const last = read(RECENT_KEY, RecentSessionListSchema)?.[0];
+    return last && Date.now() - last.lastActive < ROOM_EXPIRE_IDLE_MS ? last : null;
   },
   set(roomId: string, s: RoomSession) {
     try {
       localStorage.setItem(key(roomId), JSON.stringify(s));
       localStorage.setItem(NAME_KEY, s.name);
-      const existing = this.recent().filter((r) => r.roomId !== roomId);
-      const updated: RecentSession[] = [{ roomId, name: s.name, lastActive: Date.now() }, ...existing].slice(0, 5);
-      localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+      const recent: RecentSession[] = [{ roomId, name: s.name, lastActive: Date.now() }];
+      localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
     } catch {
       // storage quota or blocked
     }
@@ -76,19 +54,14 @@ export const sessions = {
   clear(roomId: string) {
     try {
       localStorage.removeItem(key(roomId));
-      this.forgetRecent(roomId);
+      if (this.last()?.roomId === roomId) this.forgetRecent();
     } catch {
       // ignore
     }
   },
-  forgetRecent(roomId?: string) {
+  forgetRecent() {
     try {
-      if (roomId) {
-        const remaining = this.recent().filter((r) => r.roomId !== roomId);
-        localStorage.setItem(RECENT_KEY, JSON.stringify(remaining));
-      } else {
-        localStorage.setItem(RECENT_KEY, JSON.stringify([]));
-      }
+      localStorage.removeItem(RECENT_KEY);
     } catch {
       // ignore
     }
