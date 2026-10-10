@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for @tether/server (Vercel Container Runtime)
+# Multi-stage Dockerfile for @tether/server (Self-contained in apps/server)
 FROM node:22-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -6,27 +6,24 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Dependencies stage: cache dependencies across the workspace
+# Dependencies stage: use local workspace definitions
 FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY package.json pnpm-workspace.yaml tsconfig.json tsconfig.base.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/sync-client/package.json ./packages/sync-client/
-COPY apps/server/package.json ./apps/server/
-COPY apps/web/package.json ./apps/web/
-COPY tests/chaos/package.json ./tests/chaos/
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
-# Builder stage: compile shared package, sync-client and server
+# Builder stage: compile shared packages, sync-client and server
 FROM deps AS builder
 COPY packages/shared ./packages/shared
 COPY packages/sync-client ./packages/sync-client
-COPY apps/server ./apps/server
+COPY src ./src
 
 RUN pnpm --filter @tether/shared build:pkg
 RUN pnpm --filter @tether/sync-client build:pkg
-RUN pnpm --filter @tether/server build
-RUN pnpm --filter @tether/server --prod deploy /app/deploy
+RUN pnpm build
+RUN pnpm --prod deploy /app/deploy
 
 # Production runner stage
 FROM node:22-slim AS runner
