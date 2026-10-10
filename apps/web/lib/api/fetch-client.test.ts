@@ -4,13 +4,27 @@ import { ApiError } from './types';
 
 describe('fetchApi', () => {
   const originalFetch = globalThis.fetch;
+  const originalEnv = process.env.NEXT_PUBLIC_API_URL;
+  const originalServerUrl = process.env.SERVER_URL;
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    delete process.env.NEXT_PUBLIC_API_URL;
+    delete process.env.SERVER_URL;
   });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    if (originalEnv !== undefined) {
+      process.env.NEXT_PUBLIC_API_URL = originalEnv;
+    } else {
+      delete process.env.NEXT_PUBLIC_API_URL;
+    }
+    if (originalServerUrl !== undefined) {
+      process.env.SERVER_URL = originalServerUrl;
+    } else {
+      delete process.env.SERVER_URL;
+    }
   });
 
   it('createRoom sends POST with Idempotency-Key header and returns JoinResult', async () => {
@@ -33,7 +47,7 @@ describe('fetchApi', () => {
 
     expect(result).toEqual(mockJoinResult);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/rooms',
+      '/api/rooms',
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -130,7 +144,7 @@ describe('fetchApi', () => {
 
     await fetchApi.events('room-1', 'token-123', { before: 10, limit: 20 });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/rooms/room-1/events?before=10&limit=20',
+      '/api/rooms/room-1/events?before=10&limit=20',
       expect.objectContaining({
         headers: { Authorization: 'Bearer token-123' },
       }),
@@ -138,7 +152,7 @@ describe('fetchApi', () => {
 
     await fetchApi.chat('room-1', 'token-123', { after: 5, limit: 10 });
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:4000/api/rooms/room-1/chat?after=5&limit=10',
+      '/api/rooms/room-1/chat?after=5&limit=10',
       expect.objectContaining({
         headers: { Authorization: 'Bearer token-123' },
       }),
@@ -154,5 +168,43 @@ describe('fetchApi', () => {
 
     const status = await fetchApi.admission('room-1', 'token-123');
     expect(status).toBe('ok');
+  });
+
+  it('prepends NEXT_PUBLIC_API_URL when configured', async () => {
+    process.env.NEXT_PUBLIC_API_URL = 'http://localhost:4000';
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'room-1', hasPasscode: false, locked: false, memberCount: 1, language: 'typescript' }),
+    } as Response);
+
+    await fetchApi.getRoom('room-1');
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:4000/api/rooms/room-1',
+      {},
+    );
+  });
+
+  it('uses SERVER_URL in SSR when window is undefined', async () => {
+    process.env.SERVER_URL = 'http://internal-server:4000';
+    const originalWindow = globalThis.window;
+    // @ts-expect-error simulating SSR
+    delete globalThis.window;
+
+    try {
+      globalThis.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'room-1', hasPasscode: false, locked: false, memberCount: 1, language: 'typescript' }),
+      } as Response);
+
+      await fetchApi.getRoom('room-1');
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'http://internal-server:4000/api/rooms/room-1',
+        {},
+      );
+    } finally {
+      globalThis.window = originalWindow;
+    }
   });
 });
