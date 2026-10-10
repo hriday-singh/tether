@@ -86,7 +86,8 @@ export function createUpgradeGate(wss: WebSocketServer, deps: UpgradeGateDepende
 
     // Check 1: Origin
     const origin = request.headers.origin;
-    if (origin && !deps.config.ALLOWED_ORIGINS.includes(origin)) {
+    const isVercelOrigin = Boolean(origin && /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.vercel\.app$/i.test(origin));
+    if (origin && !deps.config.ALLOWED_ORIGINS.includes(origin) && !isVercelOrigin) {
       return reject(403, 'Forbidden: Origin Not Allowed');
     }
 

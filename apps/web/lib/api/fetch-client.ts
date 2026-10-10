@@ -13,7 +13,16 @@ import {
 } from './types';
 
 function getApiBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '') || 'http://localhost:4000';
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+  if (typeof window === 'undefined' && process.env.SERVER_URL) {
+    return process.env.SERVER_URL.replace(/\/+$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    return '';
+  }
+  return 'http://localhost:4000';
 }
 
 async function request<T>(

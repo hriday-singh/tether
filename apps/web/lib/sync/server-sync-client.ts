@@ -171,9 +171,21 @@ export class ServerSyncClient implements SyncClient {
         this.protocolClient.killSocket();
       },
     };
-    const wsBase = options.wsUrl || process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4000';
+    const wsBase =
+      options.wsUrl ||
+      process.env.NEXT_PUBLIC_WS_URL ||
+      (typeof window !== 'undefined'
+        ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
+        : 'ws://localhost:4000');
     const wsUrl = `${wsBase.replace(/\/+$/, '')}/ws/rooms/${encodeURIComponent(options.roomId.toLowerCase())}`;
-    const apiUrl = options.apiUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const apiUrl =
+      options.apiUrl ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      (typeof window === 'undefined' && process.env.SERVER_URL
+        ? process.env.SERVER_URL.replace(/\/+$/, '')
+        : typeof window !== 'undefined'
+          ? ''
+          : 'http://localhost:4000');
 
     this.protocolClient = new ProtocolSyncClient({
       url: wsUrl,

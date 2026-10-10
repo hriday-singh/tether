@@ -41,7 +41,15 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
 
   // Enable CORS
   app.register(cors, {
-    origin: deps.config.ALLOWED_ORIGINS,
+    origin: (origin, cb) => {
+      if (!origin || deps.config.ALLOWED_ORIGINS.includes(origin)) {
+        return cb(null, true);
+      }
+      if (/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.vercel\.app$/i.test(origin)) {
+        return cb(null, true);
+      }
+      return cb(new Error('Not allowed by CORS'), false);
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
   });

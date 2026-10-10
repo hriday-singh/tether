@@ -22,7 +22,16 @@ export const ServerConfigSchema = z.object({
   ALLOWED_ORIGINS: z
     .string()
     .default('http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001')
-    .transform((s) => s.split(',').map((o) => o.trim()).filter(Boolean)),
+    .transform((s) => {
+      const origins = s.split(',').map((o) => o.trim()).filter(Boolean);
+      if (process.env.VERCEL_URL) {
+        origins.push(`https://${process.env.VERCEL_URL}`);
+      }
+      if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+        origins.push(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+      }
+      return Array.from(new Set(origins));
+    }),
   // ponytail: SQLite only. Postgres needs an async repo layer; old postgres SQL kept in migrations/.
   DATABASE_DRIVER: z
     .literal('sqlite', { errorMap: () => ({ message: 'Only DATABASE_DRIVER=sqlite is supported' }) })
