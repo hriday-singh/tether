@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for @tether/server (Self-contained in apps/server)
+# Multi-stage Dockerfile for @tether/server; build from the repository root.
 FROM node:22-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -6,24 +6,25 @@ RUN corepack enable
 
 WORKDIR /app
 
-# Dependencies stage: use local workspace definitions
 FROM base AS deps
-COPY package.json pnpm-workspace.yaml tsconfig.json tsconfig.base.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/sync-client/package.json ./packages/sync-client/
+COPY apps/server/package.json ./apps/server/
+COPY apps/web/package.json ./apps/web/
+COPY tests/chaos/package.json ./tests/chaos/
 
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
-# Builder stage: compile shared packages, sync-client and server
 FROM deps AS builder
 COPY packages/shared ./packages/shared
 COPY packages/sync-client ./packages/sync-client
-COPY src ./src
+COPY apps/server ./apps/server
 
 RUN pnpm --filter @tether/shared build:pkg
 RUN pnpm --filter @tether/sync-client build:pkg
-RUN pnpm build
-RUN pnpm --prod deploy /app/deploy
+RUN pnpm --filter @tether/server build
+RUN pnpm --filter @tether/server --prod deploy /app/deploy
 
 # Production runner stage
 FROM node:22-slim AS runner
@@ -34,7 +35,6 @@ ENV PORT=4000
 ENV HOST=0.0.0.0
 ENV SQLITE_PATH=/data/tether.db
 
-# Ensure persistent SQLite data directory exists with permissions for node user
 RUN mkdir -p /data && chown -R node:node /data
 
 COPY --from=builder --chown=node:node /app/deploy ./
